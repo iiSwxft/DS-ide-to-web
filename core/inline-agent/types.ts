@@ -41,6 +41,33 @@ export interface InlineAgentLoopState {
   startedAt: number;
 }
 
+export interface InlineAgentTraceStepRecord {
+  index: number;
+  status: InlineAgentStepStatus;
+  text: string;
+  toolExecutions: ToolExecutionRecord[];
+  responseMessageId: number | null;
+  collapsed: boolean;
+}
+
+export interface InlineAgentTraceRecord {
+  id: string;
+  loopId: string;
+  chatSessionId: string;
+  anchorMessageId: number;
+  url: string;
+  originalPrompt: string;
+  agentTaskPrompt: string;
+  status: InlineAgentLoopStatus;
+  steps: InlineAgentTraceStepRecord[];
+  totalSteps: number;
+  totalTools: number;
+  finalText: string;
+  error?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface InlineAgentStreamChunkMsg {
   loopId: string;
   stepIndex: number;

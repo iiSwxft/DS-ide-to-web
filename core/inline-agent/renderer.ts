@@ -11,6 +11,12 @@ export function injectInlineAgentStyles(): void {
       border-left: 3px solid #6366f1;
       padding-left: 12px;
     }
+    [data-dpp-agent-host-hidden] > :not(.dpp-agent-container):not(.dpp-tool-block) {
+      display: none !important;
+    }
+    .dpp-agent-container[data-restored="true"] {
+      margin-bottom: 12px;
+    }
     .dpp-agent-step {
       margin-bottom: 8px;
       border: 1px solid var(--dpp-border, #e5e7eb);

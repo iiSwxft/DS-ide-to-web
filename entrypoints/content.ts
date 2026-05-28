@@ -22,6 +22,8 @@ import type {
   InlineAgentStepCompleteMsg,
   InlineAgentLoopCompleteMsg,
   InlineAgentLoopErrorMsg,
+  InlineAgentTraceRecord,
+  InlineAgentTraceStepRecord,
 } from '../core/inline-agent/types';
 import {
   injectInlineAgentStyles,
@@ -42,6 +44,10 @@ const TOKEN_SPEED_BOOTSTRAP_RETRY_LIMIT = 40;
 const TOKEN_SPEED_MOUNT_DEBOUNCE_MS = 500;
 const TOKEN_SPEED_ROUTE_CHECK_MS = 500;
 const TOOL_RESTORE_STORAGE_KEY = 'dpp_tool_execution_blocks';
+const INLINE_AGENT_TRACE_STORAGE_KEY = 'dpp_inline_agent_traces';
+const INLINE_AGENT_TRACE_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const INLINE_AGENT_TRACE_LIMIT = 100;
+const INLINE_AGENT_TRACE_WRITE_DEBOUNCE_MS = 300;
 const THEME_BOOTSTRAP_RETRY_MS = 250;
 const THEME_BOOTSTRAP_RETRY_LIMIT = 20;
 
@@ -79,6 +85,11 @@ let inlineAgentContainer: HTMLElement | null = null;
 let inlineAgentCurrentStep: HTMLElement | null = null;
 let inlineAgentLoopId: string | null = null;
 let inlineAgentContainerObserver: MutationObserver | null = null;
+let activeInlineAgentTrace: InlineAgentTraceRecord | null = null;
+let inlineAgentTraceWriteTimer: ReturnType<typeof setTimeout> | null = null;
+const restoredInlineAgentTraces = new Map<string, InlineAgentTraceRecord>();
+let restoredInlineAgentRenderTimer: ReturnType<typeof setTimeout> | null = null;
+let restoredInlineAgentRenderAttempts = 0;
 let currentMemories: Memory[] = [];
 let currentSkills: Skill[] = [];
 let currentActivePreset: SystemPromptPreset | null = null;
@@ -204,6 +215,7 @@ export default defineContentScript({
     syncToMainWorld(memories ?? [], skills ?? [], activePreset ?? null, modelType ?? null, normalizeToolDescriptors(toolDescriptors));
     startRenderedToolCallCleaner();
     void restorePersistedToolBlocks();
+    void restorePersistedInlineAgentTraces();
 
     sendRuntimeMessage<BackgroundConfig | null>({ type: 'GET_BACKGROUND' }).then((cfg) => {
       applyBackground(cfg ?? null);
@@ -268,6 +280,14 @@ function invalidateExtensionContext() {
   if (restoredRenderTimer) {
     clearTimeout(restoredRenderTimer);
     restoredRenderTimer = null;
+  }
+  if (restoredInlineAgentRenderTimer) {
+    clearTimeout(restoredInlineAgentRenderTimer);
+    restoredInlineAgentRenderTimer = null;
+  }
+  if (inlineAgentTraceWriteTimer) {
+    clearTimeout(inlineAgentTraceWriteTimer);
+    inlineAgentTraceWriteTimer = null;
   }
   stopTokenSpeedIndicatorBootstrap();
   stopTokenSpeedIndicatorMountObserver();
@@ -546,7 +566,6 @@ function startInlineAgentIfNeeded(
   if (!complete.chatSessionId || complete.assistantMessageId == null) return;
 
   const loopId = crypto.randomUUID();
-  inlineAgentLoopId = loopId;
 
   const payload: InlineAgentStartPayload = {
     loopId,
@@ -566,10 +585,15 @@ function startInlineAgentIfNeeded(
 
   injectInlineAgentStyles();
   const container = createAgentContainer();
+  container.setAttribute('data-dpp-agent-loop-id', loopId);
 
   const messages = getAssistantMessages();
   const target = messages[messages.length - 1];
   if (!target) return;
+
+  inlineAgentLoopId = loopId;
+  activeInlineAgentTrace = createInlineAgentTrace(complete, loopId, mcpExecutions.length);
+  void writeInlineAgentTrace(activeInlineAgentTrace);
 
   inlineAgentContainer = container;
   const contentDiv = target.querySelector('._74c0879') ?? target;
@@ -593,9 +617,15 @@ function startInlineAgentIfNeeded(
 
 function stopInlineAgent(): void {
   const container = inlineAgentContainer;
+  updateActiveInlineAgentTrace((trace) => ({
+    ...trace,
+    status: 'stopping',
+    error: '已停止',
+  }), { immediate: true });
   inlineAgentLoopId = null;
   inlineAgentContainer = null;
   inlineAgentCurrentStep = null;
+  activeInlineAgentTrace = null;
   inlineAgentContainerObserver?.disconnect();
   inlineAgentContainerObserver = null;
   window.postMessage({ source: 'deepseek-pp-content', type: 'STOP_INLINE_AGENT_LOOP' });
@@ -611,11 +641,24 @@ function handleAgentStepStarted(data: { loopId: string; stepIndex: number }): vo
   const stepEl = createAgentStepElement(data.stepIndex, stopInlineAgent);
   inlineAgentCurrentStep = stepEl;
   inlineAgentContainer.appendChild(stepEl);
+  updateActiveInlineAgentTrace((trace) => upsertInlineAgentTraceStep(trace, {
+    index: data.stepIndex,
+    status: 'streaming',
+    text: '',
+    toolExecutions: [],
+    responseMessageId: null,
+    collapsed: false,
+  }));
 }
 
 function handleAgentStreamChunk(msg: InlineAgentStreamChunkMsg): void {
   if (msg.loopId !== inlineAgentLoopId || !inlineAgentCurrentStep) return;
   updateStepStreamText(inlineAgentCurrentStep, msg.fullText);
+  updateActiveInlineAgentTrace((trace) => updateInlineAgentTraceStep(trace, msg.stepIndex, {
+    text: msg.fullText,
+    status: 'streaming',
+    collapsed: false,
+  }));
 }
 
 function handleAgentStepComplete(msg: InlineAgentStepCompleteMsg): void {
@@ -629,6 +672,14 @@ function handleAgentStepComplete(msg: InlineAgentStepCompleteMsg): void {
     ? `完成（${msg.toolExecutions.length} 个工具）`
     : '完成';
   updateStepStatus(inlineAgentCurrentStep, 'complete', label);
+  const fullText = getInlineAgentStepText(inlineAgentCurrentStep);
+  updateActiveInlineAgentTrace((trace) => updateInlineAgentTraceStep(trace, msg.stepIndex, {
+    status: 'complete',
+    text: fullText,
+    toolExecutions: msg.toolExecutions,
+    responseMessageId: msg.responseMessageId,
+    collapsed: true,
+  }), { immediate: true });
 
   const completedStep = inlineAgentCurrentStep;
   setTimeout(() => {
@@ -643,9 +694,17 @@ function handleAgentLoopComplete(msg: InlineAgentLoopCompleteMsg): void {
 
   const footer = createAgentFooter(msg.totalSteps, msg.totalTools, false);
   inlineAgentContainer.appendChild(footer);
+  updateActiveInlineAgentTrace((trace) => ({
+    ...trace,
+    status: 'complete',
+    totalSteps: msg.totalSteps,
+    totalTools: msg.totalTools,
+    finalText: msg.finalText,
+  }), { immediate: true });
   inlineAgentLoopId = null;
   inlineAgentContainer = null;
   inlineAgentCurrentStep = null;
+  activeInlineAgentTrace = null;
   inlineAgentContainerObserver?.disconnect();
   inlineAgentContainerObserver = null;
 }
@@ -659,9 +718,16 @@ function handleAgentLoopError(msg: InlineAgentLoopErrorMsg): void {
 
   const footer = createAgentFooter(msg.stepIndex, 0, true);
   inlineAgentContainer.appendChild(footer);
+  updateActiveInlineAgentTrace((trace) => ({
+    ...trace,
+    status: 'error',
+    totalSteps: msg.stepIndex,
+    error: msg.error,
+  }), { immediate: true });
   inlineAgentLoopId = null;
   inlineAgentContainer = null;
   inlineAgentCurrentStep = null;
+  activeInlineAgentTrace = null;
   inlineAgentContainerObserver?.disconnect();
   inlineAgentContainerObserver = null;
 }
@@ -1028,6 +1094,204 @@ function getToolBlockUrl(): string {
 
 function normalizeText(value: string | undefined): string {
   return (value ?? '').replace(/\s+/g, '').trim();
+}
+
+function createInlineAgentTrace(
+  complete: ResponseCompletePayload,
+  loopId: string,
+  seedToolCount: number,
+): InlineAgentTraceRecord {
+  const now = Date.now();
+  return {
+    id: hashString(`${complete.chatSessionId}\n${complete.assistantMessageId}\n${complete.agentTaskPrompt || complete.originalPrompt}`),
+    loopId,
+    chatSessionId: complete.chatSessionId!,
+    anchorMessageId: complete.assistantMessageId!,
+    url: getToolBlockUrl(),
+    originalPrompt: complete.originalPrompt,
+    agentTaskPrompt: complete.agentTaskPrompt,
+    status: 'running',
+    steps: [],
+    totalSteps: 0,
+    totalTools: seedToolCount,
+    finalText: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function getInlineAgentStepText(step: HTMLElement): string {
+  return (step.querySelector('.dpp-agent-step-body')?.textContent ?? '').trim();
+}
+
+function updateActiveInlineAgentTrace(
+  updater: (trace: InlineAgentTraceRecord) => InlineAgentTraceRecord,
+  options: { immediate?: boolean } = {},
+): void {
+  if (!activeInlineAgentTrace) return;
+
+  activeInlineAgentTrace = {
+    ...updater(activeInlineAgentTrace),
+    updatedAt: Date.now(),
+  };
+
+  if (options.immediate) {
+    if (inlineAgentTraceWriteTimer) {
+      clearTimeout(inlineAgentTraceWriteTimer);
+      inlineAgentTraceWriteTimer = null;
+    }
+    void writeInlineAgentTrace(activeInlineAgentTrace);
+    return;
+  }
+
+  scheduleInlineAgentTraceWrite(activeInlineAgentTrace);
+}
+
+function upsertInlineAgentTraceStep(
+  trace: InlineAgentTraceRecord,
+  step: InlineAgentTraceStepRecord,
+): InlineAgentTraceRecord {
+  const existing = trace.steps.filter((item) => item.index !== step.index);
+  const steps = [...existing, step].sort((a, b) => a.index - b.index);
+  return {
+    ...trace,
+    steps,
+    totalSteps: Math.max(trace.totalSteps, step.index + 1),
+  };
+}
+
+function updateInlineAgentTraceStep(
+  trace: InlineAgentTraceRecord,
+  stepIndex: number,
+  patch: Partial<InlineAgentTraceStepRecord>,
+): InlineAgentTraceRecord {
+  const current = trace.steps.find((step) => step.index === stepIndex) ?? {
+    index: stepIndex,
+    status: 'streaming' as const,
+    text: '',
+    toolExecutions: [],
+    responseMessageId: null,
+    collapsed: false,
+  };
+  return upsertInlineAgentTraceStep(trace, { ...current, ...patch, index: stepIndex });
+}
+
+function scheduleInlineAgentTraceWrite(trace: InlineAgentTraceRecord): void {
+  if (inlineAgentTraceWriteTimer) clearTimeout(inlineAgentTraceWriteTimer);
+  inlineAgentTraceWriteTimer = setTimeout(() => {
+    inlineAgentTraceWriteTimer = null;
+    const latest = activeInlineAgentTrace?.id === trace.id ? activeInlineAgentTrace : trace;
+    void writeInlineAgentTrace(latest);
+  }, INLINE_AGENT_TRACE_WRITE_DEBOUNCE_MS);
+}
+
+async function writeInlineAgentTrace(trace: InlineAgentTraceRecord): Promise<void> {
+  const stored = sanitizeInlineAgentTraceForStorage(trace);
+  const existing = await getPersistedInlineAgentTraces();
+  const now = Date.now();
+  const next = [
+    ...existing.filter((item) => item.id !== stored.id),
+    stored,
+  ]
+    .filter((item) => now - item.createdAt < INLINE_AGENT_TRACE_TTL_MS)
+    .slice(-INLINE_AGENT_TRACE_LIMIT);
+
+  await setLocalStorageValue(INLINE_AGENT_TRACE_STORAGE_KEY, next);
+  restoredInlineAgentTraces.set(stored.id, stored);
+}
+
+async function getPersistedInlineAgentTraces(): Promise<InlineAgentTraceRecord[]> {
+  const traces = await getLocalStorageValue<unknown>(INLINE_AGENT_TRACE_STORAGE_KEY);
+  return Array.isArray(traces) ? traces.filter(isInlineAgentTraceRecord) : [];
+}
+
+function isInlineAgentTraceRecord(value: unknown): value is InlineAgentTraceRecord {
+  if (!value || typeof value !== 'object') return false;
+  const trace = value as Partial<InlineAgentTraceRecord>;
+  return typeof trace.id === 'string' &&
+    typeof trace.loopId === 'string' &&
+    typeof trace.chatSessionId === 'string' &&
+    typeof trace.anchorMessageId === 'number' &&
+    typeof trace.url === 'string' &&
+    typeof trace.createdAt === 'number' &&
+    typeof trace.updatedAt === 'number' &&
+    Array.isArray(trace.steps) &&
+    trace.steps.every(isInlineAgentTraceStepRecord);
+}
+
+function isInlineAgentTraceStepRecord(value: unknown): value is InlineAgentTraceStepRecord {
+  if (!value || typeof value !== 'object') return false;
+  const step = value as Partial<InlineAgentTraceStepRecord>;
+  return typeof step.index === 'number' &&
+    typeof step.status === 'string' &&
+    typeof step.text === 'string' &&
+    Array.isArray(step.toolExecutions) &&
+    typeof step.collapsed === 'boolean';
+}
+
+function sanitizeInlineAgentTraceForStorage(trace: InlineAgentTraceRecord): InlineAgentTraceRecord {
+  return {
+    ...trace,
+    originalPrompt: clampText(trace.originalPrompt, 8000) ?? '',
+    agentTaskPrompt: clampText(trace.agentTaskPrompt, 8000) ?? '',
+    finalText: clampText(trace.finalText, 8000) ?? '',
+    error: clampText(trace.error, 2000),
+    steps: trace.steps.map(sanitizeInlineAgentTraceStep),
+  };
+}
+
+function sanitizeInlineAgentTraceStep(step: InlineAgentTraceStepRecord): InlineAgentTraceStepRecord {
+  return {
+    ...step,
+    text: clampText(step.text, 8000) ?? '',
+    toolExecutions: step.toolExecutions.map(sanitizeInlineAgentTraceExecution),
+  };
+}
+
+function sanitizeInlineAgentTraceExecution(execution: ToolExecutionRecord): ToolExecutionRecord {
+  const output = execution.result.output === undefined
+    ? undefined
+    : clampText(
+      typeof execution.result.output === 'string'
+        ? execution.result.output
+        : JSON.stringify(execution.result.output),
+      8000,
+    );
+
+  return {
+    name: execution.name,
+    provider: execution.provider,
+    descriptorId: execution.descriptorId,
+    result: {
+      ...execution.result,
+      detail: clampText(execution.result.detail, 4000),
+      output,
+    },
+  };
+}
+
+async function restorePersistedInlineAgentTraces(): Promise<void> {
+  const url = getToolBlockUrl();
+  const traces = await getPersistedInlineAgentTraces();
+  let changed = false;
+
+  for (const trace of traces) {
+    if (!shouldTryRestoreInlineAgentTrace(trace, url) || restoredInlineAgentTraces.has(trace.id)) continue;
+    restoredInlineAgentTraces.set(trace.id, trace);
+    changed = true;
+  }
+
+  if (changed) scheduleRenderRestoredInlineAgentTraces();
+}
+
+function shouldTryRestoreInlineAgentTrace(trace: InlineAgentTraceRecord, currentUrl: string): boolean {
+  if (trace.url === currentUrl) return true;
+
+  try {
+    return new URL(trace.url).origin === location.origin;
+  } catch {
+    return false;
+  }
 }
 
 async function getPersistedToolBlocks(): Promise<PersistedToolBlock[]> {
@@ -1468,7 +1732,7 @@ function renderRestoredToolBlocks(): number {
     const executions = getRestoredExecutions(record);
     if (executions.length === 0) continue;
 
-    const block = createToolBlockShell({ restoreId: record.id, collapsed: false });
+    const block = createToolBlockShell({ restoreId: record.id, collapsed: true });
     updateToolBlockContent(block, executions);
     appendToolBlockToMessage(target, block);
     usedMessages.add(target);
@@ -1476,6 +1740,144 @@ function renderRestoredToolBlocks(): number {
 
   cleanRenderedToolCalls();
   return missing;
+}
+
+function scheduleRenderRestoredInlineAgentTraces() {
+  if (restoredInlineAgentRenderTimer) return;
+
+  restoredInlineAgentRenderTimer = setTimeout(() => {
+    restoredInlineAgentRenderTimer = null;
+    const missing = renderRestoredInlineAgentTraces();
+    if (missing > 0 && restoredInlineAgentRenderAttempts < 20) {
+      restoredInlineAgentRenderAttempts++;
+      scheduleRenderRestoredInlineAgentTraces();
+      return;
+    }
+    restoredInlineAgentRenderAttempts = 0;
+  }, restoredInlineAgentRenderAttempts === 0 ? 0 : 250);
+}
+
+function renderRestoredInlineAgentTraces(): number {
+  injectInlineAgentStyles();
+
+  const messages = getAssistantMessages();
+  if (messages.length === 0) return restoredInlineAgentTraces.size;
+
+  let missing = 0;
+  const usedMessages = new Set<Element>();
+
+  for (const trace of restoredInlineAgentTraces.values()) {
+    if (findRestoredInlineAgentTrace(trace.id)) continue;
+    if (trace.steps.length === 0) continue;
+
+    const target = findRestoredInlineAgentTarget(trace, messages, usedMessages);
+    if (!target) {
+      missing++;
+      continue;
+    }
+
+    const container = createRestoredInlineAgentContainer(trace);
+    mountRestoredInlineAgentContainer(target.message, container, target.hideHostContent);
+    usedMessages.add(target.message);
+  }
+
+  return missing;
+}
+
+function findRestoredInlineAgentTrace(id: string): Element | null {
+  for (const container of document.querySelectorAll('.dpp-agent-container[data-dpp-agent-trace-key]')) {
+    if (container.getAttribute('data-dpp-agent-trace-key') === id) return container;
+  }
+  return null;
+}
+
+function findRestoredInlineAgentTarget(
+  trace: InlineAgentTraceRecord,
+  messages: Element[],
+  usedMessages: Set<Element>,
+): { message: Element; hideHostContent: boolean } | null {
+  const snippet = getInlineAgentTraceMatchSnippet(trace);
+  if (snippet.length >= 12) {
+    const matched = messages.find((message) => {
+      if (usedMessages.has(message)) return false;
+      return normalizeText(message.textContent ?? '').includes(snippet);
+    });
+    if (matched) return { message: matched, hideHostContent: true };
+  }
+
+  if (trace.url === getToolBlockUrl()) {
+    const fallback = [...messages].reverse().find((message) => !usedMessages.has(message));
+    if (fallback) return { message: fallback, hideHostContent: false };
+  }
+
+  return null;
+}
+
+function getInlineAgentTraceMatchSnippet(trace: InlineAgentTraceRecord): string {
+  const finalText = normalizeText(trace.finalText);
+  if (finalText) return finalText.slice(0, 100);
+
+  const lastText = [...trace.steps]
+    .reverse()
+    .map((step) => normalizeText(step.text))
+    .find((text) => text.length > 0);
+  return (lastText ?? '').slice(0, 100);
+}
+
+function createRestoredInlineAgentContainer(trace: InlineAgentTraceRecord): HTMLElement {
+  const container = createAgentContainer();
+  container.setAttribute('data-restored', 'true');
+  container.setAttribute('data-dpp-agent-trace-key', trace.id);
+  container.setAttribute('data-dpp-agent-loop-id', trace.loopId);
+
+  for (const step of [...trace.steps].sort((a, b) => a.index - b.index)) {
+    const stepEl = createAgentStepElement(step.index);
+    updateStepStreamText(stepEl, step.text);
+    for (const exec of step.toolExecutions) {
+      addToolResultToStep(stepEl, exec.name, exec.result.ok, exec.result.summary);
+    }
+    updateStepStatus(stepEl, step.status, getInlineAgentStepStatusLabel(step));
+    stepEl.setAttribute('data-collapsed', step.collapsed ? 'true' : 'false');
+    container.appendChild(stepEl);
+  }
+
+  if (trace.status === 'complete') {
+    container.appendChild(createAgentFooter(trace.totalSteps, trace.totalTools, false));
+  } else if (trace.status === 'error') {
+    container.appendChild(createAgentFooter(trace.totalSteps, trace.totalTools, true, trace.error));
+  } else if (trace.status === 'stopping') {
+    container.appendChild(createAgentFooter(trace.totalSteps, trace.totalTools, false, trace.error ?? '已停止'));
+  }
+
+  return container;
+}
+
+function getInlineAgentStepStatusLabel(step: InlineAgentTraceStepRecord): string {
+  if (step.status === 'complete') {
+    return step.toolExecutions.length > 0
+      ? `完成（${step.toolExecutions.length} 个工具）`
+      : '完成';
+  }
+  if (step.status === 'executing_tools') return '执行工具中';
+  if (step.status === 'error') return '执行出错';
+  return 'streaming...';
+}
+
+function mountRestoredInlineAgentContainer(
+  message: Element,
+  container: HTMLElement,
+  hideHostContent: boolean,
+): void {
+  const responseContent = message.querySelector('._74c0879');
+  const host = responseContent ?? message;
+
+  if (hideHostContent) {
+    host.setAttribute('data-dpp-agent-host-hidden', 'true');
+    host.prepend(container);
+    return;
+  }
+
+  host.appendChild(container);
 }
 
 function findRestoredToolBlock(id: string): Element | null {
