@@ -23,6 +23,7 @@
 </p>
 
 <p align="center">
+  <a href="README_EN.md">English README</a> ·
   <a href="#功能速览">功能速览</a> ·
   <a href="#适合场景">适合场景</a> ·
   <a href="#安装">安装</a> ·
