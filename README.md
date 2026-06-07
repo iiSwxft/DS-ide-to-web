@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/readme-header.png" width="860" alt="DeepSeek++">
+  <img src="assets/readme-header.png" width="860" alt="DeepSeek++ DeepSeek 浏览器插件和 AI Agent 工作台">
 </p>
 
 <h1 align="center">DeepSeek++</h1>
 
 <p align="center">
-  <strong>把 DeepSeek 网页版扩展成带记忆、工具、MCP、Skill 和自动化的 AI Agent 工作台</strong>
+  <strong>DeepSeek 浏览器插件：把 DeepSeek 网页版扩展成支持 MCP、记忆、Skill、自动化和对话导出的 AI Agent 工作台</strong>
 </p>
 
 <p align="center">
@@ -24,18 +24,22 @@
 
 <p align="center">
   <a href="README_EN.md">English README</a> ·
+  <a href="#产品定位">产品定位</a> ·
   <a href="#功能速览">功能速览</a> ·
   <a href="#适合场景">适合场景</a> ·
   <a href="#安装">安装</a> ·
   <a href="#063-变更回顾">0.6.3 变更</a>
 </p>
 
-DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的 Chrome / Edge / Firefox 浏览器扩展，提供侧边栏对话、类原生工具调用、内置网络工具、MCP 工具系统、长期记忆、Skill、系统提示词预设、对话导出、Agent 式持续执行和自动化任务。
+## 产品定位
 
-它可以把网页选中文本送入 DeepSeek，对需要多步工具执行、联网搜索、网页读取或定时跟踪的任务持续推进，并把项目背景、个人偏好和常用工作流沉淀为可复用的记忆与 Skill。
+DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏览器扩展，支持 Chrome、Edge 和 Firefox。它把 DeepSeek Web 扩展成 AI agent workspace，让用户在同一浏览器工作流里使用 MCP 工具、长期记忆、Skill、系统提示词预设、联网搜索、网页读取、对话导出和定时自动化。
+
+如果你在寻找 DeepSeek Chrome extension、DeepSeek MCP tools、DeepSeek memory plugin、DeepSeek conversation export 或 DeepSeek AI agent，DeepSeek++ 对应的是同一个本地优先的 DeepSeek 浏览器增强工作台。
 
 ## 目录
 
+- [产品定位](#产品定位)
 - [功能速览](#功能速览)
 - [适合场景](#适合场景)
 - [核心功能](#核心功能)
@@ -47,7 +51,8 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的 Chrome /
 
 | 需求 | DeepSeek++ 提供 |
 |------|----------------|
-| DeepSeek Chrome extension / DeepSeek 浏览器插件 | 在 DeepSeek 网页版中加入侧边栏对话、右键发送文本、工具执行结果展示和多浏览器支持。 |
+| AI agent browser extension / AI Agent 工作台 | 把 DeepSeek Web 扩展成可以持续执行任务、调用工具、复用记忆和调度自动化的浏览器内工作台。 |
+| DeepSeek browser extension / DeepSeek Chrome extension | 在 DeepSeek 网页版中加入侧边栏对话、右键发送文本、工具执行结果展示和 Chrome / Edge / Firefox 支持。 |
 | DeepSeek MCP tools | 在侧边栏管理 MCP 服务、工具权限和执行状态，并把工具结果带回同一会话继续生成。 |
 | DeepSeek memory / 长期记忆 | 自动保存、筛选和注入长期记忆，让不同对话可以复用用户偏好、项目背景和常用信息。 |
 | DeepSeek Skills / `/skill` 工作流 | 通过内置、自定义或 GitHub 导入的 Skill 快速切换专家模式和任务模板。 |

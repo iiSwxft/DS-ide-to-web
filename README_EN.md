@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="assets/readme-header.png" width="860" alt="DeepSeek++">
+  <img src="assets/readme-header.png" width="860" alt="DeepSeek++ DeepSeek browser extension and AI agent workspace">
 </p>
 
 <h1 align="center">DeepSeek++</h1>
 
 <p align="center">
-  <strong>Turn DeepSeek Web into an AI agent workspace with memory, tools, MCP, Skills, and automation.</strong>
+  <strong>DeepSeek browser extension for an AI agent workspace with MCP tools, memory, Skills, automation, web search, and conversation export.</strong>
 </p>
 
 <p align="center">
@@ -24,18 +24,22 @@
 
 <p align="center">
   <a href="README.md">Chinese README</a> ·
+  <a href="#product-positioning">Product Positioning</a> ·
   <a href="#feature-overview">Feature Overview</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#installation">Installation</a> ·
   <a href="#063-release-highlights">0.6.3 Highlights</a>
 </p>
 
-DeepSeek++ is a Chrome / Edge / Firefox browser extension for [DeepSeek Web](https://chat.deepseek.com). It adds side-panel chat, native-feeling tool execution, built-in web tools, MCP tools, long-term memory, Skills, system prompt presets, conversation export, agentic continuation, and automation tasks.
+## Product Positioning
 
-It can send selected web-page text to DeepSeek, keep working through multi-step tool tasks, search the web, read web pages, track scheduled tasks, and turn project context, personal preferences, and repeatable workflows into reusable memories and Skills.
+DeepSeek++ is an open-source browser extension for [DeepSeek Web](https://chat.deepseek.com), with support for Chrome, Edge, and Firefox. It turns DeepSeek Web into an AI agent workspace where users can run MCP tools, long-term memory, Skills, system prompt presets, web search, web fetch, conversation export, and scheduled automation in the same browser workflow.
+
+In plain terms, it is a DeepSeek Chrome extension, DeepSeek MCP tools extension, DeepSeek memory plugin, DeepSeek conversation export tool, and AI agent browser extension for DeepSeek Web.
 
 ## Table of Contents
 
+- [Product Positioning](#product-positioning)
 - [Feature Overview](#feature-overview)
 - [Use Cases](#use-cases)
 - [Core Features](#core-features)
@@ -47,7 +51,8 @@ It can send selected web-page text to DeepSeek, keep working through multi-step 
 
 | Need | What DeepSeek++ provides |
 |------|--------------------------|
-| DeepSeek Chrome extension | Adds side-panel chat, right-click text sending, tool-result rendering, and multi-browser support for DeepSeek Web. |
+| AI agent browser extension | Turns DeepSeek Web into a browser-based workspace that can continue tasks, call tools, reuse memory, and schedule automation. |
+| DeepSeek browser extension / DeepSeek Chrome extension | Adds side-panel chat, right-click text sending, tool-result rendering, and Chrome / Edge / Firefox support for DeepSeek Web. |
 | DeepSeek MCP tools | Lets you manage MCP services, tool permissions, and execution status in the side panel, then sends tool results back into the same conversation. |
 | DeepSeek memory | Automatically saves, filters, and injects long-term memory so different conversations can reuse user preferences, project context, and common facts. |
 | DeepSeek Skills / `/skill` workflows | Switches quickly between built-in, custom, and GitHub-imported Skills for expert modes and task templates. |
