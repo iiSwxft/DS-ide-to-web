@@ -62,6 +62,7 @@ const MAX_PYTHON_TIMEOUT_MS = 30_000;
 const MAX_PYTHON_CODE_BYTES = 60_000;
 const MAX_PYTHON_OUTPUT_BYTES = 64_000;
 const PYTHON_PACKAGE_CHECKS = ['numpy', 'pandas', 'sympy'];
+const PYTHON_NOT_FOUND_MESSAGE = 'No local Python interpreter found. Tried environment variables, PATH entries, common paths, and python/python3/py --version.';
 const DEFAULT_SHELL = platform() === 'win32' ? 'powershell.exe' : process.env.SHELL || '/bin/sh';
 const WINDOWS_POWERSHELL_UTF8_PREAMBLE = [
   '[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)',
@@ -357,7 +358,7 @@ async function createPythonStatusResult() {
   const status = await detectPythonStatus();
   const text = status.available
     ? `Python ${status.version} ready at ${status.executable}`
-    : 'No local Python interpreter found. Tried environment variables, common paths, and python/python3/py --version.';
+    : PYTHON_NOT_FOUND_MESSAGE;
 
   return {
     content: [{ type: 'text', text }],
@@ -393,7 +394,7 @@ async function executePythonTool(args) {
   if (!status.available || !status.command) {
     return {
       isError: true,
-      content: [{ type: 'text', text: 'No local Python interpreter found. Tried environment variables, common paths, and python/python3/py --version.' }],
+      content: [{ type: 'text', text: PYTHON_NOT_FOUND_MESSAGE }],
       structuredContent: {
         ok: false,
         data: status,
@@ -552,12 +553,12 @@ function getPosixPythonPathCandidates() {
 
 function getWindowsPythonPathCandidates() {
   const candidates = [];
+  addWindowsPathPythonCandidates(candidates);
   const dirs = [
     resolve(localAppData, 'Programs', 'Python'),
     process.env.ProgramFiles ? resolve(process.env.ProgramFiles) : '',
     process.env['ProgramFiles(x86)'] ? resolve(process.env['ProgramFiles(x86)']) : '',
   ].filter(Boolean);
-  addPythonPathCandidate(candidates, resolve(localAppData, 'Microsoft', 'WindowsApps', 'python.exe'), 'path:file');
   for (const dir of dirs) {
     for (const entry of readDirectoryEntries(dir)) {
       if (!/^Python\d+/i.test(entry.name)) continue;
@@ -565,6 +566,14 @@ function getWindowsPythonPathCandidates() {
     }
   }
   return candidates;
+}
+
+function addWindowsPathPythonCandidates(candidates) {
+  for (const dir of splitPath(getEnvironmentPath(process.env))) {
+    for (const name of ['python.exe', 'python3.exe']) {
+      addPythonPathCandidate(candidates, resolve(dir, name), 'path:PATH');
+    }
+  }
 }
 
 function addPythonEnvDirCandidates(candidates, envsDir) {
@@ -579,7 +588,18 @@ function addPythonEnvDirCandidates(candidates, envsDir) {
 
 function addPythonPathCandidate(candidates, pythonPath, source) {
   if (!existsSync(pythonPath)) return;
+  if (platform() === 'win32' && isWindowsAppExecutionAliasPath(pythonPath)) return;
   candidates.push({ command: pythonPath, args: [], source });
+}
+
+function isWindowsAppExecutionAliasPath(filePath) {
+  const normalized = normalizeWindowsPathForCompare(filePath);
+  const aliasDir = normalizeWindowsPathForCompare(resolve(localAppData, 'Microsoft', 'WindowsApps'));
+  return normalized === aliasDir || normalized.startsWith(aliasDir + '/');
+}
+
+function normalizeWindowsPathForCompare(filePath) {
+  return resolve(filePath).replace(/[\\/]+/g, '/').replace(/\/+$/, '').toLowerCase();
 }
 
 function readDirectoryEntries(dir) {

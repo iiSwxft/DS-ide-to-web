@@ -17,6 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/zhu1090093659/deepseek-pp/releases"><img alt="Release" src="https://img.shields.io/github/v/release/zhu1090093659/deepseek-pp?style=flat-square&label=release"></a>
+  <a href="https://chromewebstore.google.com/detail/deepseek++/kdmpkkahkhdmdhfkdihkopikgcocbpbf?hl=zh-CN"><img alt="Chrome Web Store" src="https://img.shields.io/badge/Chrome%20Web%20Store-available-16a34a?style=flat-square"></a>
   <a href="#license"><img alt="License" src="https://img.shields.io/badge/license-MIT-2563eb?style=flat-square"></a>
   <a href="https://chat.deepseek.com"><img alt="DeepSeek" src="https://img.shields.io/badge/DeepSeek-web-4f46e5?style=flat-square"></a>
   <a href="https://linux.do"><img alt="LINUX DO" src="https://img.shields.io/badge/LINUX-DO-f59e0b?style=flat-square"></a>
@@ -467,6 +468,12 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
 </details>
 
 ## 安装
+
+### 从 Chrome Web Store 安装
+
+Chrome 用户可以直接从 [Chrome Web Store](https://chromewebstore.google.com/detail/deepseek++/kdmpkkahkhdmdhfkdihkopikgcocbpbf?hl=zh-CN) 安装 DeepSeek++。安装后打开 [DeepSeek 网页版](https://chat.deepseek.com)，即可在侧边栏中按需启用记忆、Skill、MCP、联网工具、对话导出和自动化能力。
+
+如果需要 Shell MCP 或本机文件工具，再按侧边栏 `MCP` 页提示安装 Shell Native Host。
 
 ### 从源码构建
 
