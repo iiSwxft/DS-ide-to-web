@@ -9,7 +9,7 @@
 ## GitHub Resources
 
 - **All Issues**: `gh issue list -R zhu1090093659/deepseek-pp --label "spec-driven" --state all`
-- **Current Spec Issues**: `gh issue list -R zhu1090093659/deepseek-pp --milestone "Phase 5: P2 Organization, Export, and Product Surfaces" --state open`
+- **Current Spec Issues**: `gh issue list -R zhu1090093659/deepseek-pp --milestone "Phase 6: Hardening, Documentation, and Release Readiness" --state open`
 - **Project Board**: unavailable in current `gh` auth scope; mode is `GITHUB_STANDARD`.
 
 ## References
@@ -32,7 +32,8 @@
 | 5 | P2 Organization, Export, and Product Surfaces | https://github.com/zhu1090093659/deepseek-pp/milestone/35 | 5 | 0 | 5 |
 | 6 | Hardening, Documentation, and Release Readiness | https://github.com/zhu1090093659/deepseek-pp/milestone/36 | 3 | 0 | 3 |
 
-> GitHub open/closed counts reflect remote issue state. The P0/P1/P2 passes below have been implemented locally on `main`; GitHub Issues remain open until commit/push reconciliation.
+> GitHub open/closed counts reflect remote issue state. The P0/P1/P2/Phase 6 passes below have been implemented locally on `main`; GitHub Issues remain open until push reconciliation.
+> Archive copy is prepared under `docs/archives/better-deepseek-capability-adoption/`.
 
 ## Issue Mapping
 
@@ -65,9 +66,9 @@
 | T5.3 | #176 | Add API playground behind explicit developer/user setting | implemented locally |
 | T5.4 | #177 | Add small UX polish: code block downloads, native navigation patch, local what's-new panel | implemented locally |
 | T5.5 | #178 | Decide custom CSS/theme preset policy; implement only if compatible with store/product posture | implemented locally |
-| T6.1 | #179 | Run and fix full validation matrix across compile, tests, prompt freeze, browser builds, smoke checks, and Android best-available checks | best-available local validation complete; Android Gradle blocked by missing JDK |
-| T6.2 | #180 | Update README, README_EN, store-facing docs, and Android install/developer docs | open |
-| T6.3 | #181 | Final progress reconciliation and archive preparation | open |
+| T6.1 | #179 | Run and fix full validation matrix across compile, tests, prompt freeze, browser builds, smoke checks, and Android best-available checks | implemented locally; Android Gradle blocked by missing JDK |
+| T6.2 | #180 | Update README, README_EN, store-facing docs, and Android install/developer docs | implemented locally |
+| T6.3 | #181 | Final progress reconciliation and archive preparation | implemented locally |
 
 ## Quick Status Commands
 
@@ -78,7 +79,7 @@ gh api repos/zhu1090093659/deepseek-pp/milestones \
 
 # Open tasks for the active phase
 gh issue list -R zhu1090093659/deepseek-pp \
-  --milestone "Phase 5: P2 Organization, Export, and Product Surfaces" \
+  --milestone "Phase 6: Hardening, Documentation, and Release Readiness" \
   --state open \
   --json number,title
 
@@ -96,12 +97,12 @@ gh issue list -R zhu1090093659/deepseek-pp \
 - [x] Phase 3: Android WebView Baseline (local P0 4/4 implemented; APK validation blocked by missing JDK; T3.5 remains P1 docs/CI) — [milestone](https://github.com/zhu1090093659/deepseek-pp/milestone/33)
 - [x] Phase 4: P1 Interactive Agent Tools (local 6/6 implemented; GitHub Issues remain open until commit/push reconciliation) — [milestone](https://github.com/zhu1090093659/deepseek-pp/milestone/34)
 - [x] Phase 5: P2 Organization, Export, and Product Surfaces (local 5/5 implemented; GitHub Issues remain open until commit/push reconciliation) — [milestone](https://github.com/zhu1090093659/deepseek-pp/milestone/35)
-- [ ] Phase 6: Hardening, Documentation, and Release Readiness (0/3 tasks) — [milestone](https://github.com/zhu1090093659/deepseek-pp/milestone/36)
+- [x] Phase 6: Hardening, Documentation, and Release Readiness (local 3/3 implemented; GitHub Issues remain open until push reconciliation) — [milestone](https://github.com/zhu1090093659/deepseek-pp/milestone/36)
 
 ## Current Status
 
-**Active Phase**: P2 / Phase 5 local implementation and validation complete; next pass should start Phase 6 hardening/docs/reconciliation.
-**Active Task**: Next pass begins with Phase 6 / T6.1 (#179) unless the user asks to commit/push the current local stack first.
+**Active Phase**: Complete locally.
+**Active Task**: None. Remaining external reconciliation is push/remote issue closure after the local stack is reviewed.
 **Blockers**: Android APK/Gradle validation is blocked on this machine because `java -version` reports no Java Runtime. `npm run android:assemble:debug` stops at the explicit JDK check.
 
 ## Latest P0 Validation
@@ -152,6 +153,20 @@ gh issue list -R zhu1090093659/deepseek-pp \
 | `npm run verify:manifest-policy` | pass | Manifest policy check pass |
 | `git diff --check` | pass | No whitespace errors |
 
+## Latest Phase 6 Validation
+
+| Command | Result | Notes |
+|:--|:--|:--|
+| `npm run ci:quality` | pass | Workflow lint, prod audit, prompt freeze, compile, 20 Vitest files / 103 tests, i18n, automation, MCP mock/smoke, Shell smoke, PoW smoke, build:all, manifest policy, zip:all, release asset check |
+| `npm run smoke:web` | pass | 22/22 web_search and continuation prompt checks pass |
+| `npm run build:android` | pass | Chrome MV3 build and Android asset staging pass; 31 files staged |
+| `java -version` | blocked | No Java Runtime installed on this machine |
+| `npm run android:assemble:debug` | blocked | Stops at explicit JDK check; APK not built |
+| `npm run test:android` | blocked | Stops at explicit JDK check; Android unit tests not run |
+| `rg -n "/api/v0\|SSE\|XML\|fetch hook\|interceptor\|ToolDescriptor" README.md README_EN.md docs/chrome-web-store/listing.md docs/chrome-web-store/submission.md android/README.md docs/chrome-web-store/privacy-policy.md` | pass | No internal API/protocol leaks in README/store/Android docs; privacy policy only mentions local storage technology |
+| `npm run zip:all && npm run verify:release-assets` | pass | Release zips and asset policy pass after docs update |
+| `git diff --check` | pass | No whitespace errors |
+
 ## Governance Status
 
 **Shared instruction surface**: `AGENTS.md`, auto-generated from Claude project memory. Do not hand-edit for durable rules unless the sync source is also updated.
@@ -173,9 +188,9 @@ Per-task telemetry should be written to the corresponding GitHub Issue as commen
 
 ## Next Steps
 
-1. Reconcile/commit P0/P1/P2 local implementation when ready.
-2. Install a local JDK before claiming Android APK validation.
-3. Continue with Phase 6 hardening/docs/reconciliation, starting from T6.1 (#179).
+1. Push the local `main` stack when ready.
+2. After push, reconcile GitHub Issues #152-#181 and Milestones #31-#36 from local implemented state to remote closed state.
+3. Install a local JDK before claiming Android APK validation.
 
 ## Session Log
 
@@ -185,3 +200,4 @@ Per-task telemetry should be written to the corresponding GitHub Issue as commen
 | 2026-06-11 | P0 implementation | Implemented platform contracts, bridge schemas, prompt project-context ordering, renderer registry, Project Context/RAG, artifact file/zip tools, Projects UI, Android WebView scaffold, Android asset staging scripts, and capability gating. Validation passed except Android APK build, which is blocked by missing local JDK. |
 | 2026-06-11 | P1 implementation | Implemented sandbox approval cards, browser/Python sandbox handoff, voice settings and sidepanel speech controls, Skill draft review cards, memory import preview with per-item rejection, saved snippets/bookmarks, prompt injection controls, saved-item sync boundaries, and P1 tests. TypeScript compile and all Vitest tests passed. |
 | 2026-06-11 | P2 implementation | Implemented DeepSeek history tags/search/filtering, message and saved-item exports, image manifest export format, gated developer API playground, code block downloads, reversible navigation patch, local what's-new panel, and custom CSS/theme policy decision. Full P2 validation matrix passed. |
+| 2026-06-11 | Phase 6 hardening/docs | Ran full `ci:quality`, web smoke, Android best-available checks, docs leakage checks, and release asset verification. Updated README, README_EN, Chrome Web Store listing/submission/privacy docs, Android developer docs, and prepared archive state. Android Gradle remains blocked by missing local JDK. |
