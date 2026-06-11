@@ -29,7 +29,7 @@
   <a href="#feature-overview">Feature Overview</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#installation">Installation</a> ·
-  <a href="#064-release-highlights">0.6.4 Highlights</a>
+  <a href="#065-release-highlights">0.6.5 Highlights</a>
 </p>
 
 ## Product Positioning
@@ -46,7 +46,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 - [Feature Overview](#feature-overview)
 - [Use Cases](#use-cases)
 - [Core Features](#core-features)
-- [0.6.4 Release Highlights](#064-release-highlights)
+- [0.6.5 Release Highlights](#065-release-highlights)
 - [Installation](#installation)
 - [Friendly Links](#friendly-links)
 
@@ -232,7 +232,24 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
   <img src="assets/screenshot-sidepanel-automation.svg" width="300" alt="Automation task side panel">
 </p>
 
-## 0.6.4 Release Highlights
+## 0.6.5 Release Highlights
+
+0.6.5 focuses on bilingual runtime polish and output feedback accuracy. DeepSeek++ now keeps Chinese or English workflows more consistent across the extension while making the live output-speed indicator better match actual generation.
+
+| Area | Main changes |
+|------|--------------|
+| Bilingual experience | Language selection continues to cover the side panel, context menus, tool results, built-in Skills, and model continuation prompts for consistent Chinese or English workflows. |
+| User content preservation | User-created memories, presets, custom Skills, automation tasks, and sync data remain as written when the interface language changes. |
+| Output speed | The `tok/s` estimate is calibrated for DeepSeek-style output and starts after the first streamed content, reducing queueing and prefill latency skew. |
+| Store installation experience | README and store materials now reflect Chrome Web Store availability while keeping Shell MCP and local-tool installation guidance visible. |
+| Release safeguards | Adds multilingual coverage checks while continuing compile, unit test, MCP, automation, prompt freeze, cross-browser packaging, workflow, and asset validation. |
+
+Thanks to this release's contributor: [@mekos2772](https://github.com/mekos2772) for fixing Token output speed estimation accuracy.
+
+<details>
+<summary>Show 0.6.4 release highlights</summary>
+
+### 0.6.4 Release Highlights
 
 0.6.4 strengthens side-panel chat and local tool workflows. It makes DeepSeek++ chat usable on normal web pages with an official API Key and adds Python interpreter support through Shell MCP.
 
@@ -246,6 +263,8 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
 | Release safeguards | Dev dependency vulnerabilities are fixed, while release checks continue to cover cross-browser packaging, MCP, automation, multilingual validation, workflows, and assets. |
 
 Thanks to this release's contributor: [@IjalG](https://github.com/IjalG) for the Python interpreter / `python_exec` capability.
+
+</details>
 
 <details>
 <summary>Show 0.6.3 release highlights</summary>

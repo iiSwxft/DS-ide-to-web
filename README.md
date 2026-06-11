@@ -29,7 +29,7 @@
   <a href="#功能速览">功能速览</a> ·
   <a href="#适合场景">适合场景</a> ·
   <a href="#安装">安装</a> ·
-  <a href="#064-变更回顾">0.6.4 变更</a>
+  <a href="#065-变更回顾">0.6.5 变更</a>
 </p>
 
 ## 产品定位
@@ -46,7 +46,7 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏
 - [功能速览](#功能速览)
 - [适合场景](#适合场景)
 - [核心功能](#核心功能)
-- [0.6.4 变更回顾](#064-变更回顾)
+- [0.6.5 变更回顾](#065-变更回顾)
 - [安装](#安装)
 - [友情链接](#友情链接)
 
@@ -232,7 +232,24 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
   <img src="assets/screenshot-sidepanel-automation.svg" width="300" alt="自动化任务侧边栏">
 </p>
 
-## 0.6.4 变更回顾
+## 0.6.5 变更回顾
+
+0.6.5 是中英文运行体验和输出反馈校准版本，重点让 DeepSeek++ 在中文或英文环境下保持一致的操作语言，并让实时输出速度显示更贴近实际生成状态。
+
+| 方向 | 主要变化 |
+|------|----------|
+| 中英文体验 | 设置页语言选择继续扩展到侧边栏、右键菜单、工具结果、内置 Skill 和模型续跑提示，让中文或英文工作流保持一致。 |
+| 语言保持 | 用户创建的记忆、预设、自定义 Skill、自动化任务和同步数据继续保留原文，不会因为切换界面语言被改写。 |
+| 输出速度 | `tok/s` 估算按更贴近 DeepSeek 输出特征的方式校准，并从首个流式内容后开始计速，减少排队和预填充延迟造成的偏差。 |
+| 商店安装体验 | README 和商店材料同步 Chrome Web Store 可用状态，并保持 Shell MCP 与本机工具安装说明清晰可见。 |
+| 发布保障 | 新增多语言覆盖校验，发布前继续覆盖编译、单测、MCP、自动化、提示词冻结、多浏览器打包、workflow 和资产校验。 |
+
+感谢本版本贡献者：[@mekos2772](https://github.com/mekos2772) 修复 Token 输出速度估算偏差。
+
+<details>
+<summary>展开 0.6.4 变更回顾</summary>
+
+### 0.6.4 变更回顾
 
 0.6.4 是侧边栏对话和本机工具增强版本，重点让普通网页里的 DeepSeek++ 对话入口更独立，也让 Shell MCP 支持 Python 解释器工作流。
 
@@ -246,6 +263,8 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
 | 发布保障 | 开发依赖漏洞完成修复，发布前继续覆盖多浏览器打包、MCP、自动化、多语言校验、workflow 和资产校验。 |
 
 感谢本版本贡献者：[@IjalG](https://github.com/IjalG) 贡献 Python interpreter / `python_exec` 能力。
+
+</details>
 
 <details>
 <summary>展开 0.6.3 变更回顾</summary>
