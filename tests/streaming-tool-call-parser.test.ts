@@ -54,4 +54,38 @@ describe('createStreamingToolCallParser', () => {
     expect(result.completed).toHaveLength(1);
     expect(result.completed[0].payload).toMatchObject({ filename: 'a.txt', content: 'ok' });
   });
+
+  it('accepts whitespace-padded tool tags across chunks', () => {
+    const parser = createStreamingToolCallParser(descriptors);
+    const html = '<!doctype html><canvas id="stage"></canvas>' + '<script>draw()</script>'.repeat(2000);
+    const payload = JSON.stringify({
+      filename: 'canvas-demo.html',
+      content: html,
+      language: 'html',
+    });
+
+    const start = parser.append('Intro < artifact');
+    expect(start.started).toHaveLength(0);
+
+    const open = parser.append('_create >');
+    expect(open.started).toHaveLength(1);
+    expect(open.started[0]).toMatchObject({
+      name: 'artifact_create',
+      payload: {},
+      raw: '< artifact_create >',
+    });
+
+    parser.append(payload.slice(0, 20_000));
+    parser.append(payload.slice(20_000));
+    expect(parser.append('</ artifact')).toMatchObject({ started: [], completed: [] });
+
+    const completed = parser.append('_create > done');
+    expect(completed.completed).toHaveLength(1);
+    expect(completed.completed[0].payload).toMatchObject({
+      filename: 'canvas-demo.html',
+      content: html,
+      language: 'html',
+    });
+    expect(completed.completed[0].raw.length).toBeLessThan(2200);
+  });
 });

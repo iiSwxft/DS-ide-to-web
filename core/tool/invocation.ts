@@ -2,6 +2,7 @@ import { DEFAULT_LOCALE, type SupportedLocale } from '../i18n';
 import { createMemoryToolDescriptors } from './memory';
 import { createWebSearchToolDescriptors } from './web-search';
 import type { ToolCall, ToolDescriptor, ToolError, ToolPayload } from './types';
+import { findFirstXmlToolTag } from './xml-tags';
 
 export function createDefaultToolDescriptors(
   locale: SupportedLocale = DEFAULT_LOCALE,
@@ -86,7 +87,7 @@ export function createXmlToolCallRegex(catalog: ToolInvocationCatalog): RegExp {
   let source = xmlRegexSourceCache.get(catalog);
   if (!source) {
     const names = catalog.invocationNames.map(escapeRegExp).join('|');
-    source = `<(${names})>\\s*([\\s\\S]*?)\\s*<\\/\\1>`;
+    source = `<\\s*(${names})\\s*>\\s*([\\s\\S]*?)\\s*<\\/\\s*\\1\\s*>`;
     xmlRegexSourceCache.set(catalog, source);
   }
   return new RegExp(source, 'g');
@@ -154,12 +155,11 @@ export function getToolCloseTag(invocationName: string): string {
 }
 
 export function hasXmlToolMarker(text: string, catalog: ToolInvocationCatalog): boolean {
-  for (const name of catalog.invocationNames) {
-    if (text.includes(getToolOpenTag(name)) || text.includes(getToolCloseTag(name))) {
-      return true;
-    }
-  }
-  return false;
+  const names = new Set(catalog.invocationNames);
+  return Boolean(
+    findFirstXmlToolTag(text, names, { closing: false }) ||
+    findFirstXmlToolTag(text, names, { closing: true }),
+  );
 }
 
 function escapeRegExp(value: string): string {

@@ -24,4 +24,11 @@ describe('createToolCallScanGate', () => {
     expect(gate.shouldScanChunk('math </ text > before </artifact_cre')).toBe(false);
     expect(gate.shouldScanChunk('ate>tail text')).toBe(true);
   });
+
+  it('detects whitespace-padded close tags across chunk boundaries', () => {
+    const gate = createToolCallScanGate(createArtifactToolDescriptors('en'));
+
+    expect(gate.shouldScanChunk('<canvas></canvas> </ artifact')).toBe(false);
+    expect(gate.shouldScanChunk('_create > tail text')).toBe(true);
+  });
 });

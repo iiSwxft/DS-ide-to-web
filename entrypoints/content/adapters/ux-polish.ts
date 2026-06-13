@@ -15,16 +15,22 @@ const STYLE_ID = 'dpp-content-ux-polish-css';
 const CODE_BUTTON_CLASS = 'dpp-code-download';
 const MESSAGE_BUTTON_CLASS = 'dpp-message-download';
 const MESSAGE_SELECTOR = '[data-message-id][data-message-role], [data-message-author-role]';
+const POLISH_MOUNT_DELAY_MS = 50;
 
 export function startContentUxPolish(
   getLabels: () => ContentUxPolishLabels,
 ): ContentUxPolishController {
   injectStyles();
   const unpatchNavigationEvents = patchNavigationEvents();
-  const mount = () => mountPolish(getLabels());
+  const mount = () => mountPolish(document, getLabels());
   const refreshLabels = () => applyPolishLabels(document, getLabels());
   mount();
-  const observer = new MutationObserver(mount);
+  const candidateMountScheduler = createCandidateMountScheduler(getLabels);
+  const observer = new MutationObserver((mutations) => {
+    for (const root of collectPolishCandidateRoots(mutations)) {
+      candidateMountScheduler.schedule(root);
+    }
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('dpp:navigation', mount);
 
@@ -32,6 +38,7 @@ export function startContentUxPolish(
     refreshLabels,
     stop() {
       observer.disconnect();
+      candidateMountScheduler.cancel();
       window.removeEventListener('dpp:navigation', mount);
       unpatchNavigationEvents();
       document.querySelectorAll(`.${CODE_BUTTON_CLASS}, .${MESSAGE_BUTTON_CLASS}`).forEach((button) => button.remove());
@@ -40,8 +47,7 @@ export function startContentUxPolish(
 }
 
 export function collectCodeBlocks(root: ParentNode): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>('pre'))
-    .filter((pre) => pre.textContent?.trim())
+  return queryIncludingRoot<HTMLElement>(root, 'pre')
     .filter((pre) => !pre.querySelector(`:scope > .${CODE_BUTTON_CLASS}`));
 }
 
@@ -53,10 +59,10 @@ export function inferCodeFilename(codeBlock: HTMLElement, index = 0): string {
   return `deepseek-code-${index + 1}.${ext}`;
 }
 
-function mountPolish(labels: ContentUxPolishLabels): void {
-  collectCodeBlocks(document).forEach((pre, index) => mountCodeDownload(pre, index, labels));
-  collectMessageNodes(document).forEach((message) => mountMessageDownload(message, labels));
-  applyPolishLabels(document, labels);
+function mountPolish(root: ParentNode, labels: ContentUxPolishLabels): void {
+  collectCodeBlocks(root).forEach((pre, index) => mountCodeDownload(pre, index, labels));
+  collectMessageNodes(root).forEach((message) => mountMessageDownload(message, labels));
+  applyPolishLabels(root, labels);
 }
 
 function mountCodeDownload(pre: HTMLElement, index: number, labels: ContentUxPolishLabels): void {
@@ -83,9 +89,9 @@ export function getCodeBlockText(pre: HTMLElement): string {
 }
 
 function collectMessageNodes(root: ParentNode): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(MESSAGE_SELECTOR))
-    .filter((node) => node.textContent?.trim())
-    .filter((node) => !node.querySelector(`:scope > .${MESSAGE_BUTTON_CLASS}`));
+  return queryIncludingRoot<HTMLElement>(root, MESSAGE_SELECTOR)
+    .filter((node) => !node.querySelector(`:scope > .${MESSAGE_BUTTON_CLASS}`))
+    .filter((node) => node.textContent?.trim());
 }
 
 function mountMessageDownload(message: HTMLElement, labels: ContentUxPolishLabels): void {
@@ -128,6 +134,71 @@ function getMessageText(message: HTMLElement): string {
 function normalizeRole(value: string | undefined): 'user' | 'assistant' | 'system' | 'tool' | 'unknown' {
   if (value === 'user' || value === 'assistant' || value === 'system' || value === 'tool') return value;
   return 'unknown';
+}
+
+function createCandidateMountScheduler(
+  getLabels: () => ContentUxPolishLabels,
+): { schedule(root: ParentNode): void; cancel(): void } {
+  const pending = new Set<ParentNode>();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  return {
+    schedule(root: ParentNode): void {
+      pending.add(root);
+      if (timer) return;
+
+      timer = setTimeout(() => {
+        timer = null;
+        const roots = Array.from(pending);
+        pending.clear();
+        const labels = getLabels();
+        for (const candidate of roots) {
+          mountPolish(candidate, labels);
+        }
+      }, POLISH_MOUNT_DELAY_MS);
+    },
+    cancel(): void {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      pending.clear();
+    },
+  };
+}
+
+function collectPolishCandidateRoots(mutations: readonly MutationRecord[]): ParentNode[] {
+  const roots = new Set<ParentNode>();
+
+  for (const mutation of mutations) {
+    for (const node of Array.from(mutation.addedNodes)) {
+      const root = getPolishCandidateRoot(node);
+      if (root) roots.add(root);
+    }
+  }
+
+  return Array.from(roots);
+}
+
+function getPolishCandidateRoot(node: Node): ParentNode | null {
+  if (node.nodeType === Node.TEXT_NODE) {
+    const parent = node.parentElement;
+    return parent?.closest(`pre, ${MESSAGE_SELECTOR}`) ?? null;
+  }
+
+  if (!(node instanceof Element)) return null;
+  if (node.matches(`pre, ${MESSAGE_SELECTOR}`)) return node;
+  if (node.querySelector(`pre, ${MESSAGE_SELECTOR}`)) return node;
+  return null;
+}
+
+function queryIncludingRoot<T extends HTMLElement>(root: ParentNode, selector: string): T[] {
+  const matches: T[] = [];
+  if (root instanceof Element && root.matches(selector)) {
+    matches.push(root as T);
+  }
+  matches.push(...Array.from(root.querySelectorAll<T>(selector)));
+  return matches;
 }
 
 function patchNavigationEvents(): () => void {

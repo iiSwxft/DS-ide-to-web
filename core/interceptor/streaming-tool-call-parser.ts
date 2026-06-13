@@ -3,9 +3,12 @@ import {
   createToolCallFromInvocation,
   createToolInvocationCatalog,
   getToolCloseTag,
-  getToolOpenTag,
   type ToolInvocationCatalog,
 } from '../tool';
+import {
+  findFirstXmlToolTag,
+  getPartialXmlToolTagTailLength,
+} from '../tool/xml-tags';
 
 const STREAM_TOOL_RAW_MAX_LENGTH = 2048;
 const TRUNCATION_SUFFIX = '\n...[truncated]';
@@ -27,9 +30,7 @@ export function createStreamingToolCallParser(
 }
 
 class XmlStreamingToolCallParser implements StreamingToolCallParser {
-  private readonly targetByOpenTag = new Map<string, { invocationName: string; openTag: string; closeTag: string }>();
-  private readonly openPrefixes: Set<string>;
-  private readonly maxOpenPrefixLength: number;
+  private readonly invocationNames: ReadonlySet<string>;
   private state: 'NORMAL' | 'SUPPRESSING' = 'NORMAL';
   private pendingNormal = '';
   private pendingSuppressed = '';
@@ -43,23 +44,12 @@ class XmlStreamingToolCallParser implements StreamingToolCallParser {
   } | null = null;
 
   constructor(private readonly catalog: ToolInvocationCatalog) {
-    const openTags: string[] = [];
-    for (const invocationName of catalog.invocationNames) {
-      const openTag = getToolOpenTag(invocationName);
-      openTags.push(openTag);
-      this.targetByOpenTag.set(openTag, {
-        invocationName,
-        openTag,
-        closeTag: getToolCloseTag(invocationName),
-      });
-    }
-    this.openPrefixes = createPrefixSet(openTags);
-    this.maxOpenPrefixLength = Math.max(0, ...openTags.map((tag) => tag.length - 1));
+    this.invocationNames = new Set(catalog.invocationNames);
   }
 
   append(chunk: string): StreamingToolCallParserEvent {
     const event: StreamingToolCallParserEvent = { started: [], completed: [] };
-    if (!chunk || this.targetByOpenTag.size === 0) return event;
+    if (!chunk || this.invocationNames.size === 0) return event;
 
     let remaining = chunk;
     while (remaining.length > 0) {
@@ -82,9 +72,9 @@ class XmlStreamingToolCallParser implements StreamingToolCallParser {
     const text = this.pendingNormal + input;
     this.pendingNormal = '';
 
-    const found = this.findFirstOpenTag(text);
+    const found = findFirstXmlToolTag(text, this.invocationNames, { closing: false });
     if (!found) {
-      const tailLength = getPartialTailLength(text, this.openPrefixes, this.maxOpenPrefixLength);
+      const tailLength = getPartialXmlToolTagTailLength(text, this.invocationNames, { closing: false });
       this.pendingNormal = tailLength > 0 ? text.slice(-tailLength) : '';
       return '';
     }
@@ -94,20 +84,20 @@ class XmlStreamingToolCallParser implements StreamingToolCallParser {
     this.pendingSuppressed = '';
     this.current = {
       id,
-      invocationName: found.invocationName,
-      openTag: found.openTag,
-      closeTag: found.closeTag,
+      invocationName: found.name,
+      openTag: found.raw,
+      closeTag: getToolCloseTag(found.name),
       bodyParts: [],
       bodyLength: 0,
     };
     event.started.push(createToolCallFromInvocation(
-      found.invocationName,
+      found.name,
       {},
-      found.openTag,
+      found.raw,
       this.catalog,
       { id },
     ));
-    return text.slice(found.index + found.openTag.length);
+    return text.slice(found.endIndex);
   }
 
   private consumeSuppressedText(input: string, event: StreamingToolCallParserEvent): string {
@@ -119,22 +109,21 @@ class XmlStreamingToolCallParser implements StreamingToolCallParser {
 
     const text = this.pendingSuppressed + input;
     this.pendingSuppressed = '';
-    const closeIndex = text.indexOf(current.closeTag);
+    const closeTag = findFirstXmlToolTag(text, new Set([current.invocationName]), { closing: true });
 
-    if (closeIndex === -1) {
-      const prefixes = createPrefixSet([current.closeTag]);
-      const tailLength = getPartialTailLength(text, prefixes, current.closeTag.length - 1);
+    if (!closeTag) {
+      const tailLength = getPartialXmlToolTagTailLength(text, new Set([current.invocationName]), { closing: true });
       this.appendBody(text.slice(0, text.length - tailLength));
       this.pendingSuppressed = tailLength > 0 ? text.slice(-tailLength) : '';
       return '';
     }
 
-    this.appendBody(text.slice(0, closeIndex));
-    event.completed.push(this.createCompletedCall(current));
+    this.appendBody(text.slice(0, closeTag.index));
+    event.completed.push(this.createCompletedCall({ ...current, closeTag: closeTag.raw }));
     this.state = 'NORMAL';
     this.pendingSuppressed = '';
     this.current = null;
-    return text.slice(closeIndex + current.closeTag.length);
+    return text.slice(closeTag.endIndex);
   }
 
   private appendBody(value: string): void {
@@ -178,23 +167,6 @@ class XmlStreamingToolCallParser implements StreamingToolCallParser {
     }
   }
 
-  private findFirstOpenTag(text: string): { invocationName: string; openTag: string; closeTag: string; index: number } | null {
-    let searchFrom = 0;
-    while (searchFrom < text.length) {
-      const index = text.indexOf('<', searchFrom);
-      if (index === -1) return null;
-
-      const tagEnd = text.indexOf('>', index + 1);
-      if (tagEnd === -1) return null;
-      const candidate = text.slice(index, tagEnd + 1);
-      const target = this.targetByOpenTag.get(candidate);
-      if (target) return { ...target, index };
-
-      searchFrom = candidate.includes('<', 1) ? index + 1 : tagEnd + 1;
-    }
-
-    return null;
-  }
 }
 
 function createBoundedRaw(
@@ -209,24 +181,6 @@ function createBoundedRaw(
     current.closeTag,
     TRUNCATION_SUFFIX,
   ].join('\n');
-}
-
-function createPrefixSet(tags: readonly string[]): Set<string> {
-  const prefixes = new Set<string>();
-  for (const tag of tags) {
-    for (let length = 1; length < tag.length; length++) {
-      prefixes.add(tag.slice(0, length));
-    }
-  }
-  return prefixes;
-}
-
-function getPartialTailLength(text: string, prefixes: Set<string>, maxLength: number): number {
-  const limit = Math.min(text.length, maxLength);
-  for (let length = limit; length > 0; length--) {
-    if (prefixes.has(text.slice(-length))) return length;
-  }
-  return 0;
 }
 
 function isToolPayload(value: unknown): value is Record<string, unknown> {

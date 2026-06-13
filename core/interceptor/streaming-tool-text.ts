@@ -5,6 +5,10 @@ import {
   getToolOpenTag,
 } from '../tool';
 import {
+  findFirstXmlToolTag,
+  getPartialXmlToolTagTailLength,
+} from '../tool/xml-tags';
+import {
   LEGACY_TOOL_CALLS_CLOSE_TAG,
   LEGACY_TOOL_CALLS_OPEN_TAG,
 } from './tool-parser';
@@ -25,11 +29,13 @@ export function createStreamingToolTextAccumulator(
 class ToolTextAccumulator implements StreamingToolTextAccumulator {
   private readonly suppressionTargets: Array<{ key: string; openTag: string; closeTag: string }>;
   private readonly targetByOpenTag = new Map<string, { key: string; openTag: string; closeTag: string }>();
+  private readonly xmlTargets = new Map<string, { key: string; openTag: string; closeTag: string }>();
+  private readonly xmlTargetNames: ReadonlySet<string>;
   private readonly openPrefixes: Set<string>;
   private readonly closePrefixesByTarget = new Map<string, Set<string>>();
   private readonly maxOpenPrefixLength: number;
   private state: 'NORMAL' | 'SUPPRESSING' = 'NORMAL';
-  private currentTarget: { key: string; closeTag: string } | null = null;
+  private currentTarget: { key: string; name?: string; closeTag: string } | null = null;
   private pendingNormal = '';
   private pendingSuppressed = '';
   private visibleText = '';
@@ -48,6 +54,11 @@ class ToolTextAccumulator implements StreamingToolTextAccumulator {
     for (const target of this.suppressionTargets) {
       this.targetByOpenTag.set(target.openTag, target);
     }
+    for (const target of this.suppressionTargets.filter((target) => target.key.startsWith('xml:'))) {
+      const name = target.key.slice('xml:'.length);
+      this.xmlTargets.set(name, target);
+    }
+    this.xmlTargetNames = new Set(this.xmlTargets.keys());
     this.openPrefixes = createPrefixSet(this.suppressionTargets.map((entry) => entry.openTag));
     this.maxOpenPrefixLength = Math.max(0, ...this.suppressionTargets.map((entry) => entry.openTag.length - 1));
 
@@ -94,7 +105,9 @@ class ToolTextAccumulator implements StreamingToolTextAccumulator {
 
     const found = this.findFirstOpenTag(text);
     if (!found) {
-      const tailLength = getPartialTailLength(text, this.openPrefixes, this.maxOpenPrefixLength);
+      const legacyTailLength = getPartialTailLength(text, this.openPrefixes, this.maxOpenPrefixLength);
+      const xmlTailLength = getPartialXmlToolTagTailLength(text, this.xmlTargetNames, { closing: false });
+      const tailLength = Math.max(legacyTailLength, xmlTailLength);
       const emitLength = text.length - tailLength;
       if (emitLength > 0) this.visibleText += text.slice(0, emitLength);
       this.pendingNormal = tailLength > 0 ? text.slice(-tailLength) : '';
@@ -108,10 +121,11 @@ class ToolTextAccumulator implements StreamingToolTextAccumulator {
     this.state = 'SUPPRESSING';
     this.currentTarget = {
       key: found.key,
+      name: found.name,
       closeTag: found.closeTag,
     };
     this.pendingSuppressed = '';
-    return text.slice(found.index + found.openTag.length);
+    return text.slice(found.endIndex);
   }
 
   private consumeSuppressedText(input: string): string {
@@ -125,20 +139,45 @@ class ToolTextAccumulator implements StreamingToolTextAccumulator {
     const text = this.pendingSuppressed + input;
     this.pendingSuppressed = '';
 
-    const closeIndex = text.indexOf(closeTag);
+    const closeMatch = target.name
+      ? findFirstXmlToolTag(text, new Set([target.name]), { closing: true })
+      : null;
+    const closeIndex = closeMatch?.index ?? text.indexOf(closeTag);
     if (closeIndex === -1) {
-      const prefixes = this.closePrefixesByTarget.get(target.key) ?? new Set<string>();
-      const tailLength = getPartialTailLength(text, prefixes, closeTag.length - 1);
+      const legacyPrefixes = this.closePrefixesByTarget.get(target.key) ?? new Set<string>();
+      const legacyTailLength = getPartialTailLength(text, legacyPrefixes, closeTag.length - 1);
+      const xmlTailLength = target.name
+        ? getPartialXmlToolTagTailLength(text, new Set([target.name]), { closing: true })
+        : 0;
+      const tailLength = Math.max(legacyTailLength, xmlTailLength);
       this.pendingSuppressed = tailLength > 0 ? text.slice(-tailLength) : '';
       return '';
     }
 
     this.state = 'NORMAL';
     this.currentTarget = null;
-    return text.slice(closeIndex + closeTag.length);
+    return text.slice(closeMatch?.endIndex ?? closeIndex + closeTag.length);
   }
 
-  private findFirstOpenTag(text: string): { key: string; openTag: string; closeTag: string; index: number } | null {
+  private findFirstOpenTag(text: string): { key: string; name?: string; openTag: string; closeTag: string; index: number; endIndex: number } | null {
+    const xmlMatch = findFirstXmlToolTag(text, this.xmlTargetNames, { closing: false });
+    const legacyMatch = this.findFirstExactOpenTag(text);
+    if (!xmlMatch) return legacyMatch;
+    const target = this.xmlTargets.get(xmlMatch.name);
+    if (!target) return legacyMatch;
+
+    const xmlTarget = {
+      ...target,
+      name: xmlMatch.name,
+      openTag: xmlMatch.raw,
+      index: xmlMatch.index,
+      endIndex: xmlMatch.endIndex,
+    };
+    if (!legacyMatch || xmlTarget.index <= legacyMatch.index) return xmlTarget;
+    return legacyMatch;
+  }
+
+  private findFirstExactOpenTag(text: string): { key: string; openTag: string; closeTag: string; index: number; endIndex: number } | null {
     let searchFrom = 0;
     while (searchFrom < text.length) {
       const index = text.indexOf('<', searchFrom);
@@ -148,7 +187,7 @@ class ToolTextAccumulator implements StreamingToolTextAccumulator {
       if (tagEnd === -1) return null;
       const candidate = text.slice(index, tagEnd + 1);
       const target = this.targetByOpenTag.get(candidate);
-      if (target) return { ...target, index };
+      if (target) return { ...target, index, endIndex: tagEnd + 1 };
 
       searchFrom = candidate.includes('<', 1) ? index + 1 : tagEnd + 1;
     }

@@ -33,6 +33,7 @@ native-host/
 *.sw?
 .playwright-mcp
 openspec
+docs/experience/
 docs/superpowers
 docs/archives/*
 !docs/archives/README.md

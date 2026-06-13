@@ -36,6 +36,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
 });
@@ -119,6 +120,42 @@ describe('Phase 5 product surface helpers', () => {
       expect(document.querySelector<HTMLButtonElement>('.dpp-message-download')?.title).toBe('下载消息为 Markdown');
     } finally {
       history.stop();
+      polish.stop();
+    }
+  });
+
+  it('does not rescan processed large code block text while streaming', async () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<section id="stream"></section>';
+    const polish = startContentUxPolish(() => ({
+      codeDownloadButton: '下载',
+      messageMarkdownButton: 'MD',
+      messageMarkdownTitle: '下载消息为 Markdown',
+    }));
+
+    try {
+      const host = document.getElementById('stream')!;
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      pre.appendChild(code);
+      host.appendChild(pre);
+
+      await Promise.resolve();
+      vi.advanceTimersByTime(60);
+      expect(pre.querySelector('.dpp-code-download')).not.toBeNull();
+
+      Object.defineProperty(pre, 'textContent', {
+        configurable: true,
+        get() {
+          throw new Error('processed code block text should not be read again');
+        },
+      });
+      code.appendChild(document.createTextNode('<!doctype html>' + '<canvas></canvas>'.repeat(5000)));
+
+      await Promise.resolve();
+      vi.advanceTimersByTime(60);
+      expect(pre.querySelectorAll('.dpp-code-download')).toHaveLength(1);
+    } finally {
       polish.stop();
     }
   });

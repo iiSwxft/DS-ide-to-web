@@ -4,10 +4,11 @@ import { sanitizeInternalPromptText } from '../prompt';
 import {
   DEFAULT_TOOL_DESCRIPTORS,
   createToolInvocationCatalog,
-  getToolCloseTag,
-  getToolOpenTag,
-  type ToolInvocationCatalog,
 } from '../tool';
+import {
+  findFirstXmlToolTag,
+  getPartialXmlToolTagTailLength,
+} from '../tool/xml-tags';
 import { stripToolCallsFromHistory, stripToolCallsFromIDBResult } from './history-cleanup';
 import { extractResponseTextFromParsed, isResponseTextPatchPath, isStreamFinishedFromParsed, isThinkingPatchPath, parseSSEChunk, parseSSEData } from './sse-parser';
 import { createResponseTokenSpeedTracker, type ResponseTokenSpeedPayload } from './token-speed';
@@ -669,13 +670,8 @@ function cloneParsedWithTextSuffix(parsed: any, skipChars: number): any | null {
   return cloned;
 }
 
-class XmlToolStreamFilter {
-  private catalog: ToolInvocationCatalog;
-  private toolInvocationNames: string[];
-  private toolOpenTags: string[];
-  private toolByOpenTag = new Map<string, string>();
-  private toolOpenPrefixes: Set<string>;
-  private maxToolOpenPrefixLength: number;
+export class XmlToolStreamFilter {
+  private toolInvocationNameSet: ReadonlySet<string>;
   private visiblePrompt: string;
   private state: 'NORMAL' | 'SUPPRESSING' = 'NORMAL';
   private currentTool: string | null = null;
@@ -685,15 +681,8 @@ class XmlToolStreamFilter {
   private encoder = new TextEncoder();
 
   constructor(descriptors: readonly ToolDescriptor[] = DEFAULT_TOOL_DESCRIPTORS, visiblePrompt: string = '') {
-    this.catalog = createToolInvocationCatalog(descriptors);
     this.visiblePrompt = visiblePrompt;
-    this.toolInvocationNames = [...this.catalog.invocationNames];
-    this.toolOpenTags = this.toolInvocationNames.map(getToolOpenTag);
-    for (const tool of this.toolInvocationNames) {
-      this.toolByOpenTag.set(getToolOpenTag(tool), tool);
-    }
-    this.toolOpenPrefixes = createPrefixSet(this.toolOpenTags);
-    this.maxToolOpenPrefixLength = Math.max(0, ...this.toolOpenTags.map((tag) => tag.length - 1));
+    this.toolInvocationNameSet = new Set(createToolInvocationCatalog(descriptors).invocationNames);
   }
 
   processChunk(chunk: string, controller: ReadableStreamDefaultController<Uint8Array>) {
@@ -749,10 +738,9 @@ class XmlToolStreamFilter {
       if (this.state === 'SUPPRESSING') {
         const previousPendingLength = this.pendingText.length;
         const searchText = this.pendingText + text;
-        const closeTag = getToolCloseTag(this.currentTool!);
-        const closeIdx = searchText.indexOf(closeTag);
-        if (closeIdx !== -1) {
-          const tailStart = closeIdx + closeTag.length;
+        const closeTag = this.findFirstToolClose(searchText, this.currentTool!);
+        if (closeTag) {
+          const tailStart = closeTag.endIndex;
           const tailOffsetInCurrentText = tailStart - previousPendingLength;
           const toolTail = this.getCurrentToolTail(effectiveParsed, text, isFragmentCreation, tailOffsetInCurrentText);
           this.state = 'NORMAL';
@@ -791,15 +779,14 @@ class XmlToolStreamFilter {
 
     const found = this.findFirstToolOpen(this.pendingText);
     if (found) {
-      const closeTag = getToolCloseTag(found.tool);
-      const closeIdx = this.pendingText.indexOf(closeTag, found.idx + getToolOpenTag(found.tool).length);
-      const tailStart = closeIdx === -1 ? -1 : closeIdx + closeTag.length;
+      const closeTag = this.findFirstToolClose(this.pendingText, found.tool, found.endIndex);
+      const tailStart = closeTag ? closeTag.endIndex : -1;
       const tailOffsetInCurrentText = tailStart - previousPendingLength;
 
       this.emitBlocksBeforeOpen(controller, found.idx);
       this.pendingBlocks = [];
 
-      if (closeIdx === -1) {
+      if (!closeTag) {
         this.state = 'SUPPRESSING';
         this.currentTool = found.tool;
         this.pendingText = this.getCloseSearchTail(this.pendingText.slice(found.idx), found.tool);
@@ -851,8 +838,8 @@ class XmlToolStreamFilter {
   }
 
   private getCloseSearchTail(text: string, tool: string): string {
-    const tailSize = Math.max(0, getToolCloseTag(tool).length - 1);
-    return tailSize > 0 ? text.slice(-tailSize) : '';
+    const tailLength = getPartialXmlToolTagTailLength(text, new Set([tool]), { closing: true });
+    return tailLength > 0 ? text.slice(-tailLength) : '';
   }
 
   flush(controller: ReadableStreamDefaultController<Uint8Array>) {
@@ -873,25 +860,18 @@ class XmlToolStreamFilter {
     controller.enqueue(this.encoder.encode(block + '\n\n'));
   }
 
-  private findFirstToolOpen(text: string): { idx: number; tool: string } | null {
-    let searchFrom = 0;
-    while (searchFrom < text.length) {
-      const idx = text.indexOf('<', searchFrom);
-      if (idx === -1) return null;
+  private findFirstToolOpen(text: string): { idx: number; endIndex: number; tool: string } | null {
+    const match = findFirstXmlToolTag(text, this.toolInvocationNameSet, { closing: false });
+    return match ? { idx: match.index, endIndex: match.endIndex, tool: match.name } : null;
+  }
 
-      const tagEnd = text.indexOf('>', idx + 1);
-      if (tagEnd === -1) return null;
-      const candidate = text.slice(idx, tagEnd + 1);
-      const tool = this.toolByOpenTag.get(candidate);
-      if (tool) return { idx, tool };
-
-      searchFrom = candidate.includes('<', 1) ? idx + 1 : tagEnd + 1;
-    }
-    return null;
+  private findFirstToolClose(text: string, tool: string, fromIndex = 0): { index: number; endIndex: number } | null {
+    const match = findFirstXmlToolTag(text, new Set([tool]), { closing: true, fromIndex });
+    return match ? { index: match.index, endIndex: match.endIndex } : null;
   }
 
   private couldBePartialToolOpen(text: string): boolean {
-    return getPartialTailLength(text, this.toolOpenPrefixes, this.maxToolOpenPrefixLength) > 0;
+    return getPartialXmlToolTagTailLength(text, this.toolInvocationNameSet, { closing: false }) > 0;
   }
 
   private emitBlocksBeforeOpen(controller: ReadableStreamDefaultController<Uint8Array>, idx: number) {
@@ -918,24 +898,6 @@ class XmlToolStreamFilter {
       }
     }
   }
-}
-
-function createPrefixSet(tags: readonly string[]): Set<string> {
-  const prefixes = new Set<string>();
-  for (const tag of tags) {
-    for (let length = 1; length < tag.length; length++) {
-      prefixes.add(tag.slice(0, length));
-    }
-  }
-  return prefixes;
-}
-
-function getPartialTailLength(text: string, prefixes: Set<string>, maxLength: number): number {
-  const limit = Math.min(text.length, maxLength);
-  for (let length = limit; length > 0; length--) {
-    if (prefixes.has(text.slice(-length))) return length;
-  }
-  return 0;
 }
 
 async function interceptFetchResponse(
