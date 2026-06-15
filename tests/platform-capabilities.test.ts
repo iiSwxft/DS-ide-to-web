@@ -50,6 +50,35 @@ describe('platform capability contracts', () => {
     expect(isCapabilitySupported(environment, 'accessibilityTree')).toBe(true);
   });
 
+  it('does not require tabGroups for browser control support', () => {
+    const chromeStub = {
+      runtime: {
+        id: 'extension-id',
+        sendMessage: vi.fn(),
+        getURL: vi.fn(),
+        connectNative: vi.fn(),
+      },
+      storage: { local: {} },
+      downloads: { download: vi.fn() },
+      sidePanel: {},
+      contextMenus: {},
+      alarms: {},
+      tabs: { query: vi.fn(), get: vi.fn() },
+      debugger: { attach: vi.fn(), sendCommand: vi.fn() },
+    };
+    Object.defineProperty(chromeStub, 'tabGroups', {
+      get() {
+        throw new Error("'tabGroups' is not allowed for specified extension ID.");
+      },
+    });
+    vi.stubGlobal('chrome', chromeStub);
+
+    const environment = getCurrentBrowserExtensionEnvironment();
+
+    expect(isCapabilitySupported(environment, 'tabGroups')).toBe(false);
+    expect(isCapabilitySupported(environment, 'browserControl')).toBe(true);
+  });
+
   it('detects Android WebView as explicit non-native-messaging platform', () => {
     (window as typeof window & { AndroidBridge?: unknown }).AndroidBridge = {};
 

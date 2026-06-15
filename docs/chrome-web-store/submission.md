@@ -134,13 +134,7 @@ Enables the optional Browser Control feature. When the user enables Browser Cont
 #### `tabs`
 
 ```text
-Lists browser tabs and lets the user choose which tab Browser Control should operate on. Tab titles and URLs are shown only in the extension side panel and returned as browser-control tool context when the user enables the feature.
-```
-
-#### `tabGroups`
-
-```text
-Shows browser tab group metadata in the Browser Control target selector so users can identify the intended controlled tab.
+Lists browser tabs and lets the user choose which tab Browser Control should operate on. Tab titles and URLs are shown only in the extension side panel and returned as browser-control tool context when the user enables the feature. If the browser exposes tab group metadata without an additional permission, DeepSeek++ may show group names only to help users identify the target tab.
 ```
 
 #### `sidePanel`

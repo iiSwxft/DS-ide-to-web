@@ -398,7 +398,7 @@ export const zhCN = {
       description: '让 DeepSeek++ 通过浏览器 Debugger 和 Accessibility Tree 控制选中的 Chrome 或 Edge 标签页。',
       enableTitle: '启用浏览器工具',
       enableDescription: '启用后，新对话会注入 browser_* 工具。模型接收文本快照，不需要截图输入。',
-      unsupported: '浏览器控制需要 Chromium debugger、tabs 和 tabGroups API，当前平台不可用。',
+      unsupported: '浏览器控制需要 Chromium debugger 和 tabs API，当前平台不可用。',
       detach: '断开附着',
       detaching: '断开中...',
       targetsTitle: '目标标签页',

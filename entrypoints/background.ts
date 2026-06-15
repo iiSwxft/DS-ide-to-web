@@ -101,6 +101,7 @@ import {
 } from '../core/voice/settings';
 import type { SandboxExecutionResult, SandboxRunRequest, SandboxToolRuntime } from '../core/sandbox';
 import { getCurrentBrowserExtensionEnvironment } from '../core/platform';
+import { readOptionalChromeApi } from '../core/platform/chrome-api';
 import {
   dismissWhatsNew,
   hasPendingWhatsNew,
@@ -291,7 +292,9 @@ async function ensureAutomationWakeAlarm() {
 function enableSidePanelActionClick() {
   if (import.meta.env.FIREFOX) return;
 
-  const sidePanel = (chrome as typeof chrome & { sidePanel?: SidePanelApi }).sidePanel;
+  const sidePanel = readOptionalChromeApi(
+    () => (chrome as typeof chrome & { sidePanel?: SidePanelApi }).sidePanel,
+  );
   sidePanel?.setPanelBehavior?.({ openPanelOnActionClick: true })
     .catch((error) => reportBackgroundStartupError('sidepanel_behavior_failed', error));
 }
@@ -307,7 +310,9 @@ function registerWhatsNewInstallListener() {
 }
 
 async function refreshWhatsNewBadge() {
-  const action = (chrome as typeof chrome & { action?: ActionApi }).action;
+  const action = readOptionalChromeApi(
+    () => (chrome as typeof chrome & { action?: ActionApi }).action,
+  );
   if (!action?.setBadgeText) return;
 
   const showBadge = await hasPendingWhatsNew();

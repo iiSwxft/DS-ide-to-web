@@ -139,6 +139,30 @@ describe('browser element point calculation', () => {
 });
 
 describe('browser navigation tool', () => {
+  it('lists tabs when tabGroups is blocked by the browser', async () => {
+    const storage = new Map<string, unknown>();
+    const chromeStub = createChromeStub(storage, [
+      createTab({ id: 12, active: true, title: 'Example', url: 'https://example.com/' }),
+    ]);
+    Object.defineProperty(chromeStub, 'tabGroups', {
+      get() {
+        throw new Error("'tabGroups' is not allowed for specified extension ID.");
+      },
+    });
+    vi.stubGlobal('chrome', chromeStub);
+
+    const service = new BrowserControlService({ chromeApi: chromeStub as unknown as typeof chrome });
+    const state = await service.getState();
+
+    expect(state.supported).toBe(true);
+    expect(state.targets).toHaveLength(1);
+    expect(state.targets[0]).toMatchObject({
+      id: 12,
+      title: 'Example',
+      groupName: undefined,
+    });
+  });
+
   it('opens a new tab by default so the chat tab is not replaced', async () => {
     const storage = new Map<string, unknown>();
     storage.set(BROWSER_CONTROL_STORAGE_KEY, {

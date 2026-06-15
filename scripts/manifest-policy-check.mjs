@@ -10,12 +10,12 @@ const targets = [
   {
     browser: 'chrome',
     manifestPath: 'dist/chrome-mv3/manifest.json',
-    permissions: ['storage', 'alarms', 'nativeMessaging', 'contextMenus', 'offscreen', 'debugger', 'tabs', 'tabGroups', 'sidePanel'],
+    permissions: ['storage', 'alarms', 'nativeMessaging', 'contextMenus', 'offscreen', 'debugger', 'tabs', 'sidePanel'],
   },
   {
     browser: 'edge',
     manifestPath: 'dist/edge-mv3/manifest.json',
-    permissions: ['storage', 'alarms', 'nativeMessaging', 'contextMenus', 'offscreen', 'debugger', 'tabs', 'tabGroups', 'sidePanel'],
+    permissions: ['storage', 'alarms', 'nativeMessaging', 'contextMenus', 'offscreen', 'debugger', 'tabs', 'sidePanel'],
   },
   {
     browser: 'firefox',
@@ -96,7 +96,7 @@ assertIncludes(background, 'chrome.offscreen.createDocument', 'offscreen permiss
 assertIncludes(background, 'chrome.sidePanel', 'sidePanel permission must use the side panel API');
 assertIncludes(browserControlConnection, 'chromeApi.debugger', 'debugger permission must use the debugger API');
 assertIncludes(browserControlService, 'chromeApi.tabs', 'tabs permission must use the tabs API');
-assertIncludes(browserControlService, 'chromeApi.tabGroups', 'tabGroups permission must use the tabGroups API');
+assertIncludes(browserControlService, 'chromeApi.tabGroups', 'tabGroups API must be optional browser-control metadata');
 assertIncludes(wxtConfig, 'web_accessible_resources', 'web accessible resources must be declared in manifest config');
 assertIncludes(wxtConfig, "default_locale: 'en'", 'manifest config must declare default locale');
 assertIncludes(wxtConfig, '__MSG_extension_name__', 'manifest config must use localized name');
@@ -104,7 +104,7 @@ assertIncludes(wxtConfig, '__MSG_extension_description__', 'manifest config must
 assertIncludes(wxtConfig, '__MSG_extension_action_title__', 'manifest config must use localized action title');
 assertIncludes(wxtConfig, 'pyodideAssetsPlugin', 'manifest build must bundle Pyodide assets for browser Python sandbox');
 
-for (const permission of ['storage', 'alarms', 'contextMenus', 'nativeMessaging', 'offscreen', 'debugger', 'tabs', 'tabGroups', 'sidePanel']) {
+for (const permission of ['storage', 'alarms', 'contextMenus', 'nativeMessaging', 'offscreen', 'debugger', 'tabs', 'sidePanel']) {
   assertIncludes(privacyPolicy, `\`${permission}\``, `privacy policy must document ${permission}`);
   assertIncludes(submission, `#### \`${permission}\``, `Chrome Web Store submission notes must justify ${permission}`);
 }

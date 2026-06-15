@@ -1,3 +1,5 @@
+import { readOptionalChromeApi } from './chrome-api';
+
 export type PlatformKind = 'browser_extension' | 'android_webview' | 'unknown';
 
 export type PlatformCapability =
@@ -98,24 +100,34 @@ export function isCapabilitySupported(
 export function getCurrentBrowserExtensionEnvironment(): PlatformEnvironment {
   const runtime = safeChromeRuntime();
   const chromeApi = safeChrome();
-  const debuggerSupported = Boolean(chromeApi?.debugger?.attach && chromeApi.debugger.sendCommand);
-  const tabsSupported = Boolean(chromeApi?.tabs?.query && chromeApi.tabs.get);
+  const debuggerSupported = Boolean(
+    readOptionalChromeApi(() => chromeApi?.debugger?.attach) &&
+    readOptionalChromeApi(() => chromeApi?.debugger?.sendCommand),
+  );
+  const tabsSupported = Boolean(
+    readOptionalChromeApi(() => chromeApi?.tabs?.query) &&
+    readOptionalChromeApi(() => chromeApi?.tabs?.get),
+  );
+  const tabGroupsSupported = Boolean(readOptionalChromeApi(() => chromeApi?.tabGroups?.query));
   return {
     kind: 'browser_extension',
     name: 'WebExtension',
     capabilities: createCapabilityMap({
-      storage: Boolean(chromeApi?.storage?.local),
-      runtimeMessaging: Boolean(runtime?.sendMessage),
-      downloads: Boolean(chromeApi?.downloads?.download),
+      storage: Boolean(readOptionalChromeApi(() => chromeApi?.storage?.local)),
+      runtimeMessaging: Boolean(readOptionalChromeApi(() => runtime?.sendMessage)),
+      downloads: Boolean(readOptionalChromeApi(() => chromeApi?.downloads?.download)),
       filePicker: typeof document !== 'undefined',
       folderPicker: typeof document !== 'undefined',
-      assetUrl: Boolean(runtime?.getURL),
-      sidePanel: Boolean(chromeApi?.sidePanel),
-      nativeMessaging: Boolean(runtime?.connectNative || runtime?.sendNativeMessage),
-      contextMenus: Boolean(chromeApi?.contextMenus),
-      alarms: Boolean(chromeApi?.alarms),
+      assetUrl: Boolean(readOptionalChromeApi(() => runtime?.getURL)),
+      sidePanel: Boolean(readOptionalChromeApi(() => chromeApi?.sidePanel)),
+      nativeMessaging: Boolean(
+        readOptionalChromeApi(() => runtime?.connectNative) ||
+        readOptionalChromeApi(() => runtime?.sendNativeMessage),
+      ),
+      contextMenus: Boolean(readOptionalChromeApi(() => chromeApi?.contextMenus)),
+      alarms: Boolean(readOptionalChromeApi(() => chromeApi?.alarms)),
       tabs: tabsSupported,
-      tabGroups: Boolean(chromeApi?.tabGroups),
+      tabGroups: tabGroupsSupported,
       debugger: debuggerSupported,
       browserControl: debuggerSupported && tabsSupported,
       accessibilityTree: debuggerSupported,

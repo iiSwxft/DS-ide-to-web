@@ -1,6 +1,7 @@
 import { getBrowserControlSettings, saveBrowserControlSettings } from './settings';
 import { BrowserConnection, BrowserControlError } from './cdp';
 import { formatAccessibilitySnapshot } from './snapshot';
+import { readOptionalChromeApi } from '../platform/chrome-api';
 import type {
   BrowserActionResult,
   BrowserControlDependencies,
@@ -50,7 +51,12 @@ export class BrowserControlService {
 
   isSupported(): boolean {
     const chromeApi = this.getChromeApi();
-    return Boolean(chromeApi?.debugger?.attach && chromeApi.tabs?.query);
+    return Boolean(
+      readOptionalChromeApi(() => chromeApi?.debugger?.attach) &&
+      readOptionalChromeApi(() => chromeApi?.debugger?.sendCommand) &&
+      readOptionalChromeApi(() => chromeApi?.tabs?.query) &&
+      readOptionalChromeApi(() => chromeApi?.tabs?.get),
+    );
   }
 
   async getState(): Promise<BrowserControlState> {
@@ -76,8 +82,9 @@ export class BrowserControlService {
     const chromeApi = this.requireChromeApi();
     const activeCurrent = await chromeApi.tabs.query({ active: true, currentWindow: true });
     const activeCurrentId = activeCurrent[0]?.id ?? null;
-    const groups = chromeApi.tabGroups?.query
-      ? await chromeApi.tabGroups.query({}).catch(() => [])
+    const tabGroups = readOptionalChromeApi(() => chromeApi.tabGroups);
+    const groups = tabGroups?.query
+      ? await tabGroups.query({}).catch(() => [])
       : [];
     const groupNames = new Map(
       (groups ?? []).map((group) => [group.id, group.title || group.color || `Group ${group.id}`]),

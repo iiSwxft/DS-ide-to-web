@@ -398,7 +398,7 @@ export const en = {
       description: 'Let DeepSeek++ control a selected Chrome or Edge tab through the browser debugger and Accessibility Tree.',
       enableTitle: 'Enable browser tools',
       enableDescription: 'When enabled, browser_* tools are injected into new conversations. The model receives text snapshots, not screenshots.',
-      unsupported: 'Browser Control requires Chromium debugger, tabs, and tabGroups APIs. It is not available on this platform.',
+      unsupported: 'Browser Control requires Chromium debugger and tabs APIs. It is not available on this platform.',
       detach: 'Detach',
       detaching: 'Detaching...',
       targetsTitle: 'Target tab',

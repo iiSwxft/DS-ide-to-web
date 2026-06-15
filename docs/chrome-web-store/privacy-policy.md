@@ -75,8 +75,7 @@ DeepSeek++ requests these Chrome permissions for the following purposes:
 - `nativeMessaging`: connect to user-configured local MCP/native hosts.
 - `offscreen`: host an invisible extension document that runs isolated JavaScript, TypeScript, Python, and HTML sandbox requests outside the DeepSeek page, preventing the chat tab from being blocked by sandbox execution.
 - `debugger`: attach to a user-selected browser tab only when Browser Control is enabled, so DeepSeek++ can read an Accessibility Tree snapshot and perform user-visible browser actions requested through `browser_*` tools.
-- `tabs`: list browser tabs and select the target tab for Browser Control.
-- `tabGroups`: display the selected tab's browser group metadata in the Browser Control UI.
+- `tabs`: list browser tabs and select the target tab for Browser Control. Tab group names may be shown when the browser exposes them without an additional required permission.
 - `sidePanel`: provide the extension management UI in Chrome's side panel.
 - `*://chat.deepseek.com/*`: run on the DeepSeek web app so the extension can apply user-selected context, render tool results, export user-requested conversation history, support local downloads, and support automation inside DeepSeek conversations.
 - `https://api.deepseek.com/*`: send side-panel chat requests to the official DeepSeek API when the user configures an API Key.
@@ -211,8 +210,7 @@ DeepSeek++ 请求以下 Chrome 权限：
 - `nativeMessaging`：连接用户配置的本地 MCP/native host。
 - `offscreen`：提供不可见的扩展文档，用于在 DeepSeek 页面之外隔离运行 JavaScript、TypeScript、Python 和 HTML 沙箱请求，避免沙箱执行阻塞聊天标签页。
 - `debugger`：仅在用户启用浏览器控制后附着到用户选择的浏览器标签页，用于读取 Accessibility Tree 快照并执行用户可见的 `browser_*` 工具动作。
-- `tabs`：列出浏览器标签页并选择浏览器控制的目标标签页。
-- `tabGroups`：在浏览器控制界面展示目标标签页的浏览器分组信息。
+- `tabs`：列出浏览器标签页并选择浏览器控制的目标标签页；如果浏览器无需额外必需权限即可提供标签组名称，界面可能显示该信息帮助用户识别目标标签页。
 - `sidePanel`：在 Chrome 侧边栏中提供扩展管理界面。
 - `*://chat.deepseek.com/*`：在 DeepSeek 网页版中运行，用于应用用户选择的上下文、展示工具结果、导出用户主动请求的对话历史、支持本地下载，并支持 DeepSeek 对话内的自动化。
 - `https://api.deepseek.com/*`：当用户配置 API Key 时，将侧边栏对话请求发送到 DeepSeek 官方 API。

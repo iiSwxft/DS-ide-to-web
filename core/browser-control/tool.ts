@@ -129,8 +129,8 @@ export function createBrowserControlToolDescriptors(
       maxResultBytes: name === 'browser_snapshot' ? 40_000 : 60_000,
     },
     annotations: {
-      requires: 'chrome.debugger,tabs,tabGroups',
-      output: 'Text Accessibility Tree snapshot; no multimodal input required.',
+      requires: 'chrome.debugger,tabs',
+      output: 'Text Accessibility Tree snapshot; tab group names are included only when the browser exposes them.',
     },
   }));
 }
