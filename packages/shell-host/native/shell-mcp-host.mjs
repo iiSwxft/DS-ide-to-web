@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -78,6 +79,22 @@ const WINDOWS_POWERSHELL_UTF8_PREAMBLE = [
   '$OutputEncoding = [Console]::OutputEncoding',
   'try { chcp.com 65001 > $null } catch {}',
 ].join('; ');
+
+// --- Persistent shell session ---
+//
+// Each session keeps one long-lived shell child open and pipes commands to its
+// stdin. A randomized end-marker is appended after each command so the host can
+// detect where a single command's output ends on stdout and read back the exit
+// code. This makes resident-mode tools (e.g. OfficeCLI) survive across separate
+// tool calls instead of dying with a one-shot `shell_exec` shell (issue #230).
+//
+// Why delimiter-based instead of a PTY: the host ships as a single .mjs copied
+// into app-data with no node_modules, so native deps (node-pty/conPTY) would
+// force per-platform prebuilt binaries and double the install footprint.
+// Pure child_process + sentinel is the established pattern for this constraint.
+const SESSION_IDLE_TIMEOUT_MS = 300_000; // 5min; aligns with resident-tool idle windows
+const SESSION_MAX_OUTPUT_BYTES = MAX_OUTPUT_BYTES;
+const SESSION_MARKER_PREFIX = '__DPP_SESSION_END__';
 
 const TOOL_DEFINITIONS = [
   {
@@ -158,6 +175,51 @@ const TOOL_DEFINITIONS = [
       additionalProperties: false,
     },
     annotations: { operation: 'read', risk: 'low' },
+  },
+  {
+    name: 'shell_session_begin',
+    title: 'Open Persistent Shell Session',
+    description: 'Start a long-lived shell session whose working directory, environment, and resident child processes (e.g. OfficeCLI resident mode) survive across later shell_session_exec calls. Use it for multi-step workflows where separate shell_exec calls would lose state. Returns a session_id to pass to subsequent calls.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cwd: { type: 'string', description: 'Initial working directory. Defaults to user home.' },
+        env: { type: 'object', additionalProperties: { type: 'string' }, description: 'Additional environment variables to set on the session shell.' },
+        shell: { type: 'string', description: 'Shell binary to use. Defaults to the shell reported by shell_status.' },
+      },
+      additionalProperties: false,
+    },
+    annotations: { operation: 'write', risk: 'high' },
+  },
+  {
+    name: 'shell_session_exec',
+    title: 'Run Command in Persistent Shell Session',
+    description: 'Run a command inside a previously opened shell session (shell_session_begin). State (cwd, exports, resident processes) carries over between calls. Returns stdout, stderr, and exit code like shell_exec. Sessions auto-close after an idle timeout.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string', description: 'Session id returned by shell_session_begin.' },
+        command: { type: 'string', description: 'The shell command to execute in the session.' },
+        timeout_ms: { type: 'integer', minimum: 1000, maximum: 600000, description: 'Timeout in milliseconds. Default 120000.' },
+      },
+      required: ['session_id', 'command'],
+      additionalProperties: false,
+    },
+    annotations: { operation: 'write', risk: 'high' },
+  },
+  {
+    name: 'shell_session_end',
+    title: 'Close Persistent Shell Session',
+    description: 'Close a persistent shell session opened by shell_session_begin and release its child process. After this, the session_id is no longer valid.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session_id: { type: 'string', description: 'Session id returned by shell_session_begin.' },
+      },
+      required: ['session_id'],
+      additionalProperties: false,
+    },
+    annotations: { operation: 'write', risk: 'medium' },
   },
 ];
 
@@ -335,6 +397,18 @@ async function handleCallTool(id, params) {
 
   if (name === 'local_folder_pick') {
     return jsonRpcResult(id, createLocalFolderPickResult(args));
+  }
+
+  if (name === 'shell_session_begin') {
+    return jsonRpcResult(id, await beginShellSession(args));
+  }
+
+  if (name === 'shell_session_exec') {
+    return jsonRpcResult(id, await execInShellSession(args));
+  }
+
+  if (name === 'shell_session_end') {
+    return jsonRpcResult(id, await endShellSession(args));
   }
 
   return jsonRpcError(id, -32602, `Unknown tool: ${name}`);
@@ -802,6 +876,278 @@ function execCommand(command, { cwd, env, timeoutMs }) {
       });
     });
   });
+}
+
+// --- Persistent shell session ---
+
+const shellSessions = new Map();
+
+function createPersistentShellArgs(shell) {
+  // Keep the shell reading commands from stdin so subsequent commands reuse the
+  // same process. `-NonInteractive` on Windows keeps PowerShell from printing
+  // prompts; `-Command -` makes it read a script from stdin. POSIX shells read
+  // stdin by default.
+  if (platform() === 'win32') {
+    return [shell || DEFAULT_SHELL, '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '-'];
+  }
+  return [shell || DEFAULT_SHELL];
+}
+
+function buildSessionEndMarkerLine(token) {
+  // Print the marker + exit code. POSIX uses $?; PowerShell uses $LASTEXITCODE
+  // (falls back to 0 when no native command ran, which matches shell semantics
+  // for pure-shell commands). The random token makes accidental marker collisions
+  // in command output effectively impossible.
+  if (platform() === 'win32') {
+    return `Write-Output '${SESSION_MARKER_PREFIX}${token}__:'$LASTEXITCODE`;
+  }
+  return `printf '__DPP_SESSION_END__%s__:%s\\n' "${token}" "$?"`;
+}
+
+async function beginShellSession(args) {
+  const requestedShell = typeof args?.shell === 'string' && args.shell.trim() ? args.shell.trim() : null;
+  const cwd = typeof args?.cwd === 'string' && args.cwd.trim() ? args.cwd.trim() : homedir();
+  const env = createChildEnv(args?.env);
+  const shellBin = requestedShell || DEFAULT_SHELL;
+  const shellArgs = createPersistentShellArgs(requestedShell);
+
+  let child;
+  try {
+    child = spawn(shellBin, shellArgs, {
+      cwd,
+      env,
+      shell: false,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+  } catch (err) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to start persistent shell: ${err.message}` }],
+    };
+  }
+
+  const sessionId = randomUUID();
+  const session = {
+    id: sessionId,
+    child,
+    shell: shellBin,
+    cwd,
+    env,
+    createdAt: Date.now(),
+    lastActivityAt: Date.now(),
+    idleTimer: null,
+    closed: false,
+  };
+
+  // Between commands the shell blocks reading stdin and emits nothing, so we do
+  // not attach a background drain listener — runInSession takes exclusive
+  // ownership of stdout/stderr for the duration of each command. A second 'data'
+  // listener here would race with it and swallow the marker bytes.
+  child.on('exit', () => {
+    session.closed = true;
+    if (shellSessions.has(sessionId)) closeShellSession(sessionId, 'process_exited');
+  });
+
+  armSessionIdleTimer(session);
+
+  return {
+    content: [{ type: 'text', text: `Persistent shell session ${sessionId} started (${shellBin}).` }],
+    structuredContent: {
+      ok: true,
+      data: {
+        session_id: sessionId,
+        shell: shellBin,
+        cwd,
+        pid: typeof child.pid === 'number' ? child.pid : null,
+        idleTimeoutMs: SESSION_IDLE_TIMEOUT_MS,
+      },
+    },
+  };
+}
+
+function armSessionIdleTimer(session) {
+  if (session.idleTimer) clearTimeout(session.idleTimer);
+  session.idleTimer = setTimeout(() => {
+    closeShellSession(session.id, 'idle_timeout');
+  }, SESSION_IDLE_TIMEOUT_MS);
+}
+
+function closeShellSession(sessionId, reason) {
+  const session = shellSessions.get(sessionId);
+  if (!session) return;
+  shellSessions.delete(sessionId);
+  session.closed = true;
+  if (session.idleTimer) {
+    clearTimeout(session.idleTimer);
+    session.idleTimer = null;
+  }
+  try { session.child.kill('SIGKILL'); } catch {}
+  process.stderr.write(`[shell-mcp-host] Session ${sessionId} closed (${reason}).\n`);
+}
+
+async function execInShellSession(args) {
+  const sessionId = args?.session_id;
+  const command = args?.command;
+  if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+    return { isError: true, content: [{ type: 'text', text: 'session_id is required.' }] };
+  }
+  if (typeof command !== 'string' || command.trim().length === 0) {
+    return { isError: true, content: [{ type: 'text', text: 'command is required and must be a non-empty string.' }] };
+  }
+
+  const session = shellSessions.get(sessionId);
+  if (!session) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Session not found: ${sessionId}. It may have been closed, expired (idle timeout), or its shell exited. Open a new session with shell_session_begin.` }],
+    };
+  }
+  if (session.closed) {
+    shellSessions.delete(sessionId);
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Session shell has exited: ${sessionId}. Open a new session with shell_session_begin.` }],
+    };
+  }
+
+  const timeoutMs = typeof args.timeout_ms === 'number' && args.timeout_ms >= 1000
+    ? Math.min(args.timeout_ms, 600_000)
+    : DEFAULT_TIMEOUT_MS;
+
+  // Refresh idle window on activity.
+  if (session.idleTimer) clearTimeout(session.idleTimer);
+
+  try {
+    const result = await runInSession(session, command, { timeoutMs });
+    session.lastActivityAt = Date.now();
+    armSessionIdleTimer(session);
+    return {
+      content: [{ type: 'text', text: formatExecSummary(result) }],
+      structuredContent: { ok: result.exitCode === 0, data: result },
+      isError: result.exitCode !== 0,
+    };
+  } catch (err) {
+    // A timeout or shell crash means the session is unrecoverable.
+    closeShellSession(sessionId, 'exec_failed');
+    return { isError: true, content: [{ type: 'text', text: err.message }] };
+  }
+}
+
+function runInSession(session, command, { timeoutMs }) {
+  return new Promise((resolve, reject) => {
+    const { child } = session;
+    const token = randomUUID();
+    const markerLine = buildSessionEndMarkerLine(token);
+    const markerText = `${SESSION_MARKER_PREFIX}${token}__:`;
+
+    // One write: the user's command, then the exit-code marker. POSIX shells
+    // execute line by line; PowerShell in `-Command -` mode reads the whole
+    // stdin script but still runs statements in order.
+    const script = platform() === 'win32'
+      ? `${command}\n${markerLine}\n`
+      : `${command}\n${markerLine}\n`;
+    try {
+      child.stdin.write(script);
+    } catch (err) {
+      reject(new Error(`Failed to write to session shell: ${err.message}`));
+      return;
+    }
+
+    const stdoutChunks = [];
+    let stdoutBytes = 0;
+    let stderrText = '';
+    let stderrBytes = 0;
+    let resolved = false;
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      detach();
+      reject(new Error(`Command timed out after ${timeoutMs} ms; session shell killed.`));
+    }, timeoutMs);
+
+    function detach() {
+      child.stdout.off('data', onStdout);
+      child.stderr.off('data', onStderr);
+    }
+
+    function onStderr(chunk) {
+      if (stderrBytes < SESSION_MAX_OUTPUT_BYTES) {
+        const remaining = SESSION_MAX_OUTPUT_BYTES - stderrBytes;
+        stderrText += chunk.toString('utf8').slice(0, remaining);
+      }
+      stderrBytes += chunk.length;
+    }
+
+    function onStdout(chunk) {
+      const text = chunk.toString('utf8');
+      // Scan for the marker line; accumulate everything before it as stdout.
+      const combined = stdoutChunks.concat([text]).join('');
+      const markerIdx = combined.indexOf(markerText);
+      if (markerIdx === -1) {
+        // Not yet; keep what we have under the byte budget.
+        stdoutChunks.length = 0;
+        stdoutChunks.push(combined);
+        stdoutBytes = Buffer.byteLength(combined, 'utf8');
+        if (stdoutBytes > SESSION_MAX_OUTPUT_BYTES) {
+          stdoutChunks[0] = stdoutChunks[0].slice(0, SESSION_MAX_OUTPUT_BYTES);
+        }
+        return;
+      }
+
+      // Marker found. Parse exit code from the rest of the marker line.
+      resolved = true;
+      clearTimeout(timer);
+      detach();
+
+      const before = combined.slice(0, markerIdx);
+      const afterMarker = combined.slice(markerIdx + markerText.length);
+      const newlineIdx = afterMarker.indexOf('\n');
+      const exitToken = newlineIdx === -1 ? afterMarker.trim() : afterMarker.slice(0, newlineIdx).trim();
+      // Exit token may carry a leading ':' already consumed; strip any non-digit trailing chars.
+      const exitMatch = exitToken.match(/^(-?\d+)/);
+      const exitCode = exitMatch ? Number.parseInt(exitMatch[1], 10) : 0;
+
+      const stdout = before.replace(/\r?\n$/, '');
+      resolve({
+        command,
+        shell: session.shell,
+        session_id: session.id,
+        exitCode: timedOut ? -1 : exitCode,
+        stdout,
+        stderr: stderrText,
+        truncated: stdoutBytes > SESSION_MAX_OUTPUT_BYTES || stderrBytes > SESSION_MAX_OUTPUT_BYTES,
+        timedOut,
+      });
+    }
+
+    child.stdout.on('data', onStdout);
+    child.stderr.on('data', onStderr);
+
+    // If the shell dies mid-command, surface it as a failure.
+    const onExit = () => {
+      if (resolved || timedOut) return;
+      clearTimeout(timer);
+      detach();
+      child.off('exit', onExit);
+      reject(new Error('Session shell exited before the command completed.'));
+    };
+    child.once('exit', onExit);
+  });
+}
+
+async function endShellSession(args) {
+  const sessionId = args?.session_id;
+  if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+    return { isError: true, content: [{ type: 'text', text: 'session_id is required.' }] };
+  }
+  const existed = shellSessions.has(sessionId);
+  closeShellSession(sessionId, 'ended');
+  return {
+    content: [{ type: 'text', text: existed ? `Session ${sessionId} closed.` : `Session ${sessionId} was already gone (ignored).` }],
+    structuredContent: { ok: true, data: { session_id: sessionId, closed: existed } },
+  };
 }
 
 async function createPythonStatusResult() {
@@ -1418,9 +1764,18 @@ async function main() {
       await writeNativeMessage(jsonRpcError(null, -32603, err.message || 'Internal error'));
     }
   }
+
+  // stdin closed (extension gone): reap every persistent shell so we don't leak
+  // orphaned children bound to a dead host.
+  for (const sessionId of [...shellSessions.keys()]) {
+    closeShellSession(sessionId, 'host_shutdown');
+  }
 }
 
 main().catch((err) => {
   process.stderr.write(`[shell-mcp-host] Fatal: ${err.message || err}\n`);
+  for (const sessionId of [...shellSessions.keys()]) {
+    closeShellSession(sessionId, 'host_shutdown');
+  }
   process.exit(1);
 });
