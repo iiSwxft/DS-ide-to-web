@@ -121,6 +121,7 @@ describe('Phase 5 product surface helpers', () => {
       expect(document.querySelector<HTMLInputElement>('[data-dpp-current-tags]')?.placeholder).toBe('逗号分隔，例如：港股, 写作');
       expect(document.querySelector('[data-dpp-history-status]')?.textContent).toBe('DeepSeek++：已显示 1/1');
       expect(document.querySelector<HTMLButtonElement>('.dpp-code-download')?.textContent).toBe('下载');
+      expect(document.querySelector('pre')?.querySelector('.dpp-code-download')).toBeNull();
       expect(document.querySelector<HTMLButtonElement>('.dpp-message-download')?.title).toBe('下载消息为 Markdown');
     } finally {
       history.stop();
@@ -146,7 +147,9 @@ describe('Phase 5 product surface helpers', () => {
 
       await Promise.resolve();
       vi.advanceTimersByTime(60);
-      expect(pre.querySelector('.dpp-code-download')).not.toBeNull();
+      expect(document.querySelector('.dpp-code-download')).not.toBeNull();
+      expect(pre.querySelector('.dpp-code-download')).toBeNull();
+      expect(Array.from(pre.childNodes)).toEqual([code]);
 
       Object.defineProperty(pre, 'textContent', {
         configurable: true,
@@ -158,7 +161,8 @@ describe('Phase 5 product surface helpers', () => {
 
       await Promise.resolve();
       vi.advanceTimersByTime(60);
-      expect(pre.querySelectorAll('.dpp-code-download')).toHaveLength(1);
+      expect(document.querySelectorAll('.dpp-code-download')).toHaveLength(1);
+      expect(Array.from(pre.childNodes)).toEqual([code]);
     } finally {
       polish.stop();
     }

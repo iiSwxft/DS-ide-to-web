@@ -16,23 +16,29 @@ const CODE_BUTTON_CLASS = 'dpp-code-download';
 const MESSAGE_BUTTON_CLASS = 'dpp-message-download';
 const MESSAGE_SELECTOR = '[data-message-id][data-message-role], [data-message-author-role]';
 const POLISH_MOUNT_DELAY_MS = 50;
+const CODE_BUTTON_OFFSET_PX = 6;
 
 export function startContentUxPolish(
   getLabels: () => ContentUxPolishLabels,
 ): ContentUxPolishController {
   injectStyles();
   const unpatchNavigationEvents = patchNavigationEvents();
-  const mount = () => mountPolish(document, getLabels());
+  const codeButtons = new Map<HTMLElement, HTMLButtonElement>();
+  const syncCodeButtons = () => syncCodeButtonPositions(codeButtons);
+  const mount = () => mountPolish(document, getLabels(), codeButtons);
   const refreshLabels = () => applyPolishLabels(document, getLabels());
   mount();
   const candidateMountScheduler = createCandidateMountScheduler(getLabels);
   const observer = new MutationObserver((mutations) => {
     for (const root of collectPolishCandidateRoots(mutations)) {
-      candidateMountScheduler.schedule(root);
+      candidateMountScheduler.schedule(root, codeButtons);
     }
+    syncCodeButtons();
   });
   observer.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('dpp:navigation', mount);
+  window.addEventListener('scroll', syncCodeButtons, true);
+  window.addEventListener('resize', syncCodeButtons);
 
   return {
     refreshLabels,
@@ -40,15 +46,18 @@ export function startContentUxPolish(
       observer.disconnect();
       candidateMountScheduler.cancel();
       window.removeEventListener('dpp:navigation', mount);
+      window.removeEventListener('scroll', syncCodeButtons, true);
+      window.removeEventListener('resize', syncCodeButtons);
       unpatchNavigationEvents();
-      document.querySelectorAll(`.${CODE_BUTTON_CLASS}, .${MESSAGE_BUTTON_CLASS}`).forEach((button) => button.remove());
+      codeButtons.forEach((button) => button.remove());
+      codeButtons.clear();
+      document.querySelectorAll(`.${MESSAGE_BUTTON_CLASS}`).forEach((button) => button.remove());
     },
   };
 }
 
 export function collectCodeBlocks(root: ParentNode): HTMLElement[] {
-  return queryIncludingRoot<HTMLElement>(root, 'pre')
-    .filter((pre) => !pre.querySelector(`:scope > .${CODE_BUTTON_CLASS}`));
+  return queryIncludingRoot<HTMLElement>(root, 'pre');
 }
 
 export function inferCodeFilename(codeBlock: HTMLElement, index = 0): string {
@@ -59,14 +68,25 @@ export function inferCodeFilename(codeBlock: HTMLElement, index = 0): string {
   return `deepseek-code-${index + 1}.${ext}`;
 }
 
-function mountPolish(root: ParentNode, labels: ContentUxPolishLabels): void {
-  collectCodeBlocks(root).forEach((pre, index) => mountCodeDownload(pre, index, labels));
+function mountPolish(
+  root: ParentNode,
+  labels: ContentUxPolishLabels,
+  codeButtons: Map<HTMLElement, HTMLButtonElement>,
+): void {
+  collectCodeBlocks(root).forEach((pre, index) => mountCodeDownload(pre, index, labels, codeButtons));
   collectMessageNodes(root).forEach((message) => mountMessageDownload(message, labels));
   applyPolishLabels(root, labels);
+  syncCodeButtonPositions(codeButtons);
 }
 
-function mountCodeDownload(pre: HTMLElement, index: number, labels: ContentUxPolishLabels): void {
-  pre.style.position ||= 'relative';
+function mountCodeDownload(
+  pre: HTMLElement,
+  index: number,
+  labels: ContentUxPolishLabels,
+  codeButtons: Map<HTMLElement, HTMLButtonElement>,
+): void {
+  if (codeButtons.has(pre)) return;
+
   const button = document.createElement('button');
   button.type = 'button';
   button.className = CODE_BUTTON_CLASS;
@@ -77,7 +97,9 @@ function mountCodeDownload(pre: HTMLElement, index: number, labels: ContentUxPol
     event.stopPropagation();
     downloadText(inferCodeFilename(pre, index), getCodeBlockText(pre), 'text/plain;charset=utf-8');
   });
-  pre.appendChild(button);
+  document.body.appendChild(button);
+  codeButtons.set(pre, button);
+  positionCodeButton(pre, button);
 }
 
 export function getCodeBlockText(pre: HTMLElement): string {
@@ -138,13 +160,15 @@ function normalizeRole(value: string | undefined): 'user' | 'assistant' | 'syste
 
 function createCandidateMountScheduler(
   getLabels: () => ContentUxPolishLabels,
-): { schedule(root: ParentNode): void; cancel(): void } {
+): { schedule(root: ParentNode, codeButtons: Map<HTMLElement, HTMLButtonElement>): void; cancel(): void } {
   const pending = new Set<ParentNode>();
+  let pendingCodeButtons: Map<HTMLElement, HTMLButtonElement> | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   return {
-    schedule(root: ParentNode): void {
+    schedule(root: ParentNode, codeButtons: Map<HTMLElement, HTMLButtonElement>): void {
       pending.add(root);
+      pendingCodeButtons = codeButtons;
       if (timer) return;
 
       timer = setTimeout(() => {
@@ -153,8 +177,9 @@ function createCandidateMountScheduler(
         pending.clear();
         const labels = getLabels();
         for (const candidate of roots) {
-          mountPolish(candidate, labels);
+          if (pendingCodeButtons) mountPolish(candidate, labels, pendingCodeButtons);
         }
+        pendingCodeButtons = null;
       }, POLISH_MOUNT_DELAY_MS);
     },
     cancel(): void {
@@ -163,6 +188,7 @@ function createCandidateMountScheduler(
         timer = null;
       }
       pending.clear();
+      pendingCodeButtons = null;
     },
   };
 }
@@ -199,6 +225,29 @@ function queryIncludingRoot<T extends HTMLElement>(root: ParentNode, selector: s
   }
   matches.push(...Array.from(root.querySelectorAll<T>(selector)));
   return matches;
+}
+
+function syncCodeButtonPositions(codeButtons: Map<HTMLElement, HTMLButtonElement>): void {
+  for (const [pre, button] of codeButtons) {
+    if (!pre.isConnected) {
+      button.remove();
+      codeButtons.delete(pre);
+      continue;
+    }
+    positionCodeButton(pre, button);
+  }
+}
+
+function positionCodeButton(pre: HTMLElement, button: HTMLButtonElement): void {
+  const rect = pre.getBoundingClientRect();
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const hidden = rect.bottom < 0 || rect.top > viewportHeight || rect.right < 0 || rect.left > viewportWidth;
+  const maxLeft = Math.max(CODE_BUTTON_OFFSET_PX, viewportWidth - CODE_BUTTON_OFFSET_PX);
+  const maxTop = Math.max(CODE_BUTTON_OFFSET_PX, viewportHeight - CODE_BUTTON_OFFSET_PX);
+  button.style.display = hidden ? 'none' : '';
+  button.style.top = `${Math.min(maxTop, Math.max(CODE_BUTTON_OFFSET_PX, rect.top + CODE_BUTTON_OFFSET_PX))}px`;
+  button.style.left = `${Math.min(maxLeft, Math.max(CODE_BUTTON_OFFSET_PX, rect.right - CODE_BUTTON_OFFSET_PX))}px`;
 }
 
 function patchNavigationEvents(): () => void {
@@ -271,9 +320,9 @@ function injectStyles(): void {
       cursor: pointer;
     }
     .${CODE_BUTTON_CLASS} {
-      position: absolute;
-      top: 6px;
-      right: 6px;
+      position: fixed;
+      transform: translateX(-100%);
+      z-index: 2147483647;
       padding: 4px 7px;
     }
     .${MESSAGE_BUTTON_CLASS} {
