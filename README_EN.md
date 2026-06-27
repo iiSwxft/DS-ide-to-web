@@ -29,7 +29,7 @@
   <a href="#feature-overview">Feature Overview</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#installation">Installation</a> ·
-  <a href="#104-release-highlights">1.0.4 Highlights</a>
+  <a href="#105-release-highlights">1.0.5 Highlights</a>
 </p>
 
 ## Product Positioning
@@ -46,7 +46,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 - [Feature Overview](#feature-overview)
 - [Use Cases](#use-cases)
 - [Core Features](#core-features)
-- [1.0.4 Release Highlights](#104-release-highlights)
+- [1.0.5 Release Highlights](#105-release-highlights)
 - [Installation](#installation)
 - [Friendly Links](#friendly-links)
 
@@ -297,7 +297,26 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
   <img src="assets/screenshot-sidepanel-automation.png" width="300" alt="Automation task side panel">
 </p>
 
-## 1.0.4 Release Highlights
+## 1.0.5 Release Highlights
+
+1.0.5 improves project context and agent-continuation reliability, making project-scoped new conversations easier to start, project conversation titles more accurate, and inline agent continuation, Vision image uploads, and code-block downloads cleaner.
+
+| Area | Main changes |
+|------|--------------|
+| Project conversations | The project sidebar now has a one-step action to start a new conversation inside a selected project, carrying that project context into the new chat. |
+| Project title refresh | Project conversations prefer real history titles, and default DeepSeek or untitled placeholders no longer overwrite already saved useful titles. |
+| Agent continuation stability | Inline agent continuation avoids replaying the same step after a complete answer and hides internal continuation messages for cleaner answers and history. |
+| Vision and code-block polish | Vision image uploads handle successful but pending/unknown review states more accurately, and code-block download buttons now float without changing code-block content layout. |
+| Open-source license | The project license and package metadata now align on Apache-2.0, keeping README badges and source-package metadata consistent. |
+| Regression coverage | Adds tests for project conversation titles, project sidebar actions, inline agent continuation, history cleanup, Vision image uploads, and code-block downloads. |
+
+<details>
+<summary>Show historical release highlights (1.0.4 - 0.2.0)</summary>
+
+<details>
+<summary>Show 1.0.4 release highlights</summary>
+
+### 1.0.4 Release Highlights
 
 1.0.4 updates side-panel chat and Skill management, letting web chat switch between Default, Expert, and Vision modes, attach user-selected images in Vision mode, and keep memory/Skill injection, agent stop feedback, and batched Skill toggles more reliable.
 
@@ -310,8 +329,7 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
 | Batched Skill toggles | Third-party or imported Skill groups can be enabled or disabled with one batched save, reducing inconsistent intermediate states. |
 | Regression coverage | Adds tests for web model mode, Vision image attachments, side-panel prompt composition, inline agent stop boundaries, and batched Skill toggles. |
 
-<details>
-<summary>Show historical release highlights (1.0.3 - 0.2.0)</summary>
+</details>
 
 <details>
 <summary>Show 1.0.3 release highlights</summary>
