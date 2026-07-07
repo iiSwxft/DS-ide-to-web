@@ -441,9 +441,10 @@ export async function submitPromptStreaming(
 export async function readHistorySnapshot(
   chatSessionId: string,
   expectedAssistantMessageId: number,
+  clientHeadersOverride?: Record<string, string>,
 ): Promise<DeepSeekHistorySnapshot | null> {
-  const clientHeaders = createClientHeaders();
-  const url = new URL(HISTORY_PATH, location.origin);
+  const clientHeaders = clientHeadersOverride ?? createClientHeaders();
+  const url = new URL(HISTORY_PATH, DEEPSEEK_API_URL);
   url.searchParams.set('chat_session_id', chatSessionId);
   const response = await fetch(url.href, {
     method: 'GET',
@@ -487,7 +488,7 @@ export function normalizeMessageId(value: unknown, fieldName = 'message_id'): nu
 }
 
 export function buildDeepSeekSessionUrl(chatSessionId: string): string {
-  return `${location.origin}/a/chat/s/${chatSessionId}`;
+  return `${new URL(DEEPSEEK_API_URL).origin}/a/chat/s/${chatSessionId}`;
 }
 
 async function readCompletionStream(response: Response): Promise<ModelTurn> {
