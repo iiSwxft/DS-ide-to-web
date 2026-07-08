@@ -29,7 +29,7 @@
   <a href="#feature-overview">Feature Overview</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#installation">Installation</a> ·
-  <a href="#108-release-highlights">1.0.8 Highlights</a>
+  <a href="#109-release-highlights">1.0.9 Highlights</a>
 </p>
 
 ## Product Positioning
@@ -46,7 +46,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 - [Feature Overview](#feature-overview)
 - [Use Cases](#use-cases)
 - [Core Features](#core-features)
-- [1.0.8 Release Highlights](#108-release-highlights)
+- [1.0.9 Release Highlights](#109-release-highlights)
 - [Installation](#installation)
 - [Friendly Links](#friendly-links)
 
@@ -55,7 +55,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 | Need | What DeepSeek++ provides |
 |------|--------------------------|
 | AI agent browser extension | Turns DeepSeek Web into a browser-based workspace that can continue tasks, call tools, reuse memory, and schedule automation. |
-| DeepSeek browser extension / DeepSeek Chrome extension | Adds side-panel chat, right-click text sending, tool-result rendering, and Chrome / Edge / Firefox support for DeepSeek Web. |
+| DeepSeek browser extension / DeepSeek Chrome extension | Adds side-panel chat, a floating chat launcher on normal web pages, right-click text sending, tool-result rendering, and Chrome / Edge / Firefox support for DeepSeek Web. |
 | Multilingual DeepSeek extension | Switches between English and Simplified Chinese, keeping UI, built-in tool descriptions, and model continuation behavior in the same language. |
 | DeepSeek MCP tools | Lets you manage MCP services, tool permissions, and execution status in the side panel, then sends tool results back into the same conversation. |
 | DeepSeek multimodal media | Attach images in Vision mode from side-panel web chat; after installing the Multimodal Native Host, also attach images or videos in the DeepSeek input box so DeepSeek++ can analyze the media first and continue the conversation with the results. |
@@ -74,7 +74,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 
 - Turn DeepSeek Web into an AI agent workspace with tool execution, MCP, memory, and automation.
 - Use DeepSeek++ in an English or Simplified Chinese workflow with matching UI, tool guidance, and model continuation prompts.
-- Use DeepSeek side-panel chat, selected-text actions, and reusable prompt scenarios directly in Chrome, Edge, or Firefox.
+- Use DeepSeek side-panel chat, a floating chat launcher on normal web pages, selected-text actions, and reusable prompt scenarios directly in Chrome, Edge, or Firefox.
 - Add images or videos to a DeepSeek conversation so the model can continue explanations, summaries, comparisons, or document tasks from the media analysis.
 - Let AI work in a user-selected Chrome or Edge tab while keeping explicit enable, target switching, and detach controls.
 - Save project context, personal preferences, common workflows, and document-processing routines as long-term memory and reusable Skills.
@@ -86,6 +86,8 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 ### Side-Panel Chat
 
 - **Optional chat entry** - After it is enabled in settings, the side panel shows a Chat page where you can message DeepSeek directly.
+- **Floating chat on normal pages** - On non-DeepSeek web pages, a draggable DS++ Chat launcher can open a lightweight chat window; it can be turned off from Appearance settings.
+- **User-initiated sending boundary** - The floating launcher does not automatically read or send the current page body; content enters chat only when the user types, sends, or uses a selected-text scenario.
 - **Right-click selected text** - Select text and send it to the side-panel chat for quick explanation, summary, or rewriting.
 - **Right-click scenarios** - Configure reusable scenario templates that wrap selected text in fixed prompts.
 - **Official API Key** - After a Key is configured, side-panel chat and right-click scenarios can work on normal web pages; without a Key, right-click scenarios stay limited to DeepSeek Web.
@@ -297,6 +299,24 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
   <img src="assets/screenshot-sidepanel-automation.png" width="300" alt="Automation task side panel">
 </p>
 
+## 1.0.9 Release Highlights
+
+1.0.9 extends side-panel chat to normal web pages and fixes automation login/session recovery in background runs, focusing on smoother cross-page use and more reliable scheduled tasks.
+
+| Area | Main changes |
+|------|--------------|
+| Global floating chat launcher | Non-DeepSeek pages can show a draggable DS++ Chat launcher that opens a lightweight chat window, so users can ask DeepSeek++ questions while browsing. |
+| User control and privacy boundary | Floating chat can be turned off from Appearance settings; the launcher itself does not automatically read or send page body content, and content enters chat only when the user types, sends, or uses a selected-text scenario. |
+| Automation login stability | Background automation uses available DeepSeek login information, so signed-in users no longer get a false missing-token error just because the task runs outside the page. |
+| Automation session recovery | Automation result links and history snapshots resolve to the right DeepSeek session from the background environment, making task results easier to open and trace. |
+| Regression coverage | Release validation continues to cover compile, tests, automation contracts, MCP/Shell/PoW smoke checks, multi-browser builds, and release asset checks. |
+
+<details>
+<summary>Show historical release highlights (1.0.8 - 0.2.0)</summary>
+
+<details>
+<summary>Show 1.0.8 release highlights</summary>
+
 ## 1.0.8 Release Highlights
 
 1.0.8 fixes three widely reported issues around local Skill import, long-content write quotas, and Agent concurrency, focusing on making long-running tasks more stable and error messages more actionable.
@@ -309,8 +329,7 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
 | Agent concurrency guard | While an Agent is running, a follow-up message from the user no longer spawns a duplicate Agent task; the old Agent panel is removed synchronously on handoff to prevent two panels from appearing at once, with a new "Agent is running" status notice. |
 | Regression coverage | Adds tests for BOM import, CJK slug fallback, history budget trimming, the 900 KB native boundary, and the Agent concurrency guard. |
 
-<details>
-<summary>Show historical release highlights (1.0.7 - 0.2.0)</summary>
+</details>
 
 <details>
 <summary>Show 1.0.7 release highlights</summary>

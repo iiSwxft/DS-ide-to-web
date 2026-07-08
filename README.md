@@ -29,7 +29,7 @@
   <a href="#功能速览">功能速览</a> ·
   <a href="#适合场景">适合场景</a> ·
   <a href="#安装">安装</a> ·
-  <a href="#108-变更回顾">1.0.8 变更</a>
+  <a href="#109-变更回顾">1.0.9 变更</a>
 </p>
 
 ## 产品定位
@@ -46,7 +46,7 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏
 - [功能速览](#功能速览)
 - [适合场景](#适合场景)
 - [核心功能](#核心功能)
-- [1.0.8 变更回顾](#108-变更回顾)
+- [1.0.9 变更回顾](#109-变更回顾)
 - [安装](#安装)
 - [友情链接](#友情链接)
 
@@ -55,7 +55,7 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏
 | 需求 | DeepSeek++ 提供 |
 |------|----------------|
 | AI agent browser extension / AI Agent 工作台 | 把 DeepSeek Web 扩展成可以持续执行任务、调用工具、复用记忆和调度自动化的浏览器内工作台。 |
-| DeepSeek browser extension / DeepSeek Chrome extension | 在 DeepSeek 网页版中加入侧边栏对话、右键发送文本、工具执行结果展示和 Chrome / Edge / Firefox 支持。 |
+| DeepSeek browser extension / DeepSeek Chrome extension | 在 DeepSeek 网页版中加入侧边栏对话、普通网页悬浮聊天入口、右键发送文本、工具执行结果展示和 Chrome / Edge / Firefox 支持。 |
 | Multilingual DeepSeek extension / 中英文体验 | 可在简体中文和 English 之间切换，界面、内置工具说明和模型续跑行为保持同一语言。 |
 | DeepSeek MCP tools | 在侧边栏管理 MCP 服务、工具权限和执行状态，并把工具结果带回同一会话继续生成。 |
 | DeepSeek multimodal media / 图片视频分析 | 可在侧边栏网页登录对话的识图模式附加图片；安装多模态 Native Host 后，也可在 DeepSeek 输入框附加图片或视频，让 DeepSeek++ 先完成媒体分析再带着结果继续对话。 |
@@ -74,7 +74,7 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏
 
 - 希望把 DeepSeek 网页版扩展成带工具调用、MCP、记忆和自动化能力的 AI agent 工作台。
 - 希望 DeepSeek++ 的界面、工具提示和模型续跑提示能跟随中文或英文使用环境。
-- 希望在 Chrome、Edge 或 Firefox 中直接使用 DeepSeek 侧边栏对话、网页文本发送和固定场景 prompt。
+- 希望在 Chrome、Edge 或 Firefox 中直接使用 DeepSeek 侧边栏对话、普通网页悬浮聊天入口、网页文本发送和固定场景 prompt。
 - 希望在 DeepSeek 对话中加入图片或视频，让模型基于媒体分析结果继续完成解释、总结、对比或文档任务。
 - 希望在 Chrome 或 Edge 中让 AI 操作用户选定的标签页，同时保留明确的启用、切换和断开控制。
 - 希望把项目背景、个人偏好、常用工作流和文档处理能力沉淀为长期记忆与可复用 Skill。
@@ -86,6 +86,8 @@ DeepSeek++ 是面向 [DeepSeek](https://chat.deepseek.com) 网页版的开源浏
 ### 侧边栏对话
 
 - **可选对话入口** — 在设置页启用后，侧边栏会显示「对话」页，可直接向 DeepSeek 发消息
+- **普通网页悬浮聊天** — 在非 DeepSeek 网页可通过可拖动的 DS++ Chat 悬浮入口打开轻量聊天窗口；可在设置页外观区域关闭
+- **主动发送边界** — 悬浮入口本身不会自动读取或发送当前页面正文，只有用户主动输入、发送或使用选中文本场景时内容才进入聊天流程
 - **右键发送文本** — 在网页中选中文本后右键发送到侧边栏对话，适合快速解释、总结或改写页面内容
 - **右键场景** — 可以配置常用场景模板，把选中文本套入固定 prompt 后送入对话
 - **官方 API Key** — 配置 Key 后，侧边栏对话和右键场景可在普通网页使用；未配置时右键场景仅在 DeepSeek 网页可用
@@ -297,6 +299,24 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
   <img src="assets/screenshot-sidepanel-automation.png" width="300" alt="自动化任务侧边栏">
 </p>
 
+## 1.0.9 变更回顾
+
+1.0.9 把侧边栏聊天入口扩展到普通网页，并修复自动化任务在后台运行时的登录和会话恢复问题，重点让跨页面使用和定时任务更稳定。
+
+| 方向 | 主要变化 |
+|------|----------|
+| 全局悬浮聊天入口 | 非 DeepSeek 网页会显示可拖动的 DS++ Chat 悬浮入口，点击即可打开轻量聊天窗口，适合在浏览网页时直接向 DeepSeek++ 提问。 |
+| 可控与隐私边界 | 悬浮聊天可在设置页外观区域关闭；入口本身不会自动读取或发送页面正文，只有用户主动输入、发送或使用选中文本场景时内容才进入聊天流程。 |
+| 自动化登录稳定性 | 自动化任务在后台运行时会使用可用的 DeepSeek 登录信息，已登录用户不再因为后台环境拿不到页面 token 而误报需要重新登录。 |
+| 自动化会话恢复 | 自动化结果里的会话链接和历史快照在后台运行时会指向正确的 DeepSeek 会话，便于打开和追踪任务结果。 |
+| 回归覆盖 | 发布验证继续覆盖编译、测试、自动化契约、MCP/Shell/PoW smoke、多浏览器构建和发布资产检查。 |
+
+<details>
+<summary>展开历史版本变更回顾（1.0.8 - 0.2.0）</summary>
+
+<details>
+<summary>展开 1.0.8 变更回顾</summary>
+
 ## 1.0.8 变更回顾
 
 1.0.8 修复本地 Skill 导入、长内容写入配额、以及 Agent 并发三个用户反馈强烈的问题，重点让长时间任务更稳、错误提示更可操作。
@@ -309,8 +329,7 @@ npm run shell:install -- --browser chrome --extension-id <扩展ID>
 | Agent 并发保护 | Agent 运行期间，用户在对话框发送的新消息不再触发第二个重复 Agent；旧 Agent 面板在切换时同步移除，避免两个面板同时出现；新增「Agent 正在执行中」的状态提示。 |
 | 回归覆盖 | 新增 BOM 导入、中文 slug 兜底、历史预算裁剪、本机 900 KB 边界、Agent 并发守卫相关测试。 |
 
-<details>
-<summary>展开历史版本变更回顾（1.0.7 - 0.2.0）</summary>
+</details>
 
 <details>
 <summary>展开 1.0.7 变更回顾</summary>

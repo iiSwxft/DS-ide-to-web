@@ -1,14 +1,14 @@
 # DeepSeek++ Privacy Policy
 
-Effective date: 2026-06-25
+Effective date: 2026-07-08
 
-DeepSeek++ is a browser extension that enhances DeepSeek chat workflows with user-controlled memory, skills, project context, saved items, prompt presets, MCP tools, side-panel Vision image attachments, multimodal media analysis, browser control tools, inline tool execution, local exports, downloadable artifacts, optional sync, automation, and optional side-panel chat.
+DeepSeek++ is a browser extension that enhances DeepSeek chat workflows with user-controlled floating chat on normal web pages, memory, skills, project context, saved items, prompt presets, MCP tools, side-panel Vision image attachments, multimodal media analysis, browser control tools, inline tool execution, local exports, downloadable artifacts, optional sync, automation, and optional side-panel chat.
 
 This Privacy Policy explains what data the extension handles, how that data is used, when it may be transferred, and what controls users have.
 
 ## 1. Single Purpose
 
-DeepSeek++ has one purpose: to enhance DeepSeek chat workflows with memory, skills, projects, saved items, presets, tools, side-panel Vision image attachments, multimodal media analysis, browser control, local exports, optional sync, automation, and optional side-panel chat that the user controls.
+DeepSeek++ has one purpose: to enhance DeepSeek chat workflows with user-controlled floating chat on normal web pages, memory, skills, projects, saved items, presets, tools, side-panel Vision image attachments, multimodal media analysis, browser control, local exports, optional sync, automation, and optional side-panel chat that the user controls.
 
 ## 2. Data Handled by the Extension
 
@@ -23,6 +23,7 @@ DeepSeek++ may handle the following data only when needed for its user-facing fe
 - User-selected image files, file names, MIME types, file sizes, upload state, and DeepSeek file references, only when the user explicitly attaches images in side-panel Vision mode.
 - User-selected image or video files, file names, MIME types, file sizes, and analysis results, only when the user explicitly attaches media for multimodal analysis.
 - Browser tab titles, URLs, Accessibility Tree snapshots, and browser-control tool results only when the user enables Browser Control and selects or uses a controlled tab.
+- Normal web pages may be modified locally to display the DS++ Chat floating launcher. The launcher does not automatically read or send page body content.
 - DeepSeek session data available to the web page, only when needed to submit user-requested automation or continuation prompts.
 - DeepSeek conversation history, individual message text, saved items, generated artifact content, and attachment metadata when the user explicitly starts a local export or download.
 
@@ -37,6 +38,7 @@ DeepSeek++ uses handled data only to provide its disclosed features:
 - Detect tool-call markup in DeepSeek responses, execute enabled tools, and render readable tool results.
 - Return selected tool results to the active DeepSeek conversation when the user enables tool execution.
 - Send side-panel chat messages to the official DeepSeek API when the user configures a DeepSeek API Key.
+- Show a user-controllable DS++ Chat floating launcher on normal web pages. The launcher can be turned off from Appearance settings and does not automatically send page body content.
 - Attach user-selected images to a side-panel web chat message in Vision mode when the user explicitly selects or pastes images and sends that message.
 - Analyze user-selected images or videos through the local Multimodal Native Host and the user's configured OpenAI/Gemini-compatible endpoints when the user attaches media for multimodal analysis.
 - Run automation tasks created by the user.
@@ -84,6 +86,7 @@ DeepSeek++ requests these Chrome permissions for the following purposes:
 - `tabs`: list browser tabs and select the target tab for Browser Control. Tab group names may be shown when the browser exposes them without an additional required permission.
 - `identity`: start the user-approved Google Drive or OneDrive OAuth sign-in flow when the user enables one of those sync providers.
 - `sidePanel`: provide the extension management UI in Chrome's side panel.
+- `<all_urls>` content script match: show the optional DS++ Chat floating launcher on normal web pages. The launcher skips DeepSeek pages to avoid duplicate UI, can be turned off from Appearance settings, and does not automatically read or send page body content.
 - `*://chat.deepseek.com/*`: run on the DeepSeek web app so the extension can apply user-selected context, render tool results, export user-requested conversation history, support local downloads, and support automation inside DeepSeek conversations.
 - `https://api.deepseek.com/*`: send side-panel chat requests to the official DeepSeek API when the user configures an API Key.
 - `https://accounts.google.com/*`, `https://oauth2.googleapis.com/*`, and `https://www.googleapis.com/*`: complete user-approved Google Drive sync sign-in and read/write the extension's sync file in the user's Google Drive app data area.
@@ -107,6 +110,7 @@ Users can manage extension data from the DeepSeek++ side panel. Users can:
 - Enable or disable Browser Control, select the target tab, tune snapshot budgets, and detach from the current tab.
 - Create, pause, run, edit, and delete automation tasks.
 - Configure or remove the DeepSeek API Key used for official API side-panel chat.
+- Turn the normal-page DS++ Chat floating launcher on or off from Appearance settings.
 - Configure or remove WebDAV, Google Drive, or OneDrive sync settings.
 - Clear or change visual settings such as background and pet preferences.
 - Remove the extension or clear browser extension data through Chrome.
@@ -126,7 +130,7 @@ DeepSeek++ does not:
 - Sell user data.
 - Use user data for personalized advertising.
 - Transfer user data to advertising platforms, data brokers, or information resellers.
-- Use user data for purposes unrelated to memory, skills, tools, side-panel Vision image attachments, multimodal analysis, automation, sync, or extension settings.
+- Use user data for purposes unrelated to floating chat, memory, skills, tools, side-panel Vision image attachments, multimodal analysis, automation, sync, or extension settings.
 
 ## 10. Children
 
@@ -146,15 +150,15 @@ For privacy or support questions, open an issue at:
 
 # DeepSeek++ 隐私政策（中文参考）
 
-生效日期：2026-06-25
+生效日期：2026-07-08
 
-DeepSeek++ 是一个浏览器扩展，用于增强 DeepSeek 对话工作流，提供用户可控的长期记忆、技能、项目上下文、保存项、提示词预设、MCP 工具、侧边栏识图图片附件、多模态媒体分析、浏览器控制工具、内联工具执行、本地导出、可下载产物、可选同步、自动化任务和可选侧边栏对话。
+DeepSeek++ 是一个浏览器扩展，用于增强 DeepSeek 对话工作流，提供用户可控的普通网页悬浮聊天、长期记忆、技能、项目上下文、保存项、提示词预设、MCP 工具、侧边栏识图图片附件、多模态媒体分析、浏览器控制工具、内联工具执行、本地导出、可下载产物、可选同步、自动化任务和可选侧边栏对话。
 
 本隐私政策说明扩展会处理哪些数据、如何使用这些数据、何时可能传输数据，以及用户可以如何控制自己的数据。
 
 ## 1. 单一用途
 
-DeepSeek++ 的单一用途是增强 DeepSeek 对话工作流，提供由用户控制的记忆、技能、项目、保存项、预设、工具、侧边栏识图图片附件、多模态媒体分析、浏览器控制、本地导出、可选同步、自动化和可选侧边栏对话能力。
+DeepSeek++ 的单一用途是增强 DeepSeek 对话工作流，提供由用户控制的普通网页悬浮聊天、记忆、技能、项目、保存项、预设、工具、侧边栏识图图片附件、多模态媒体分析、浏览器控制、本地导出、可选同步、自动化和可选侧边栏对话能力。
 
 ## 2. 扩展处理的数据
 
@@ -169,6 +173,7 @@ DeepSeek++ 只会在提供用户可见功能所需时处理以下数据：
 - 用户在侧边栏识图模式中明确附加图片时选择的图片文件、文件名、MIME 类型、文件大小、上传状态和 DeepSeek 文件引用。
 - 用户明确附加媒体进行多模态分析时选择的图片或视频文件、文件名、MIME 类型、文件大小和分析结果。
 - 用户启用浏览器控制并选择或使用受控标签页时处理的浏览器标签页标题、URL、Accessibility Tree 快照和浏览器控制工具结果。
+- 普通网页可能会被本地修改以显示 DS++ Chat 悬浮入口；该入口不会自动读取或发送页面正文。
 - DeepSeek 网页会话中可用的会话数据，仅在执行用户请求的自动化任务或续跑提示词时使用。
 - 用户明确开始本地导出或下载时读取的 DeepSeek 对话历史、单条消息文本、保存项、生成产物内容和附件元数据。
 
@@ -183,6 +188,7 @@ DeepSeek++ 只会将数据用于已经披露的功能：
 - 识别 DeepSeek 回复中的工具调用标记，执行已启用的工具，并展示可读的工具结果。
 - 在用户启用工具执行时，将选定工具结果回传到当前 DeepSeek 对话。
 - 用户配置 DeepSeek API Key 时，将侧边栏对话消息发送到 DeepSeek 官方 API。
+- 在普通网页显示用户可控的 DS++ Chat 悬浮入口。该入口可在外观设置中关闭，且不会自动发送页面正文。
 - 用户在侧边栏识图模式中明确选择或粘贴图片并发送该消息时，将用户选择的图片附加到本次 DeepSeek 对话。
 - 用户附加媒体进行多模态分析时，通过本机多模态 Native Host 和用户配置的 OpenAI/Gemini 兼容端点分析用户选择的图片或视频。
 - 运行用户创建的自动化任务。
@@ -230,6 +236,7 @@ DeepSeek++ 请求以下 Chrome 权限：
 - `tabs`：列出浏览器标签页并选择浏览器控制的目标标签页；如果浏览器无需额外必需权限即可提供标签组名称，界面可能显示该信息帮助用户识别目标标签页。
 - `identity`：当用户启用 Google Drive 或 OneDrive 同步时，启动由用户批准的 OAuth 登录流程。
 - `sidePanel`：在 Chrome 侧边栏中提供扩展管理界面。
+- `<all_urls>` 内容脚本匹配：在普通网页显示可选 DS++ Chat 悬浮入口。该入口会跳过 DeepSeek 页面以避免重复界面，可在外观设置中关闭，且不会自动读取或发送页面正文。
 - `*://chat.deepseek.com/*`：在 DeepSeek 网页版中运行，用于应用用户选择的上下文、展示工具结果、导出用户主动请求的对话历史、支持本地下载，并支持 DeepSeek 对话内的自动化。
 - `https://api.deepseek.com/*`：当用户配置 API Key 时，将侧边栏对话请求发送到 DeepSeek 官方 API。
 - `https://accounts.google.com/*`、`https://oauth2.googleapis.com/*` 和 `https://www.googleapis.com/*`：完成用户批准的 Google Drive 同步登录，并在用户的 Google Drive 应用数据空间读写扩展同步文件。
@@ -253,6 +260,7 @@ DeepSeek++ 请求以下 Chrome 权限：
 - 启用或停用浏览器控制、选择目标标签页、调整快照预算，并从当前标签页断开附着。
 - 创建、暂停、运行、编辑和删除自动化任务。
 - 配置或移除用于官方 API 侧边栏对话的 DeepSeek API Key。
+- 在外观设置中启用或停用普通网页 DS++ Chat 悬浮入口。
 - 配置或移除 WebDAV、Google Drive 或 OneDrive 同步设置。
 - 清除或修改背景、宠物等视觉设置。
 - 通过 Chrome 卸载扩展或清除浏览器扩展数据。
