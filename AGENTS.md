@@ -19,11 +19,11 @@ Chrome, Edge, and Firefox on desktop are the only supported product targets. And
 ## Truth Sources
 
 - `AGENTS.md` — stable project rules, architecture invariants, and recurring engineering constraints.
-- `docs/progress/MASTER.md` — active spec-driven run, GitHub Issue/Milestone mapping, and resume point.
-- `docs/analysis/project-overview.md` — confirmed scope and compatibility boundary for the active refactor.
-- `docs/analysis/module-inventory.md` and `docs/analysis/risk-assessment.md` — current architecture evidence and risk basis.
-- `docs/compatibility/README.md` and its linked registries — stable prompt, runtime, persistence, browser, integration, and historical-data contracts for the active refactor.
-- `docs/plan/task-breakdown.md` and `docs/plan/dependency-graph.md` — task ownership, dependencies, and execution lanes.
+- `docs/archives/deepseek-pp-reliability-compatibility-refactor/progress/MASTER.md` — completed core-refactor record, GitHub Issue/Milestone mapping, validation evidence, and final known gap.
+- `docs/archives/deepseek-pp-reliability-compatibility-refactor/analysis/project-overview.md` — confirmed PC-only scope and compatibility boundary established by the completed refactor.
+- `docs/archives/deepseek-pp-reliability-compatibility-refactor/analysis/module-inventory.md` and `docs/archives/deepseek-pp-reliability-compatibility-refactor/analysis/risk-assessment.md` — final architecture evidence and risk basis for that run.
+- `docs/compatibility/README.md` and its linked registries — stable prompt, runtime, persistence, browser, integration, and historical-data contracts established by the completed refactor.
+- `docs/archives/deepseek-pp-reliability-compatibility-refactor/plan/task-breakdown.md` and `docs/archives/deepseek-pp-reliability-compatibility-refactor/plan/dependency-graph.md` — archived task ownership, dependencies, and execution lanes.
 - `package.json`, `wxt.config.ts`, and GitHub workflows — executable build, test, manifest, and release contracts.
 - `docs/releases/<version>.md` — exact public release/update notes for that version.
 
@@ -83,10 +83,10 @@ Backend/unit tests use a hard 60-second timeout. After timeout or interruption, 
 
 ## Spec-Driven Tracking
 
-- The active refactor uses GitHub Issues + Milestones + PRs in `GITHUB_STANDARD` mode; no Project board is required.
-- Filter the active run with both `spec-driven` and `spec:core-refactor-2026-07`.
-- Implement one Issue per branch/worktree and PR. Record execution telemetry on the Issue before closing it through the merged PR.
-- Update `docs/progress/MASTER.md` when phase status, active task, blockers, GitHub mappings, or the resume point changes.
+- The `core-refactor-2026-07` run used GitHub Issues + Milestones + PRs in `GITHUB_STANDARD` mode and is archived under `docs/archives/deepseek-pp-reliability-compatibility-refactor/`.
+- Treat that archive and its `spec-driven` + `spec:core-refactor-2026-07` GitHub resources as historical evidence, not an active resume point.
+- A future spec-driven run may create a fresh `docs/analysis/`, `docs/plan/`, and `docs/progress/MASTER.md`; archive it on completion instead of mutating the completed core-refactor record.
+- Use Issues as acceptance checklists. Closely related Issues may share one isolated batch branch and one PR when the user authorizes batch execution; keep hotspot owner lanes and internal commits separable, record telemetry on every mapped Issue, and close them through the merged batch PR.
 - Stable rules discovered during execution belong here. Transient findings, task notes, and progress do not.
 
 ## Public Documentation Style
