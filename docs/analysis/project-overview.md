@@ -97,7 +97,7 @@ flowchart LR
 
 1. MCP JSON-RPC response 接收仍会规范化错误版本/错误 ID/`result + error`；工具输出按 UTF-16 字符截断；分页可超过 `maxToolCount`。
 2. Platform fixture 仍冻结三项已过期 gap：未声明 `downloads` 权限却探测能力、sync identity 没有 consumer-owned capability、环境未加载时 Shell 乐观判为支持。
-3. Shell Native router 报告固定 `1.0.0`，而 npm package 是 `1.10.0`；浏览器与 Native tool catalog 仍存在双写面。
+3. 浏览器与 Native tool catalog 仍存在双写面；Shell Native router 的版本报告已收敛到 npm package metadata，不再固定为 `1.0.0`。
 4. DeepSeek request augmentation 对合法 JSON 但非对象/非字符串 prompt 没有单一严格 decoder；解析和 authorization 前置顺序仍可收紧。
 5. Streaming tool call 在 EOF 未闭合时清空 parser state，已发出的 `started` 事件没有显式终态。
 6. Side Panel 首个 Chat screen 仅剩不足 1% 的 raw/gzip budget 余量。

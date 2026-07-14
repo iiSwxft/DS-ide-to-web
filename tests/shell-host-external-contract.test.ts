@@ -19,6 +19,7 @@ import {
 } from './fixtures/external-runtime/installer';
 
 const hostScript = resolve('packages/shell-host/native/shell-mcp-host.mjs');
+const rootPackage = readJson(resolve('package.json'));
 const shellPackage = readJson(resolve('packages/shell-host/package.json'));
 const expectedTools = readJson(resolve('tests/fixtures/external-runtime/shell-tools.json'));
 const liveChildren = new Set<ReturnType<typeof spawn>>();
@@ -32,7 +33,7 @@ describe('Shell Native Host external contract', () => {
   it('freezes host/package/runtime identities without treating version drift as compatible policy', async () => {
     expect(HOST_NAME).toBe(SHELL_HOST_CONTRACT.nativeHost);
     expect(shellPackage.name).toBe(SHELL_HOST_CONTRACT.packageName);
-    expect(shellPackage.version).toBe(SHELL_HOST_CONTRACT.packageVersion);
+    expect(shellPackage.version).toBe(rootPackage.version);
     expect(shellPackage.engines.node).toBe(SHELL_HOST_CONTRACT.nodeEngine);
     expect(FIREFOX_EXTENSION_ID).toBe(SHELL_HOST_CONTRACT.firefoxExtensionId);
 

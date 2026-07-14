@@ -162,6 +162,8 @@ for (const permission of ['storage', 'alarms', 'contextMenus', 'nativeMessaging'
 }
 
 for (const hostPermission of [
+  '*://cn.bing.com/*',
+  '*://www.bing.com/*',
   'https://accounts.google.com/*',
   'https://oauth2.googleapis.com/*',
   'https://www.googleapis.com/*',

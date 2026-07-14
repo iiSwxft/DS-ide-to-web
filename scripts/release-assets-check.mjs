@@ -57,8 +57,25 @@ for (const zip of extensionZips) {
 
 assertFile(sourceZip, 'source zip');
 if (existsSync(sourceZip)) {
+  const sourcePackage = readZipJson(sourceZip, 'package.json');
+  const sourceLock = readZipJson(sourceZip, 'package-lock.json');
+  const sourceShellPackage = readZipJson(sourceZip, 'packages/shell-host/package.json');
+  assertVersion(sourcePackage?.version, version, 'source zip package.json');
+  assertVersion(sourceLock?.version, version, 'source zip package-lock.json');
+  assertVersion(sourceLock?.packages?.['']?.version, version, 'source zip package-lock root package');
+  assertVersion(sourceShellPackage?.version, version, 'source zip Shell Host package');
+  assertVersion(
+    sourceLock?.packages?.['packages/shell-host']?.version,
+    version,
+    'source zip package-lock Shell Host package',
+  );
   assertZipContains(sourceZip, 'package.json', 'source zip must contain package.json');
   assertZipContains(sourceZip, 'wxt.config.ts', 'source zip must contain wxt.config.ts');
+  assertZipContains(
+    sourceZip,
+    `docs/releases/${version}.md`,
+    `source zip must contain docs/releases/${version}.md`,
+  );
   assertZipContains(sourceZip, pyodidePolicyEntry, `source zip must contain ${pyodidePolicyEntry}`);
   assertZipContains(sourceZip, bundledSkillPolicyEntry, `source zip must contain ${bundledSkillPolicyEntry}`);
   assertZipContains(sourceZip, '.github/workflows/release.yml', 'source zip must contain release workflow');
@@ -91,6 +108,12 @@ function assertFile(file, label) {
   }
   if (statSync(file).size === 0) {
     failures.push(`${label} is empty: ${file}`);
+  }
+}
+
+function assertVersion(actual, expected, label) {
+  if (actual !== expected) {
+    failures.push(`${label} version ${actual ?? '<missing>'} does not match ${expected}`);
   }
 }
 

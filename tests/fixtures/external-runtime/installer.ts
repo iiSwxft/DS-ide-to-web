@@ -1,12 +1,11 @@
 export const SHELL_HOST_CONTRACT = {
   nativeHost: 'com.deepseek_pp.shell',
   packageName: 'deepseek-pp-shell-host',
-  packageVersion: '1.10.0',
   nodeEngine: '>=18.17',
   firefoxExtensionId: 'deepseek-pp@zhu1090093659.github',
   browsers: ['chrome', 'chromium', 'edge', 'firefox'],
   commands: ['install', 'status', 'uninstall'],
-  initializedServer: { name: 'deepseek-pp-shell', version: '1.0.0' },
+  initializedServer: { name: 'deepseek-pp-shell' },
   instructions: 'General-purpose shell execution host. Use shell_exec for local commands and python_exec only for short computation or validation snippets.',
 } as const;
 
