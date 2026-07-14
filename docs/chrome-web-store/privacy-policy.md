@@ -65,6 +65,7 @@ Data may be transferred only as part of user-facing features:
 
 - To DeepSeek, when the user sends a chat message, attaches selected images in side-panel Vision mode, runs an automation task, or allows the extension to return selected context or tool results to a DeepSeek conversation.
 - To the official DeepSeek API, when the user configures a DeepSeek API Key and sends a side-panel chat message.
+- To Bing (`cn.bing.com` or `www.bing.com`), when the user invokes the built-in web search tool; the search query is sent to Bing and the resulting titles, links, and snippets are returned to the active DeepSeek conversation.
 - To the local Multimodal Native Host, and from that host to user-configured OpenAI/Gemini-compatible endpoints, when the user attaches images or videos for multimodal analysis.
 - To a WebDAV server, Google Drive app data area, or OneDrive app folder selected and configured by the user, when the user enables sync.
 - To MCP endpoints selected and configured by the user, when the user tests or executes MCP tools.
@@ -216,6 +217,7 @@ DeepSeek++ 不运营用于收集扩展数据的后台服务。扩展不会出售
 
 - 当用户发送聊天消息、在侧边栏识图模式附加用户选择的图片、运行自动化任务，或允许扩展将选定上下文/工具结果回传到 DeepSeek 对话时，传输给 DeepSeek。
 - 用户配置 DeepSeek API Key 并发送侧边栏对话时，传输给 DeepSeek 官方 API。
+- 当用户调用内置联网搜索工具时，将搜索查询发送到 Bing（`cn.bing.com` 或 `www.bing.com`），并把结果标题、链接和摘要返回到当前 DeepSeek 对话。
 - 用户附加图片或视频进行多模态分析时，传输给本机多模态 Native Host，并由该 host 传输给用户配置的 OpenAI/Gemini 兼容端点。
 - 当用户启用同步时，传输给用户选择并配置的 WebDAV 服务器、Google Drive 应用数据空间或 OneDrive 应用文件夹。
 - 当用户测试或执行 MCP 工具时，传输给用户选择并配置的 MCP 端点。

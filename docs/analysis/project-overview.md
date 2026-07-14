@@ -89,11 +89,11 @@ flowchart LR
 - 上一轮完整 `ci:quality`：161 test files / 1,166 tests、三浏览器 build/zip/package、prompt freeze、MCP/Shell/PoW、manifest/UTF-8、离线 Pyodide 均通过。
 - 仍缺少能够证明 unpacked extension 确实加载成功的真实 Chrome lifecycle smoke；上一轮 Chrome 150 命令行加载失败，因此没有把它记作通过。
 
-## Confirmed Current Findings
+## Pre-implementation Findings (closed by PR #402)
 
 上一轮只读审计曾提出的五项问题已经在 `450b5e2` 修复，不得重复立项：MAIN/content 单侧重启、Settings `GET_CONFIG` 解码、Side Panel runtime failure 重复实现、PET load/event 竞态、auth refresh 广泛吞错。
 
-当前仍有直接证据的候选缺口：
+以下条目是 PR #402 合并前有直接证据的候选缺口快照，均已在该 PR 与最终 `ci:quality` 中关闭；仅作为实施前证据保留，不是当前待办。当前状态以 [`docs/progress/MASTER.md`](../progress/MASTER.md) 为准。
 
 1. MCP JSON-RPC response 接收仍会规范化错误版本/错误 ID/`result + error`；工具输出按 UTF-16 字符截断；分页可超过 `maxToolCount`。
 2. Platform fixture 仍冻结三项已过期 gap：未声明 `downloads` 权限却探测能力、sync identity 没有 consumer-owned capability、环境未加载时 Shell 乐观判为支持。

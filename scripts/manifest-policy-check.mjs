@@ -174,6 +174,17 @@ for (const hostPermission of [
   assertIncludes(submission, hostPermission, `Chrome Web Store submission notes must justify ${hostPermission}`);
 }
 
+assertIncludes(
+  privacyPolicy,
+  'To Bing (`cn.bing.com` or `www.bing.com`), when the user invokes the built-in web search tool',
+  'privacy policy must disclose the English Bing search data transfer',
+);
+assertIncludes(
+  privacyPolicy,
+  '\u5c06\u641c\u7d22\u67e5\u8be2\u53d1\u9001\u5230 Bing\uff08`cn.bing.com` \u6216 `www.bing.com`\uff09',
+  'privacy policy must disclose the Chinese Bing search data transfer',
+);
+
 if (failures.length > 0) {
   console.error('Manifest policy check failed:');
   for (const failure of failures) console.error(`- ${failure}`);
