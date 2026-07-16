@@ -29,7 +29,7 @@
   <a href="#feature-overview">Feature Overview</a> ·
   <a href="#use-cases">Use Cases</a> ·
   <a href="#installation">Installation</a> ·
-  <a href="#1110-release-highlights">1.11.0 Highlights</a>
+  <a href="#1111-release-highlights">1.11.1 Highlights</a>
 </p>
 
 ## Product Positioning
@@ -46,7 +46,7 @@ Language can follow the browser or be set to English or Simplified Chinese. Deep
 - [Feature Overview](#feature-overview)
 - [Use Cases](#use-cases)
 - [Core Features](#core-features)
-- [1.11.0 Release Highlights](#1110-release-highlights)
+- [1.11.1 Release Highlights](#1111-release-highlights)
 - [Installation](#installation)
 - [Friendly Links](#friendly-links)
 
@@ -299,7 +299,22 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
   <img src="assets/screenshot-sidepanel-automation.png" width="300" alt="Automation task side panel">
 </p>
 
-## 1.11.0 Release Highlights
+## 1.11.1 Release Highlights
+
+1.11.1 focuses on MCP connection compatibility, recovery, and large tool-set management, making existing services more reliable while giving users finer control over when tools appear in a conversation.
+
+| Area | Main changes |
+|------|--------------|
+| MCP protocol compatibility | Supports more MCP service versions still in use, reducing cases where a connection succeeds but its tools are unavailable. |
+| Tool-call recovery | MCP discovery and call failures can recover through refresh and subsequent chats, and a task can continue after a tool result returns. |
+| Large MCP service management | Each MCP server can expose tools directly, adaptively, or on demand, making larger tool sets manageable while retaining user control over the actual tools. |
+| Consistent runtime behavior | Manual chat, Agent, the side panel, and automation use consistent tool availability and authorization rules. |
+| Permission changes | Chrome, Edge, and Firefox add no browser permissions. |
+
+<details>
+<summary>Show historical release highlights (1.11.0 - 0.2.0)</summary>
+
+### 1.11.0 Release Highlights
 
 1.11.0 completes a PC-browser reliability and compatibility refactor, improving data safety, sync recovery, automation reliability, chat and tool stability, and everyday loading performance.
 
@@ -311,9 +326,6 @@ npm run shell:install -- --browser chrome --extension-id <extension-id>
 | Chat and tool stability | Runtime messages, DeepSeek requests, streamed tool calls, MCP transports, and Native Host inputs use stricter boundaries, making reload behavior and failures more predictable. |
 | Everyday performance | High-frequency storage writes are coalesced, page listeners and lifecycles are centrally owned, and side-panel routes, bundled Skill resources, and the Python runtime load on demand. The initial Chat screen bundle is about 23% smaller and the Chat route about 84% smaller. |
 | Permission changes | Chrome and Edge permissions are unchanged. Firefox adds `identity` only for user-approved Google Drive or OneDrive OAuth sign-in. |
-
-<details>
-<summary>Show historical release highlights (1.10.0 - 0.2.0)</summary>
 
 <details>
 <summary>Show 1.10.0 release highlights</summary>
