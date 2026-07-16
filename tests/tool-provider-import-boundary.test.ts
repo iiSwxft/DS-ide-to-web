@@ -1,7 +1,12 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, extname, join, normalize, resolve } from 'node:path';
-import ts from 'typescript';
+import { dirname, join, normalize, resolve } from 'node:path';
+import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
+import {
+  getModuleSpecifiers,
+  parseTypeScriptSource,
+  walkSourceAst,
+} from './helpers/typescript-source';
 
 const ROOT = process.cwd();
 const CORE_ROOT = resolve(ROOT, 'core');
@@ -84,34 +89,34 @@ describe('tool provider import boundary', () => {
 
 function registryConstructionShape(file: string): { count: number; inlineProviderArrays: number } {
   const source = readFileSync(file, 'utf8');
-  const kind = extname(file) === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, kind);
+  const program = parseTypeScriptSource(file, source);
   const localNames = new Set<string>();
-  sourceFile.forEachChild((node) => {
-    if (!ts.isImportDeclaration(node) || !node.importClause?.namedBindings) return;
-    if (!ts.isNamedImports(node.importClause.namedBindings)) return;
-    for (const element of node.importClause.namedBindings.elements) {
-      if ((element.propertyName ?? element.name).text === 'ToolProviderRegistry') {
-        localNames.add(element.name.text);
+  for (const node of program.body) {
+    if (!t.isImportDeclaration(node)) continue;
+    for (const specifier of node.specifiers) {
+      if (!t.isImportSpecifier(specifier)) continue;
+      const imported = t.isIdentifier(specifier.imported)
+        ? specifier.imported.name
+        : specifier.imported.value;
+      if (imported === 'ToolProviderRegistry') {
+        localNames.add(specifier.local.name);
       }
     }
-  });
+  }
   let count = 0;
   let inlineProviderArrays = 0;
-  const visit = (node: ts.Node) => {
+  walkSourceAst(program, (node) => {
     if (
-      ts.isNewExpression(node)
-      && ts.isIdentifier(node.expression)
-      && localNames.has(node.expression.text)
+      t.isNewExpression(node)
+      && t.isIdentifier(node.callee)
+      && localNames.has(node.callee.name)
     ) {
       count += 1;
-      if (node.arguments?.length === 1 && ts.isArrayLiteralExpression(node.arguments[0])) {
+      if (node.arguments.length === 1 && t.isArrayExpression(node.arguments[0])) {
         inlineProviderArrays += 1;
       }
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
+  });
   return { count, inlineProviderArrays };
 }
 
@@ -139,15 +144,7 @@ function resolveImports(file: string, files: readonly string[]): Set<string> {
 
 function parseModuleSpecifiers(file: string): string[] {
   const source = readFileSync(file, 'utf8');
-  const kind = extname(file) === '.tsx' ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, kind);
-  const specifiers: string[] = [];
-  sourceFile.forEachChild((node) => {
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
-      specifiers.push((node.moduleSpecifier as ts.StringLiteral).text);
-    }
-  });
-  return specifiers;
+  return getModuleSpecifiers(parseTypeScriptSource(file, source));
 }
 
 function listSourceFiles(root: string): string[] {

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import * as ts from 'typescript';
+import * as t from '@babel/types';
 import { describe, expect, it } from 'vitest';
 import { createBackgroundErrorResponse } from '../core/messaging/background-error';
 import {
@@ -26,6 +26,7 @@ import {
   RUNTIME_TAB_RPC_TYPES,
   RUNTIME_TOPOLOGY,
 } from './fixtures/runtime-contract/runtime';
+import { findTypeAliasDeclaration, parseTypeScriptSource } from './helpers/typescript-source';
 
 const backgroundSource = readFileSync('entrypoints/background.ts', 'utf8');
 const typesSource = readFileSync('core/types.ts', 'utf8');
@@ -213,35 +214,43 @@ interface MessageActionContract {
 }
 
 function extractMessageActionContracts(source: string): MessageActionContract[] {
-  const sourceFile = ts.createSourceFile('types.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  let actionAlias: ts.TypeAliasDeclaration | undefined;
-
-  sourceFile.forEachChild((node) => {
-    if (ts.isTypeAliasDeclaration(node) && node.name.text === 'MessageAction') {
-      actionAlias = node;
-    }
-  });
-  if (!actionAlias || !ts.isUnionTypeNode(actionAlias.type)) {
+  const actionAlias = findTypeAliasDeclaration(
+    parseTypeScriptSource('types.ts', source),
+    'MessageAction',
+  );
+  if (!actionAlias || !t.isTSUnionType(actionAlias.typeAnnotation)) {
     throw new Error('MessageAction union not found');
   }
 
-  return actionAlias.type.types.map((member) => {
-    if (!ts.isTypeLiteralNode(member)) throw new Error('MessageAction member is not a type literal');
-    const typeProperty = member.members.find((candidate): candidate is ts.PropertySignature =>
-      ts.isPropertySignature(candidate) && candidate.name.getText(sourceFile) === 'type',
+  return actionAlias.typeAnnotation.types.map((member) => {
+    if (!t.isTSTypeLiteral(member)) throw new Error('MessageAction member is not a type literal');
+    const typeProperty = member.members.find((candidate): candidate is t.TSPropertySignature =>
+      isNamedTypeProperty(candidate, 'type'),
     );
-    const literal = typeProperty?.type;
-    if (!literal || !ts.isLiteralTypeNode(literal) || !ts.isStringLiteral(literal.literal)) {
+    const literal = typeProperty?.typeAnnotation?.typeAnnotation;
+    if (!literal || !t.isTSLiteralType(literal) || !t.isStringLiteral(literal.literal)) {
       throw new Error('MessageAction member has no string-literal type');
     }
-    const payloadProperty = member.members.find((candidate): candidate is ts.PropertySignature =>
-      ts.isPropertySignature(candidate) && candidate.name.getText(sourceFile) === 'payload',
+    const payloadProperty = member.members.find((candidate): candidate is t.TSPropertySignature =>
+      isNamedTypeProperty(candidate, 'payload'),
     );
     return {
-      type: literal.literal.text,
-      payloadPresence: payloadProperty ? payloadProperty.questionToken ? 'optional' : 'required' : 'none',
+      type: literal.literal.value,
+      payloadPresence: payloadProperty ? payloadProperty.optional ? 'optional' : 'required' : 'none',
     };
   });
+}
+
+function isNamedTypeProperty(
+  candidate: t.TSTypeElement,
+  name: string,
+): candidate is t.TSPropertySignature {
+  return t.isTSPropertySignature(candidate)
+    && !candidate.computed
+    && (
+      t.isIdentifier(candidate.key, { name })
+      || t.isStringLiteral(candidate.key, { value: name })
+    );
 }
 
 function readInventoryList(heading: string, level = 2): string[] {
