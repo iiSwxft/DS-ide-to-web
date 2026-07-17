@@ -57,6 +57,10 @@ interface ToolAuthorizationState {
 export interface CreateToolAuthorizationInput {
   requestId: string;
   trigger: ToolExecutionTrigger;
+  /**
+   * An untrusted page/model routing claim. It never establishes a grant's
+   * browser-owned chat-session binding.
+   */
   chatSessionId?: string | null;
   taskId?: string;
   runId?: string;
@@ -95,8 +99,10 @@ export async function createToolAuthorization(
 ): Promise<ToolAuthorizationGrantSummary> {
   const requestId = requireIdentity(input.requestId, 'requestId');
   const now = input.now ?? Date.now();
-  const chatSessionId = normalizeChatSessionId(input.chatSessionId);
-  assertSubjectSession(input.subject, chatSessionId);
+  // The page request body is untrusted. Bind this grant only to the session
+  // Chrome reports for the receiving content document, never to its declared
+  // chat_session_id.
+  const chatSessionId = normalizeChatSessionId(input.subject.chatSessionId);
 
   const descriptors = input.descriptors.filter(isExecutableDescriptor);
   assertUniqueDescriptorIds(descriptors);
@@ -568,8 +574,14 @@ function assertSubjectMatches(
   const expectedChatSessionId = normalizeChatSessionId(grant.subject.chatSessionId);
   const currentChatSessionId = normalizeChatSessionId(current.chatSessionId);
   if (expectedChatSessionId === null) {
-    if (currentChatSessionId === null) return false;
+    if (currentChatSessionId === null) {
+      throw new ToolAuthorizationError(
+        'tool_session_mismatch',
+        'Tool authorization has not been bound to a browser-owned chat session.',
+      );
+    }
     grant.subject.chatSessionId = currentChatSessionId;
+    grant.chatSessionId = currentChatSessionId;
     return true;
   }
   if (currentChatSessionId !== expectedChatSessionId) {
@@ -606,20 +618,11 @@ function assertSubjectMatchesWithoutBinding(
   assertOwnerDocumentMatches(grant, current);
   const expectedChatSessionId = normalizeChatSessionId(grant.subject.chatSessionId);
   const currentChatSessionId = normalizeChatSessionId(current.chatSessionId);
+  if (expectedChatSessionId === null) return;
   if (expectedChatSessionId !== null && currentChatSessionId !== expectedChatSessionId) {
     throw new ToolAuthorizationError(
       'tool_session_mismatch',
       'Tool authorization belongs to another chat session.',
-    );
-  }
-}
-
-function assertSubjectSession(subject: ToolAuthorizationSubject, chatSessionId: string | null): void {
-  const subjectChatSessionId = normalizeChatSessionId(subject.chatSessionId);
-  if (subjectChatSessionId !== chatSessionId) {
-    throw new ToolAuthorizationError(
-      'tool_session_mismatch',
-      'Requested chat session does not match the browser-owned runtime session.',
     );
   }
 }
@@ -781,8 +784,11 @@ function hasValidStoredGrantSessionBinding(
   grantChatSessionId: string | null | undefined,
   subject: ToolAuthorizationSubject,
 ): boolean {
-  return grantChatSessionId === null ||
-    normalizeChatSessionId(subject.chatSessionId) === grantChatSessionId;
+  const subjectChatSessionId = normalizeChatSessionId(subject.chatSessionId);
+  const normalizedGrantChatSessionId = normalizeChatSessionId(grantChatSessionId);
+  return subjectChatSessionId === null ||
+    normalizedGrantChatSessionId === null ||
+    subjectChatSessionId === normalizedGrantChatSessionId;
 }
 
 function hasUniqueStoredDescriptorIds(

@@ -401,11 +401,14 @@ describe('tool authorization context', () => {
 
     await expect(authorizeToolExecution(
       makeCall({
-        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: null },
+        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: 'chat-1' },
       }),
       { kind: 'grant', grantId: grant.id, subject: SUBJECT },
       [descriptor],
-    )).resolves.toMatchObject({ descriptor });
+    )).resolves.toMatchObject({
+      descriptor,
+      call: { source: { chatSessionId: 'chat-1' } },
+    });
 
     await expect(authorizeToolExecution(
       makeCall({
@@ -439,14 +442,61 @@ describe('tool authorization context', () => {
     )).resolves.toBeUndefined();
   });
 
-  it('does not mint an arbitrary chat grant from a new-chat receiver', async () => {
-    await expect(createToolAuthorization({
+  it('derives the grant session from the browser-owned receiver rather than a page claim', async () => {
+    const descriptor = makeDescriptor();
+    const grant = await createToolAuthorization({
       requestId: 'request-1',
       trigger: 'manual_chat',
       chatSessionId: 'chat-forged',
-      subject: { ...SUBJECT, chatSessionId: null },
-      descriptors: [makeDescriptor()],
-    })).rejects.toMatchObject({ code: 'tool_session_mismatch' });
+      subject: SUBJECT,
+      descriptors: [descriptor],
+    });
+    expect(grant.chatSessionId).toBe('chat-1');
+
+    await expect(authorizeToolExecution(
+      makeCall({
+        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: 'chat-forged' },
+      }),
+      { kind: 'grant', grantId: grant.id, subject: SUBJECT },
+      [descriptor],
+    )).rejects.toMatchObject({ code: 'tool_session_mismatch' });
+
+    await expect(authorizeToolExecution(
+      makeCall({
+        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: 'chat-1' },
+      }),
+      { kind: 'grant', grantId: grant.id, subject: SUBJECT },
+      [descriptor],
+    )).resolves.toMatchObject({ descriptor });
+  });
+
+  it('binds a new-chat grant to the first browser-owned route before execution', async () => {
+    const descriptor = makeDescriptor();
+    const newChatSubject = { ...SUBJECT, chatSessionId: null };
+    const grant = await createToolAuthorization({
+      requestId: 'request-1',
+      trigger: 'manual_chat',
+      chatSessionId: 'chat-forged',
+      subject: newChatSubject,
+      descriptors: [descriptor],
+    });
+    expect(grant.chatSessionId).toBeNull();
+
+    await expect(authorizeToolExecution(
+      makeCall({
+        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: 'chat-forged' },
+      }),
+      { kind: 'grant', grantId: grant.id, subject: newChatSubject },
+      [descriptor],
+    )).rejects.toMatchObject({ code: 'tool_session_mismatch' });
+
+    await expect(authorizeToolExecution(
+      makeCall({
+        source: { trigger: 'manual_chat', requestId: 'request-1', chatSessionId: 'chat-other' },
+      }),
+      { kind: 'grant', grantId: grant.id, subject: { ...SUBJECT, chatSessionId: 'chat-other' } },
+      [descriptor],
+    )).resolves.toMatchObject({ descriptor });
   });
 
   it('atomically rejects sequential and concurrent replay', async () => {
