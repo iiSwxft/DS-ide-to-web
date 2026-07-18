@@ -410,6 +410,23 @@ describe('DeepSeek project sidebar organizer', () => {
     expect(document.querySelector<HTMLElement>('[data-testid="session-one-row"]')?.style.getPropertyValue('display')).toBe('');
   });
 
+  it('finishes teardown when an extension reload has invalidated the runtime listener', async () => {
+    const state = createProjectState();
+    sendMessage.mockResolvedValue(state);
+    mountHistoryDom();
+
+    const controller = startDeepSeekProjectSidebarOrganizer(() => labels);
+    await flushProjectSidebar();
+    const removeListener = chrome.runtime.onMessage.removeListener as ReturnType<typeof vi.fn>;
+    removeListener.mockImplementationOnce(() => {
+      throw new Error('Extension context invalidated.');
+    });
+
+    expect(() => controller.stop()).not.toThrow();
+    expect(document.getElementById('dpp-project-sidebar')).toBeNull();
+    expect(document.querySelector<HTMLElement>('[data-testid="session-one-row"]')?.hidden).toBe(false);
+  });
+
   it('toggles a project as the pending context for the next new conversation', async () => {
     const state = createProjectState({ conversations: [] });
     sendMessage.mockImplementation(async (message) => {
