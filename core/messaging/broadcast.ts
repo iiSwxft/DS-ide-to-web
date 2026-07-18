@@ -15,10 +15,10 @@ export async function broadcastRuntimeUpdate(
   excludeTabId: number | undefined,
   dependencies: RuntimeBroadcastDependencies,
 ): Promise<void> {
-  deliverBestEffort(
+  deliverRuntimeMessageBestEffort(
     dependencies.sendRuntimeMessage(payload),
     'broadcast_runtime_delivery_failed',
-    dependencies,
+    dependencies.reportError,
   );
 
   let tabs: readonly RuntimeBroadcastTab[] = [];
@@ -27,10 +27,10 @@ export async function broadcastRuntimeUpdate(
   } catch (error) {
     dependencies.reportError('broadcast_tabs_query_failed', error);
     if (excludeTabId) {
-      deliverBestEffort(
+      deliverRuntimeMessageBestEffort(
         dependencies.sendTabMessage(excludeTabId, payload),
         'broadcast_tab_delivery_failed',
-        dependencies,
+        dependencies.reportError,
       );
     }
     return;
@@ -38,30 +38,30 @@ export async function broadcastRuntimeUpdate(
 
   for (const tab of tabs) {
     if (tab.id && tab.id !== excludeTabId) {
-      deliverBestEffort(
+      deliverRuntimeMessageBestEffort(
         dependencies.sendTabMessage(tab.id, payload),
         'broadcast_tab_delivery_failed',
-        dependencies,
+        dependencies.reportError,
       );
     }
   }
   if (excludeTabId) {
-    deliverBestEffort(
+    deliverRuntimeMessageBestEffort(
       dependencies.sendTabMessage(excludeTabId, payload),
       'broadcast_tab_delivery_failed',
-      dependencies,
+      dependencies.reportError,
     );
   }
 }
 
-function deliverBestEffort(
+export function deliverRuntimeMessageBestEffort(
   delivery: Promise<unknown>,
   errorCode: string,
-  dependencies: Pick<RuntimeBroadcastDependencies, 'reportError'>,
+  reportError: RuntimeBroadcastDependencies['reportError'],
 ): void {
   void delivery.catch((error) => {
     if (isExpectedMissingRuntimeMessageReceiverError(error)) return;
-    dependencies.reportError(errorCode, error);
+    reportError(errorCode, error);
   });
 }
 

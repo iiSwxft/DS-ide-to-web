@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { broadcastRuntimeUpdate } from '../core/messaging/broadcast';
+import {
+  broadcastRuntimeUpdate,
+  deliverRuntimeMessageBestEffort,
+} from '../core/messaging/broadcast';
 
 describe('runtime update broadcasting', () => {
   it('does not reject the caller when tab discovery fails', async () => {
@@ -73,5 +76,34 @@ describe('runtime update broadcasting', () => {
     await Promise.resolve();
 
     expect(reportError).not.toHaveBeenCalled();
+  });
+});
+
+describe('best-effort runtime message delivery', () => {
+  it('does not report an expected absent notification receiver', async () => {
+    const reportError = vi.fn();
+
+    deliverRuntimeMessageBestEffort(
+      Promise.reject(new Error('Could not establish connection. Receiving end does not exist.')),
+      'chat_auth_notification_failed',
+      reportError,
+    );
+    await Promise.resolve();
+
+    expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it('reports unexpected notification delivery failures with their owning code', async () => {
+    const failure = new Error('runtime transport unavailable');
+    const reportError = vi.fn();
+
+    deliverRuntimeMessageBestEffort(
+      Promise.reject(failure),
+      'chat_auth_notification_failed',
+      reportError,
+    );
+    await Promise.resolve();
+
+    expect(reportError).toHaveBeenCalledWith('chat_auth_notification_failed', failure);
   });
 });

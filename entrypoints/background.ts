@@ -226,7 +226,7 @@ import {
 import { buildPromptAugmentation } from '../core/prompt';
 import {
   broadcastRuntimeUpdate,
-  isExpectedMissingRuntimeMessageReceiverError,
+  deliverRuntimeMessageBestEffort,
 } from '../core/messaging/broadcast';
 import { createBackgroundErrorResponse } from '../core/messaging/background-error';
 import {
@@ -843,10 +843,11 @@ function registerContextMenuClickListener(): void {
 
 async function openSidePanelAndSendText(text: string) {
   await pendingChatTextStore.write(text);
-  void chrome.runtime.sendMessage({ type: 'OPEN_CHAT_WITH_TEXT', text }).catch((error) => {
-    if (isExpectedMissingRuntimeMessageReceiverError(error)) return;
-    reportBackgroundStartupError('pending_chat_text_notification_failed', error);
-  });
+  deliverRuntimeMessageBestEffort(
+    chrome.runtime.sendMessage({ type: 'OPEN_CHAT_WITH_TEXT', text }),
+    'pending_chat_text_notification_failed',
+    reportBackgroundStartupError,
+  );
 }
 
 async function ensureBuiltInMcpPresets() {
@@ -1123,8 +1124,11 @@ async function getChatAuthStatus(preferredTabId?: number) {
 
 async function broadcastChatAuthStatus(preferredTabId?: number) {
   const status = await getChatAuthStatus(preferredTabId);
-  chrome.runtime.sendMessage({ type: 'AUTH_STATUS_CHANGED', ...status })
-    .catch((error) => reportBackgroundStartupError('chat_auth_notification_failed', error));
+  deliverRuntimeMessageBestEffort(
+    chrome.runtime.sendMessage({ type: 'AUTH_STATUS_CHANGED', ...status }),
+    'chat_auth_notification_failed',
+    reportBackgroundStartupError,
+  );
 }
 
 async function broadcastConversationExportProgress(
@@ -1445,6 +1449,9 @@ function broadcastChatChunk(
   },
   excludeTabId?: number,
 ) {
-  chrome.runtime.sendMessage({ type: 'CHAT_STREAM_CHUNK', ...chunk })
-    .catch((error) => reportBackgroundStartupError('chat_stream_notification_failed', error));
+  deliverRuntimeMessageBestEffort(
+    chrome.runtime.sendMessage({ type: 'CHAT_STREAM_CHUNK', ...chunk }),
+    'chat_stream_notification_failed',
+    reportBackgroundStartupError,
+  );
 }
