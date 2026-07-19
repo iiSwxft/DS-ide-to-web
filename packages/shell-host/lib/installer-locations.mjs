@@ -95,6 +95,7 @@ function getWindowsRegistryKey(browser) {
     case 'chrome': return `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\${HOST_NAME}`;
     case 'edge': return `HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts\\${HOST_NAME}`;
     case 'chromium': return `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST_NAME}`;
+    case 'firefox': return `HKCU\\Software\\Mozilla\\NativeMessagingHosts\\${HOST_NAME}`;
     default: return null;
   }
 }

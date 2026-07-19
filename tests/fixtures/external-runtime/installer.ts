@@ -83,7 +83,7 @@ export const INSTALLER_LOCATION_FIXTURES = [
       hostInstallDir: 'C:\\Users\\contract\\AppData\\Local\\DeepSeek++\\NativeHost',
       manifestDir: 'C:\\Users\\contract\\AppData\\Local\\DeepSeek++\\NativeMessagingHosts',
       manifestPath: 'C:\\Users\\contract\\AppData\\Local\\DeepSeek++\\NativeMessagingHosts\\com.deepseek_pp.shell.json',
-      registryKey: null,
+      registryKey: 'HKCU\\Software\\Mozilla\\NativeMessagingHosts\\com.deepseek_pp.shell',
     },
   },
 ] as const;
