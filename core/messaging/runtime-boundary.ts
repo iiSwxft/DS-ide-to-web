@@ -1,3 +1,5 @@
+import { readDeepSeekChatSessionId } from '../deepseek/chat-session';
+
 export const RUNTIME_BOUNDARY_ERROR_CODES = {
   invalidMessage: 'runtime_message_invalid',
   unauthorizedSender: 'runtime_message_unauthorized',
@@ -24,6 +26,11 @@ export interface RuntimeMessageSenderLike {
     id?: number | null;
     url?: string;
   };
+}
+
+export interface RuntimeBrowserTabLike {
+  id?: number;
+  url?: string;
 }
 
 export type RuntimeMessageSurface = 'extension_context' | 'deepseek_content';
@@ -168,7 +175,41 @@ export function createRuntimeMessageContext(
     documentId: validDocumentId(sender.documentId),
     documentLifecycle: sender.documentLifecycle,
     documentSessionId: createDocumentSessionId('deepseek_content', sender, senderUrl, frameId ?? 0),
-    chatSessionId: readDeepSeekChatSessionId(senderUrl),
+    // sender.url identifies the content document and may retain the initial
+    // URL across SPA navigation. The browser-owned tab URL is the current
+    // DeepSeek route after the origin check above, so it owns chat binding.
+    chatSessionId: readDeepSeekChatSessionId(tabUrl ?? senderUrl) ?? undefined,
+  };
+}
+
+/**
+ * Re-reads the receiver's current browser-owned tab route after a content
+ * message arrives. `MessageSender.tab` can retain a pre-navigation URL for a
+ * same-document SPA navigation, so it is not sufficient for grant binding.
+ */
+export function refreshDeepSeekContentRuntimeContext(
+  context: RuntimeMessageContext,
+  tab: RuntimeBrowserTabLike,
+  policy: Pick<RuntimeTrustPolicy, 'deepSeekOrigin'>,
+): RuntimeMessageContext {
+  if (context.surface !== 'deepseek_content') return context;
+  if (context.tabId === undefined || validTabId(tab.id) !== context.tabId) {
+    throwUnauthorized('Runtime sender browser tab does not match its receiving tab.');
+  }
+  if (!policy.deepSeekOrigin) {
+    throwUnauthorized('Runtime trust policy is missing the DeepSeek origin.');
+  }
+
+  const tabUrl = requiredBrowserTabUrl(tab.url);
+  const deepSeekOrigin = normalizeOrigin(policy.deepSeekOrigin);
+  if (readUrlOrigin(tabUrl) !== deepSeekOrigin) {
+    throwUnauthorized('Runtime sender browser tab is not a DeepSeek top-level document.');
+  }
+
+  return {
+    ...context,
+    tabUrl,
+    chatSessionId: readDeepSeekChatSessionId(tabUrl) ?? undefined,
   };
 }
 
@@ -244,6 +285,17 @@ function requiredUrl(value: unknown): string {
   }
 }
 
+function requiredBrowserTabUrl(value: unknown): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throwUnauthorized('Runtime sender browser tab URL is missing.');
+  }
+  try {
+    return new URL(value).href;
+  } catch {
+    throwUnauthorized('Runtime sender browser tab URL is invalid.');
+  }
+}
+
 function normalizeOrigin(value: string): string {
   try {
     return readUrlOrigin(new URL(value).href);
@@ -270,16 +322,6 @@ function validOptionalFrameId(value: unknown): number | undefined {
   if (value === undefined) return undefined;
   if (typeof value === 'number' && Number.isInteger(value) && value >= 0) return value;
   throwUnauthorized('Runtime sender frame is invalid.');
-}
-
-function readDeepSeekChatSessionId(senderUrl: string): string | undefined {
-  const match = new URL(senderUrl).pathname.match(/^\/(?:a\/)?chat\/s\/([^/]+)/);
-  if (!match) return undefined;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return undefined;
-  }
 }
 
 function validDocumentId(value: unknown): string | undefined {

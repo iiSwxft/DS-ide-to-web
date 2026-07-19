@@ -18,6 +18,7 @@ import { createEmptyHistoryOrganizerState } from '../../../core/history-organize
 import { injectInjectedThemeStyles } from '../../../core/ui/injected-theme';
 import { decodeProjectContextState } from '../../../core/project/codec';
 import { isUsableProjectConversationTitle } from '../../../core/project/title';
+import { isExtensionContextInvalidatedError } from '../../../core/platform/chrome-api';
 
 export interface ProjectSidebarOrganizerController {
   stop(): void;
@@ -319,7 +320,13 @@ export function startDeepSeekProjectSidebarOrganizer(
     stop() {
       stopped = true;
       observer.disconnect();
-      chrome.runtime.onMessage.removeListener(messageHandler);
+      try {
+        chrome.runtime.onMessage.removeListener(messageHandler);
+      } catch (error) {
+        // Reloading the extension invalidates an old content world before its
+        // pagehide cleanup runs; that listener is already gone in that case.
+        if (!isExtensionContextInvalidatedError(error)) throw error;
+      }
       document.removeEventListener('click', clickCaptureHandler, true);
       window.removeEventListener('dpp:navigation', navigationHandler);
       if (timer) clearTimeout(timer);
