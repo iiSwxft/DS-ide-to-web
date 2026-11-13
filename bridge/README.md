@@ -52,7 +52,7 @@ Extra body fields: `conversation_id` (continue a DeepSeek chat; returned in ever
 | tool | what it does |
 | --- | --- |
 | `deepseek_ask` | send a prompt. Starts a new chat by default (`new_chat_title` names it); `chat` (id or title) or `conversation_id` continues one. Flags: `model`, `thinking`, `search`, `include_reasoning` |
-| `deepseek_edit_message` | replace one of your earlier messages (like the site's pencil Edit button) and get DeepSeek's answer to the new text. Defaults to your latest message; `message_id` picks another. Later messages leave the active branch |
+| `deepseek_edit_message` | replace one of your earlier messages (like the site's pencil Edit button) and get DeepSeek's answer to the new text. Defaults to your latest message; `message_id` picks another. Later messages leave the active branch; `deepseek_read_chat` then shows only the live conversation |
 | `deepseek_list_chats` | list your chats, optionally filtered by title |
 | `deepseek_read_chat` | read a chat's messages by id or title |
 | `deepseek_rename_chat` | rename a chat |

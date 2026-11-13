@@ -99,7 +99,7 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
       }
       if (req.method === 'GET' && url.pathname === '/api/chat') {
         const chat = await resolveChat(link, url.searchParams.get('chat'));
-        return sendJson(res, 200, await readChat(link, chat.id, { includeReasoning: url.searchParams.get('reasoning') === '1' }));
+        return sendJson(res, 200, await readChat(link, chat.id, { includeReasoning: url.searchParams.get('reasoning') === '1', allBranches: url.searchParams.get('all') === '1' }));
       }
       if (req.method === 'POST' && url.pathname === '/api/chat/rename') {
         const body = await readJson(req);

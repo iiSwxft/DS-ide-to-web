@@ -72,8 +72,20 @@ function fragmentText(message, types) {
     .join('');
 }
 
-/** Read a chat by id: session info plus ordered messages. */
-export async function readChat(link, id, { includeReasoning = false } = {}) {
+/** Keep only the messages on the path from the root to the current message (follows parent links). */
+function activeBranch(messages, currentId) {
+  if (currentId === null || currentId === undefined) return messages;
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  if (!byId.has(currentId)) return messages;
+  const keep = new Set();
+  for (let id = currentId; id !== null && id !== undefined && byId.has(id) && !keep.has(id); id = byId.get(id).parentId) {
+    keep.add(id);
+  }
+  return messages.filter((m) => keep.has(m.id));
+}
+
+/** Read a chat by id: session info plus ordered messages (live branch unless allBranches). */
+export async function readChat(link, id, { includeReasoning = false, allBranches = false } = {}) {
   const data = await call(link, ROUTES.history, { query: { chat_session_id: id } });
   const messages = (data.chat_messages ?? []).map((m) => {
     const role = String(m.role).toLowerCase();
@@ -87,10 +99,12 @@ export async function readChat(link, id, { includeReasoning = false } = {}) {
     return msg;
   });
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
+  const currentMessageId = data.chat_session?.current_message_id ?? lastAssistant?.id ?? null;
   return {
     chat: data.chat_session ? toChat(data.chat_session) : { id },
-    currentMessageId: data.chat_session?.current_message_id ?? lastAssistant?.id ?? null,
-    messages,
+    currentMessageId,
+    // Editing a message leaves the old answers behind as another branch; show only the live conversation.
+    messages: allBranches ? messages : activeBranch(messages, currentMessageId),
   };
 }
 

@@ -27,6 +27,15 @@ function handleApi({ path, query = {}, json = {} }) {
     const hasMore = Math.max(start, 0) + page.length < sorted.length;
     return envelope({ chat_sessions: page, has_more: hasMore });
   }
+  if (path === '/api/v0/chat/history_messages' && query.chat_session_id === '99999999-9999-4999-8999-999999999999') {
+    const user = (id, parent, text) => ({ message_id: id, parent_id: parent, role: 'USER', fragments: [{ type: 'REQUEST', content: text }] });
+    const bot = (id, parent, text) => ({ message_id: id, parent_id: parent, role: 'ASSISTANT', fragments: [{ type: 'RESPONSE', content: text }] });
+    return envelope({
+      chat_session: { id: query.chat_session_id, title: 'branchy', current_message_id: 6, updated_at: 1 },
+      // 3/4 is the old branch left behind by an edit; 5/6 replaced it.
+      chat_messages: [user(1, null, 'q1'), bot(2, 1, 'a1'), user(3, 2, 'old q'), bot(4, 3, 'old a'), user(5, 2, 'new q'), bot(6, 5, 'new a')],
+    });
+  }
   if (path === '/api/v0/chat/history_messages') {
     const chat = chats.find((c) => c.id === query.chat_session_id);
     if (!chat) return envelope({}, 1004);
@@ -265,4 +274,12 @@ test('edit validates the target message and the replacement text', async () => {
   assert.equal(res.status, 400);
   res = await call('/api/edit', { prompt: 'x' });
   assert.equal(res.status, 400);
+});
+
+test('reading a chat shows only the live branch after an edit; all=1 shows every branch', async () => {
+  const BR = '99999999-9999-4999-8999-999999999999';
+  const live = await (await call(`/api/chat?chat=${BR}`)).json();
+  assert.deepEqual(live.messages.map((m) => m.id), [1, 2, 5, 6]);
+  const all = await (await call(`/api/chat?chat=${BR}&all=1`)).json();
+  assert.deepEqual(all.messages.map((m) => m.id), [1, 2, 3, 4, 5, 6]);
 });
