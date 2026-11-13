@@ -105,16 +105,24 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, `http://${HOST}`);
     const origin = req.headers.origin ?? '';
-    if (!HOST_RE.test(req.headers.host ?? '')) { socket.destroy(); return; }
     const supplied = url.searchParams.get('token') ?? '';
     // Only a browser extension may connect: web pages carry an http(s) origin.
     const originOk = /^(chrome|moz)-extension:\/\//.test(origin);
-    if (url.pathname !== '/ext' || !originOk || !supplied || !safeEqual(supplied, token)) {
-      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    let reason = null;
+    if (!HOST_RE.test(req.headers.host ?? '')) reason = `bad Host header "${req.headers.host}"`;
+    else if (url.pathname !== '/ext') reason = `bad path "${url.pathname}"`;
+    else if (!originOk) reason = `origin "${origin}" is not a browser extension`;
+    else if (!supplied || !safeEqual(supplied, token)) reason = 'wrong key (set the same key in the extension popup, Advanced, or Reset to defaults)';
+    if (reason) {
+      console.warn(`[bridge] rejected extension connection: ${reason}`);
+      socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
     }
-    wss.handleUpgrade(req, socket, head, (ws) => link.attach(ws));
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      console.log(`[bridge] extension connected (${origin})`);
+      link.attach(ws);
+    });
   });
 
   return { server, link, wss };
