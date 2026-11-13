@@ -87,6 +87,11 @@ function png(size, rgba) {
 for (const size of [16, 32, 48, 128]) writeFileSync(join(out, `icon-${size}.png`), png(size, render(size)));
 writeFileSync(join(out, 'icon.png'), png(96, render(96)));
 
+// The Claude Code plugin listing wants a square PNG between 512 and 2048 px.
+const pluginDir = join(out, '..', '..', '..', '.claude-plugin');
+mkdirSync(pluginDir, { recursive: true });
+writeFileSync(join(pluginDir, 'icon.png'), png(512, render(512)));
+
 writeFileSync(join(out, 'icon.svg'), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6f8aff"/><stop offset="1" stop-color="#3a4bd8"/></linearGradient></defs>
   <rect width="128" height="128" rx="28" fill="url(#g)"/>

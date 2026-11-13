@@ -1,6 +1,8 @@
 {
   "name": "ds-ide-to-web",
-  "owner": { "name": "iiSwxft" },
+  "owner": {
+    "name": "iiSwxft"
+  },
   "plugins": [
     {
       "name": "deepseek-bridge",
@@ -8,5 +10,6 @@
       "description": "Use your logged-in DeepSeek web chat from Claude Code: an MCP server plus /deepseek-collab, /deepseek-director and /deepseek-setup commands. Needs the DeepSeek Bridge browser extension.",
       "version": "0.3.0"
     }
-  ]
+  ],
+  "description": "Plugins for using your logged-in DeepSeek web chat from Claude Code, through the DeepSeek Bridge MCP server."
 }
