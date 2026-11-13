@@ -9,4 +9,4 @@ This repository is a local bridge that exposes the user's logged-in DeepSeek web
   - The extension may only call the allowlisted chat routes in `bridge/extension/src/content.ts`. Do not widen that list to account, settings, logout, or delete-all routes.
   - Deleting chats must keep requiring `confirm: true` and must resolve every target before deleting any.
   - Do not add secrets to the repo. The default key `deepseek-bridge` is public by design.
-- **Commits:** commit and push changes to `main` as you go.
+- **Commits:** commit and push changes to `main` as you go. Do not add `Co-Authored-By` trailers or tool-attribution lines to commit messages; the owner does not want AI tools or other accounts listed as contributors.
