@@ -20,6 +20,12 @@ const targets = {
       ...m,
       // Firefox MV3 uses event pages (background.scripts), not service workers.
       background: { ...background, scripts: [service_worker] },
+      // Firefox's default MV3 CSP contains `upgrade-insecure-requests`, which rewrites
+      // ws://127.0.0.1 to wss:// and breaks the local bridge. Replace it with a policy
+      // that keeps scripts locked down but does not upgrade requests.
+      content_security_policy: {
+        extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+      },
       browser_specific_settings: {
         gecko: {
           id: 'ds-bridge@ds-ide-to-web.invalid',
