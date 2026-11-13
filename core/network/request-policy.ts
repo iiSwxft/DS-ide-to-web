@@ -41,6 +41,18 @@ interface RequestScope {
   cleanup(): void;
 }
 
+let rawResponseBodies = false;
+
+/**
+ * Hand back fetch responses unwrapped. Firefox content scripts cannot build a
+ * Response from a script-created ReadableStream ("Permission denied to access
+ * property autoAllocateChunkSize"), so the bridge extension opts out of the
+ * size-limiting wrapper. The main extension never calls this.
+ */
+export function setRawResponseBodies(enabled: boolean): void {
+  rawResponseBodies = enabled;
+}
+
 export async function fetchWithNetworkPolicy(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -65,7 +77,7 @@ export async function fetchWithNetworkPolicy(
     throw abortReason(scope, policy);
   }
 
-  if (!response.body) {
+  if (!response.body || rawResponseBodies) {
     scope.cleanup();
     return response;
   }
