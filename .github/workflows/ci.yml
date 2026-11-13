@@ -14,7 +14,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm run setup
+      - run: npm ci
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+      - name: The bundled MCP server must be up to date
+        run: |
+          npm run bundle
+          git diff --exit-code -- dist/ds-ide-to-web.mjs

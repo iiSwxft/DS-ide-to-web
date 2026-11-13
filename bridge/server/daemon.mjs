@@ -49,7 +49,7 @@ function sendError(res, error) {
   sendJson(res, status, { error: { message: error.message, code: error.code ?? 'internal_error' } });
 }
 
-export function createBridge({ token, link = new ExtensionLink() } = {}) {
+export function createBridge({ token, link = new ExtensionLink(), onShutdown = null } = {}) {
   const server = createServer(async (req, res) => {
     try {
       // Browsers must not be able to drive the bridge from a web page.
@@ -70,6 +70,11 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
       res.on('close', () => { if (!res.writableEnded) abort.abort(); });
 
       if (req.method === 'GET' && url.pathname === '/v1/models') return sendJson(res, 200, listModels());
+      if (req.method === 'POST' && url.pathname === '/api/shutdown' && onShutdown) {
+        sendJson(res, 200, { ok: true });
+        setTimeout(onShutdown, 100);
+        return;
+      }
       if (req.method === 'GET' && url.pathname === '/api/status') {
         const base = {
           extensionConnected: link.connected,
@@ -148,10 +153,10 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
   return { server, link, wss };
 }
 
-async function main() {
+export async function startDaemon() {
   const token = loadToken();
   const port = getPort();
-  const { server } = createBridge({ token });
+  const { server } = createBridge({ token, onShutdown: () => process.exit(0) });
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') console.error(`Port ${port} is already in use. Is the bridge already running? Set DS_BRIDGE_PORT to change it.`);
     else console.error(error);
@@ -167,7 +172,7 @@ async function main() {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}` ||
-    process.argv[1]?.endsWith('daemon.mjs')) {
-  main().catch((error) => { console.error(error); process.exit(1); });
+// Run directly (node daemon.mjs). Through cli.mjs this file is imported and startDaemon() is called instead.
+if (process.argv[1]?.endsWith('daemon.mjs')) {
+  startDaemon().catch((error) => { console.error(error); process.exit(1); });
 }

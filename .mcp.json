@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "deepseek": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/ds-ide-to-web.mjs"]
+    }
+  }
+}

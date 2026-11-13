@@ -9,9 +9,9 @@ A small local app plus a browser extension turn your DeepSeek web session into t
 
 ```
  any AI / IDE / script
-   |  OpenAI API (http://127.0.0.1:8787/v1)          MCP over stdio (mcp-stdio.mjs)
+   |  OpenAI API (http://127.0.0.1:8787/v1)          MCP over stdio (starts the app for you)
    v                                                       |
- bridge app (daemon.mjs)  <------- local HTTP -------------+
+ bridge app (background)  <------- local HTTP -------------+
    |  WebSocket on 127.0.0.1, key + extension-origin check
    v
  browser extension  ->  your chat.deepseek.com tab (your login, your proof-of-work)
@@ -21,53 +21,82 @@ A small local app plus a browser extension turn your DeepSeek web session into t
 
 ## Quick start
 
-You need Node.js 20 or newer and Chrome, Edge, or Firefox 128+.
+You need Node.js 20 or newer, and Chrome, Edge, or Firefox 128+. There are two steps: install the browser extension, then add the MCP server to your AI tool. The bridge app starts by itself in the background, so there is nothing to run.
 
-**Shortcut for the extension:** the [latest release](https://github.com/iiSwxft/DS-ide-to-web/releases/latest) has a **Firefox** file signed by Mozilla (open the `.xpi` in Firefox and it stays installed) and a **Chrome** zip (unzip it and load it unpacked). With one of those you can skip steps 2 and 3 below. You still run the bridge app from this repository (step 1).
+### 1. Install the browser extension
 
-1. **Install and start the bridge app** (keep it running while you use it):
+Take it from the [latest release](https://github.com/iiSwxft/DS-ide-to-web/releases/latest):
 
-   ```bash
-   npm run setup
-   npm start
-   ```
+- **Firefox:** open the signed `.xpi` in Firefox and accept it. It stays installed across restarts. Then open `about:addons`, select DeepSeek Bridge, and under *Permissions* allow access to `chat.deepseek.com`.
+- **Chrome or Edge:** unzip the release zip, open `chrome://extensions`, turn on *Developer mode*, choose *Load unpacked*, and select the unzipped folder (the one that contains `manifest.json`).
 
-2. **Build the extension:**
+Then open https://chat.deepseek.com and sign in. If the tab was already open when you installed the extension, refresh it. A small status pill appears in the bottom right.
 
-   ```bash
-   npm run build
-   ```
+To build the extension yourself instead: `npm install`, then `npm run build`, which writes `bridge/build/chrome` and `bridge/build/firefox`. Load those the same way (Firefox: *Load Temporary Add-on*, then pick `bridge/build/firefox/manifest.json`).
 
-   This writes `bridge/build/chrome` and `bridge/build/firefox`.
+### 2. Add the MCP server to your AI tool
 
-3. **Load it in your browser.**
+Use this one command or config entry. The first run downloads the project from GitHub, so it takes a moment.
 
-   - **Chrome or Edge:** open `chrome://extensions`, turn on *Developer mode*, choose *Load unpacked*, and select the `bridge/build/chrome` folder itself (the one that contains `manifest.json`).
-   - **Firefox:** open `about:debugging#/runtime/this-firefox`, choose *Load Temporary Add-on*, and pick `bridge/build/firefox/manifest.json`. Then open `about:addons`, select DeepSeek Bridge, and under *Permissions* allow access to `chat.deepseek.com`. Firefox removes temporary add-ons when it restarts.
+**Claude Code:**
 
-4. **Open https://chat.deepseek.com and sign in.** If the tab was already open when you installed the extension, refresh it. A small status pill appears in the bottom right. The toolbar popup shows the connection and the details to copy.
+```bash
+claude mcp add deepseek -- npx -y github:iiSwxft/DS-ide-to-web
+```
 
-Check that everything is connected:
+**Claude Code plugin** (adds the MCP server plus `/deepseek-bridge:deepseek-collab`, `/deepseek-bridge:deepseek-director`, and `/deepseek-bridge:deepseek-setup` commands):
+
+```text
+/plugin marketplace add iiSwxft/DS-ide-to-web
+/plugin install deepseek-bridge@ds-ide-to-web
+```
+
+**Any other MCP client** (Claude Desktop, Cursor, Cline, Continue, and so on), in its MCP servers config:
+
+```json
+{
+  "mcpServers": {
+    "deepseek": {
+      "command": "npx",
+      "args": ["-y", "github:iiSwxft/DS-ide-to-web"]
+    }
+  }
+}
+```
+
+Start a new chat in your AI tool and ask it to call `deepseek_status`. When it reports `"extensionConnected": true` and `"loggedIn": true`, you are done. The extension and the app share a preset key, `deepseek-bridge`, so there is nothing to configure.
+
+### How the app starts
+
+When your AI tool launches the MCP server, it checks whether the bridge app is already running. If not, it starts one as a background process that keeps running after that AI chat closes, so every chat shares the same bridge and the same browser link. Its log is `~/.ds-ide-to-web/daemon.log`. Stop it with `npx -y github:iiSwxft/DS-ide-to-web stop`.
+
+### Only want the OpenAI-compatible API?
+
+You can run the bridge app yourself, without MCP, from a clone of this repository:
+
+```bash
+npm install
+npm start
+```
+
+Then point any OpenAI client at `http://127.0.0.1:8787/v1` with the API key `deepseek-bridge`. To check the connection:
 
 ```bash
 curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787/api/status
 ```
 
-The extension and the app share a preset key, `deepseek-bridge`, so there is nothing to configure.
-
 ## For AI assistants: setting this up and using it
 
 If you are an AI assistant helping a user with this repository, follow this.
 
-**Set up** (you can do steps 1 to 3; the user must do step 4, because only they can install a browser extension and sign in):
+**Set up** (you can do steps 1 and 2; the user must do step 3, because only they can install a browser extension and sign in):
 
 1. Check `node --version` is 20 or newer.
-2. Run `npm run setup`, then `npm run build`.
-3. Start the bridge app in the background with `npm start` and leave it running. A second browser needs its own port: `DS_BRIDGE_PORT=8788 npm start`. See "Using two browsers at once".
-4. Ask the user to load `bridge/build/chrome` (Chrome or Edge) or `bridge/build/firefox/manifest.json` (Firefox) as described in the quick start, sign in at https://chat.deepseek.com, and refresh that tab.
-5. Verify with `curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787/api/status`. You need `"extensionConnected": true` and `"loggedIn": true`. If `loggedIn` is missing, read the `error` field.
+2. Add the MCP server for the user's tool: `claude mcp add deepseek -- npx -y github:iiSwxft/DS-ide-to-web` for Claude Code, or the `npx -y github:iiSwxft/DS-ide-to-web` command in the tool's MCP config. The bridge app starts by itself with the MCP server, so you do not need to start anything.
+3. Ask the user to install the extension from https://github.com/iiSwxft/DS-ide-to-web/releases/latest (Firefox: open the `.xpi`; Chrome or Edge: unzip and load unpacked), allow `chat.deepseek.com` access in Firefox, sign in at https://chat.deepseek.com, and refresh that tab.
+4. Call `deepseek_status`. You need `"extensionConnected": true` and `"loggedIn": true`. If `loggedIn` is missing, read the `error` field.
 
-The app has to be running whenever the bridge is used. The extension cannot start it, so if the popup says **Bridge app not running**, start it with `npm start`.
+The extension cannot start anything itself, but the MCP server starts the bridge app. If a tool fails with "Cannot reach the DeepSeek bridge app", read `~/.ds-ide-to-web/daemon.log`.
 
 **Use it** through the MCP tools (or the OpenAI-compatible endpoint):
 
@@ -232,18 +261,20 @@ Function and tool calling is not supported. When you start a new chat from a mul
 
 ### MCP
 
-Add the bridge as a stdio server in your MCP client, using the absolute path to this folder:
+Add the bridge as a stdio server in your MCP client (see the quick start for the Claude Code command and the plugin). The generic config is:
 
 ```json
 {
   "mcpServers": {
     "deepseek": {
-      "command": "node",
-      "args": ["C:/path/to/DS-ide-to-web/bridge/server/mcp-stdio.mjs"]
+      "command": "npx",
+      "args": ["-y", "github:iiSwxft/DS-ide-to-web"]
     }
   }
 }
 ```
+
+If you work from a clone of this repository, you can point at the bundled file instead: `"command": "node", "args": ["/path/to/DS-ide-to-web/dist/ds-ide-to-web.mjs"]`. To use a different port, add `"env": { "DS_BRIDGE_PORT": "8788" }` to the entry.
 
 | Tool | What it does |
 | --- | --- |
@@ -279,16 +310,24 @@ The bridge does not run the loop itself, because the other side of the conversat
 
 ## Using two browsers at once
 
-One bridge app talks to one browser at a time: a newer extension connection replaces the older one, so two browsers on the same port keep knocking each other off. To use Chrome and Firefox together, give each its own port and run one bridge app per port:
+One bridge app talks to one browser at a time: a newer extension connection replaces the older one, so two browsers on the same port keep knocking each other off. To use Chrome and Firefox together, give each its own port, with one bridge app per port.
 
-```bash
-npm start                                        # Chrome, port 8787 (the default)
-DS_BRIDGE_PORT=8788 npm start                    # Firefox, port 8788
+In the second browser's extension, open the popup, go to **Settings**, set the port to `8788`, and save. Then add a second MCP server entry that uses that port (the bridge app for it starts by itself):
+
+```json
+{
+  "mcpServers": {
+    "deepseek": { "command": "npx", "args": ["-y", "github:iiSwxft/DS-ide-to-web"] },
+    "deepseek-second": {
+      "command": "npx",
+      "args": ["-y", "github:iiSwxft/DS-ide-to-web"],
+      "env": { "DS_BRIDGE_PORT": "8788" }
+    }
+  }
+}
 ```
 
-On Windows PowerShell, set the variable first: `$env:DS_BRIDGE_PORT = '8788'; npm start`.
-
-In the Firefox extension, open the popup, go to **Settings**, set the port to `8788`, and save. Then use `http://127.0.0.1:8788/v1` as the base URL for tools that should talk to Firefox, and set `DS_BRIDGE_PORT=8788` in the environment of any MCP server entry that should use it.
+For OpenAI-compatible clients, use `http://127.0.0.1:8788/v1` as the base URL for the second browser. If you run the app yourself instead, start it with `DS_BRIDGE_PORT=8788 npm start` (PowerShell: `$env:DS_BRIDGE_PORT = '8788'; npm start`).
 
 ## Configuration
 
@@ -311,7 +350,8 @@ In the Firefox extension, open the popup, go to **Settings**, set the port to `8
 
 | What you see | What to do |
 | --- | --- |
-| Popup says **Bridge app not running** | Start it with `npm start`. The extension reconnects by itself. |
+| Popup says **Bridge app not running** | The bridge app starts when an AI tool launches the MCP server. Start a chat in your AI tool (or call `deepseek_status`) and the popup turns green. If it does not, read `~/.ds-ide-to-web/daemon.log`, or run it yourself with `npx -y github:iiSwxft/DS-ide-to-web daemon`. |
+| `npx` says it cannot find the package or fails to download | You need Node.js 20 or newer and internet access for the first run. Or clone this repository and use the `node /path/to/dist/ds-ide-to-web.mjs` form. |
 | Popup says **Connected** but requests say the extension is not running on any DeepSeek tab | Refresh the chat.deepseek.com tab. Browsers only add the extension to tabs opened after it was installed. |
 | Chrome says *Manifest file is missing or unreadable* | You selected the `deepseek` subfolder. Select `bridge/build/chrome` itself. |
 | Firefox connects, then requests fail | Check `about:addons`, DeepSeek Bridge, Permissions: access to `chat.deepseek.com` must be on. It can reset when you reload a temporary add-on. |
@@ -323,25 +363,29 @@ In the Firefox extension, open the popup, go to **Settings**, set the port to `8
 
 ```
 bridge/
-  server/       the bridge app: HTTP + OpenAI API, MCP server, chat tools (Node, ESM)
+  server/       the bridge app and MCP server: HTTP + OpenAI API, chat tools (Node, ESM)
   extension/    the browser extension: popup, background worker, page script
     src/vendor/ DeepSeek web client code reused from deepseek-pp (see NOTICE)
     test/       tests for that client code
     icons/      generated icons
     wasm/       DeepSeek's proof-of-work module
-  tools/        make-icons.mjs, renders the extension icons
+  tools/        bundle.mjs (builds dist/), make-icons.mjs (renders the extension icons)
   build.mjs     bundles the extension for Chrome and Firefox
+dist/           ds-ide-to-web.mjs: the MCP server and bridge app as one dependency-free file
+.claude-plugin/ and .mcp.json, commands/   the Claude Code plugin and its slash commands
 ```
 
 ## Development
 
 ```bash
+npm install         # dependencies (they are bundled into dist/, nothing is needed at runtime)
 npm run build       # build the extension for both browsers
+npm run bundle      # rebuild dist/ds-ide-to-web.mjs (commit it; the plugin and npx use it)
 npm run typecheck   # TypeScript check
 npm run test        # extension tests (vitest) and server tests (node:test)
 ```
 
-The server tests use a fake extension over a real WebSocket, so they need no browser.
+The server tests use a fake extension over a real WebSocket, so they need no browser. `dist/ds-ide-to-web.mjs` is checked in on purpose: it is what `npx` and the Claude Code plugin run, so rebuild and commit it whenever `bridge/server` changes. CI fails if it is out of date.
 
 ## License and credits
 

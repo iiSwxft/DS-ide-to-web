@@ -5,21 +5,31 @@
   "description": "A local bridge that lets any AI tool talk to your logged-in DeepSeek web chat: OpenAI-compatible API plus MCP, through a browser extension.",
   "license": "Apache-2.0",
   "scripts": {
-    "setup": "npm install && npm --prefix bridge/server install",
+    "setup": "npm install",
     "build": "node bridge/build.mjs",
+    "bundle": "node bridge/tools/bundle.mjs",
     "icons": "node bridge/tools/make-icons.mjs",
-    "sign:firefox": "npm run build && npx --yes web-ext@10.8.0 sign --source-dir bridge/build/firefox --artifacts-dir bridge/build/signed --channel unlisted",
     "start": "node bridge/server/daemon.mjs",
+    "sign:firefox": "npm run build && npx --yes web-ext@10.8.0 sign --source-dir bridge/build/firefox --artifacts-dir bridge/build/signed --channel unlisted",
     "typecheck": "tsc --noEmit",
     "test:extension": "vitest run",
     "test:server": "node --test --test-timeout=15000 bridge/server/test/",
     "test": "npm run test:extension && npm run test:server"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@types/chrome": "^0.1.42",
     "esbuild": "^0.27.7",
     "jsdom": "^29.1.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "ws": "8.18.3",
+    "zod": "3.25.76"
+  },
+  "bin": {
+    "ds-ide-to-web": "dist/ds-ide-to-web.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -22,7 +22,7 @@ async function api(path, init = {}) {
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...init.headers },
     });
   } catch {
-    throw new Error(`Cannot reach the DS bridge daemon at ${base}. Start it with: node bridge/server/daemon.mjs`);
+    throw new Error(`Cannot reach the DeepSeek bridge app at ${base}. It normally starts by itself with this MCP server; check ${'~/.ds-ide-to-web/daemon.log'}, or start it with: npx -y github:iiSwxft/DS-ide-to-web daemon`);
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json?.error?.message ?? `Bridge returned HTTP ${res.status}`);
@@ -181,4 +181,9 @@ server.registerTool('deepseek_delete_chat', {
   return text(`Deleted ${out.deleted.length} chat(s): ${out.deleted.map((c) => `"${c.title ?? ''}" (${c.id})`).join(', ')}`);
 }));
 
-await server.connect(new StdioServerTransport());
+export async function runMcp() {
+  await server.connect(new StdioServerTransport());
+}
+
+// Run directly (node mcp-stdio.mjs). Through cli.mjs this file is imported and runMcp() is called instead.
+if (process.argv[1]?.endsWith('mcp-stdio.mjs')) await runMcp();

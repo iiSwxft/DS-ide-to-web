@@ -1,0 +1,10 @@
+{
+  "name": "deepseek-bridge",
+  "version": "0.3.0",
+  "description": "Use your logged-in DeepSeek web chat from Claude Code as a collaborator or prompt director, through the DeepSeek Bridge MCP server.",
+  "author": { "name": "iiSwxft" },
+  "homepage": "https://github.com/iiSwxft/DS-ide-to-web",
+  "repository": "https://github.com/iiSwxft/DS-ide-to-web",
+  "license": "Apache-2.0",
+  "keywords": ["deepseek", "mcp", "bridge", "multi-agent"]
+}
