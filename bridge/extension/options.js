@@ -12,7 +12,9 @@ const COPY = {
 
 let current = { token: DEFAULT_TOKEN, port: DEFAULT_PORT };
 
-function render(phase) {
+function render(phase, error = '') {
+  $('err').textContent = error;
+  $('err').classList.toggle('hidden', !error || phase === 'connected');
   const copy = COPY[phase] ?? COPY['no-tab'];
   $('dot').dataset.phase = phase;
   $('title').textContent = copy.title;
@@ -24,9 +26,9 @@ function render(phase) {
 async function poll() {
   try {
     const reply = await api.runtime.sendMessage({ type: 'connection-state' });
-    render(reply?.phase ?? 'no-tab');
+    render(reply?.phase ?? 'no-tab', reply?.error ?? '');
   } catch {
-    render('offline');
+    render('offline', 'Extension background is not responding. Reload the extension.');
   }
 }
 

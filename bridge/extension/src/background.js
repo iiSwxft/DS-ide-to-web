@@ -8,6 +8,8 @@ const DEFAULT_TOKEN = 'deepseek-bridge'; // preset; must match bridge/server/con
 let socket = null;
 let phase = 'no-tab'; // no-tab | connecting | connected | offline
 let retryTimer = null;
+let lastError = '';
+let connectWatchdog = null;
 const active = new Map(); // request id -> content-script port
 
 async function settings() {
@@ -98,9 +100,21 @@ function closeSocket() {
 /** Single place that decides whether the bridge should be running right now. */
 async function refresh() {
   clearTimeout(retryTimer);
+  try {
+    await refreshInner();
+  } catch (error) {
+    lastError = `${error?.name ?? 'Error'}: ${error?.message ?? error}`;
+    closeSocket();
+    setPhase('offline');
+    scheduleRetry(5000);
+  }
+}
+
+async function refreshInner() {
   const hasTab = (await deepseekTabs()).length > 0;
   if (!hasTab) {
     closeSocket();
+    lastError = '';
     setPhase('no-tab');
     return;
   }
@@ -111,17 +125,33 @@ async function refresh() {
   let opened = false;
   const ws = new WebSocket(`ws://127.0.0.1:${port}/ext?token=${encodeURIComponent(token)}`);
   socket = ws;
+  // A socket that neither opens nor fails must not leave us stuck on "connecting".
+  clearTimeout(connectWatchdog);
+  connectWatchdog = setTimeout(() => {
+    if (socket === ws && !opened) {
+      lastError = `No answer from ws://127.0.0.1:${port} after 6s.`;
+      closeSocket();
+      setPhase('offline');
+      scheduleRetry(3000);
+    }
+  }, 6000);
   ws.onopen = () => {
     opened = true;
+    lastError = '';
+    clearTimeout(connectWatchdog);
     setPhase('connected');
     ws.send(JSON.stringify({ type: 'hello', version: api.runtime.getManifest().version }));
   };
   ws.onmessage = (event) => {
     try { void handleRequest(JSON.parse(event.data)); } catch { /* ignore malformed */ }
   };
-  const onGone = () => {
+  const onGone = (event) => {
     if (socket !== ws) return;
     socket = null;
+    clearTimeout(connectWatchdog);
+    if (!opened) {
+      lastError = `Connection to ws://127.0.0.1:${port} failed (code ${event?.code ?? '?'}). The app is not running, or it rejected the key.`;
+    }
     setPhase(opened ? 'connecting' : 'offline');
     scheduleRetry(opened ? 1000 : 3000);
   };
@@ -149,10 +179,10 @@ api.storage.onChanged.addListener((changes) => {
 });
 api.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === 'connection-state') {
-    reply({ phase });
+    reply({ phase, error: lastError });
   } else if (msg?.type === 'retry-now') {
     void refresh();
-    reply({ phase });
+    reply({ phase, error: lastError });
   }
 });
 void refresh();
