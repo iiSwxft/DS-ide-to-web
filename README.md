@@ -124,6 +124,19 @@ DeepSeek titles a new chat from its first message, which would include these ins
 
 The bridge does not run the loop itself, because the other side of the conversation has to be an AI you choose.
 
+## Using two browsers at once
+
+One bridge app talks to one browser at a time: a newer extension connection replaces the older one, so two browsers on the same port keep knocking each other off. To use Chrome and Firefox together, give each its own port and run one bridge app per port:
+
+```bash
+npm start                                        # Chrome, port 8787 (the default)
+DS_BRIDGE_PORT=8788 npm start                    # Firefox, port 8788
+```
+
+On Windows PowerShell, set the variable first: `$env:DS_BRIDGE_PORT = '8788'; npm start`.
+
+In the Firefox extension, open the popup, go to **Settings**, set the port to `8788`, and save. Then use `http://127.0.0.1:8788/v1` as the base URL for tools that should talk to Firefox, and set `DS_BRIDGE_PORT=8788` in the environment of any MCP server entry that should use it.
+
 ## Configuration
 
 | Setting | How | Default |
@@ -149,6 +162,7 @@ The bridge does not run the loop itself, because the other side of the conversat
 | Popup says **Connected** but requests say the extension is not running on any DeepSeek tab | Refresh the chat.deepseek.com tab. Browsers only add the extension to tabs opened after it was installed. |
 | Chrome says *Manifest file is missing or unreadable* | You selected the `deepseek` subfolder. Select `bridge/build/chrome` itself. |
 | Firefox connects, then requests fail | Check `about:addons`, DeepSeek Bridge, Permissions: access to `chat.deepseek.com` must be on. It can reset when you reload a temporary add-on. |
+| Two browsers keep disconnecting each other | They share one port. Give each browser its own port, see "Using two browsers at once". |
 | Requests say you are not logged in | Sign in on the DeepSeek tab, then retry. |
 | A new chat does not show in the DeepSeek sidebar | Refresh the page. |
 
