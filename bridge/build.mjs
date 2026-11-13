@@ -28,7 +28,9 @@ const targets = {
       },
       browser_specific_settings: {
         gecko: {
-          id: 'ds-bridge@ds-ide-to-web.invalid',
+          // Mozilla ties an add-on id to the account that first signs it. To sign your own copy,
+          // set DS_BRIDGE_GECKO_ID to an id you own (for example "ds-bridge@yourname.example").
+          id: process.env.DS_BRIDGE_GECKO_ID || 'ds-bridge@ds-ide-to-web.invalid',
           strict_min_version: '128.0',
           data_collection_permissions: { required: ['none'] },
         },

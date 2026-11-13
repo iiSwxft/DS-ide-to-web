@@ -8,6 +8,7 @@
     "setup": "npm install && npm --prefix bridge/server install",
     "build": "node bridge/build.mjs",
     "icons": "node bridge/tools/make-icons.mjs",
+    "sign:firefox": "npm run build && npx --yes web-ext@10.8.0 sign --source-dir bridge/build/firefox --artifacts-dir bridge/build/signed --channel unlisted",
     "start": "node bridge/server/daemon.mjs",
     "typecheck": "tsc --noEmit",
     "test:extension": "vitest run",

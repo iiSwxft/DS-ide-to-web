@@ -23,6 +23,8 @@ A small local app plus a browser extension turn your DeepSeek web session into t
 
 You need Node.js 20 or newer and Chrome, Edge, or Firefox 128+.
 
+**Shortcut for the extension:** the [latest release](https://github.com/iiSwxft/DS-ide-to-web/releases/latest) has a **Firefox** file signed by Mozilla (open the `.xpi` in Firefox and it stays installed) and a **Chrome** zip (unzip it and load it unpacked). With one of those you can skip steps 2 and 3 below. You still run the bridge app from this repository (step 1).
+
 1. **Install and start the bridge app** (keep it running while you use it):
 
    ```bash
@@ -90,6 +92,27 @@ The app has to be running whenever the bridge is used. The extension cannot star
 | `unknown_model`, `invalid_request` (400) | A bad parameter. | Fix the request. The message says which one. |
 | `deepseek_refused`, `deepseek_http_error` (502) | DeepSeek rejected the call, or its web routes changed. | Show the user the message. Do not retry in a loop. |
 | `extension_disconnected`, `timeout` (504), `cancelled` | The connection dropped, took too long, or the caller cancelled. | Retry once. If it repeats, check the status endpoint. |
+
+## Building and signing the Firefox extension yourself
+
+The release file is already signed, so you only need this if you want to build your own copy. Firefox only keeps an add-on installed across restarts when Mozilla has signed it, and you can do that for free with your own account.
+
+1. Create API credentials at https://addons.mozilla.org/developers/addon/api/key/ (a Firefox account is enough).
+2. Pick an add-on id that belongs to you. Mozilla ties an id to the account that first signs it, so the default id in this repository will be rejected for you as a duplicate. Use something like `ds-bridge@yourname.example`.
+3. Set the credentials and the id in your environment, then run the signing script:
+
+   ```bash
+   export WEB_EXT_API_KEY="user:12345:67"          # your JWT issuer
+   export WEB_EXT_API_SECRET="your-jwt-secret"
+   export DS_BRIDGE_GECKO_ID="ds-bridge@yourname.example"
+   npm run sign:firefox
+   ```
+
+   On Windows PowerShell, set them with `$env:WEB_EXT_API_KEY = '...'` and so on.
+
+The signed file is written to `bridge/build/signed/`. Keep the key and secret out of the repository; they are read from the environment only. Each upload needs a new version number, so bump `version` in `bridge/extension/manifest.json` before you sign again.
+
+Chrome has no equivalent for unpacked builds: load `bridge/build/chrome` with *Load unpacked*, or publish your own copy through the Chrome Web Store.
 
 ## The extension popup
 
