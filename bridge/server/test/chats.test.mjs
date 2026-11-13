@@ -20,6 +20,7 @@ const deleted = [];
 const edits = [];
 const turnActions = [];
 const stops = [];
+const renames = [];
 const shares = [];
 const shareCreates = [];
 let heldAsk = null;
@@ -61,6 +62,7 @@ function handleApi({ path, query = {}, json = {} }) {
     });
   }
   if (path === '/api/v0/chat_session/update_title') {
+    renames.push(json);
     const chat = chats.find((c) => c.id === json.chat_session_id);
     if (chat) chat.title = json.title; // brand-new empty chats are not in the fake list
     return envelope({ title: json.title });
@@ -361,9 +363,11 @@ test('continue extends the latest answer', async () => {
 });
 
 test('new chat makes an empty chat, names it, and the first ask in it gets the instructions', async () => {
+  const renamesBefore = renames.length;
   const made = await (await call('/api/new-chat', { title: 'planned chat' })).json();
   assert.ok(made.conversationId);
-  assert.equal(made.title, 'planned chat');
+  assert.equal(made.pendingTitle, 'planned chat', 'DeepSeek cannot rename an empty chat, so the title waits for the first message');
+  assert.equal(renames.length, renamesBefore, 'no rename may be attempted on the empty chat');
   assert.match(made.chatUrl, /chat\.deepseek\.com\/a\/chat\/s\//);
   const out = await (await call('/api/ask', { prompt: 'first words', conversation_id: made.conversationId, system: 'Be a pirate.' })).json();
   assert.equal(out.text, 'ok');
@@ -371,6 +375,8 @@ test('new chat makes an empty chat, names it, and the first ask in it gets the i
   assert.equal(sent.chatSessionId, made.conversationId);
   assert.equal(sent.parentMessageId, null);
   assert.match(sent.prompt, /Be a pirate\./);
+  assert.equal(out.title, 'planned chat');
+  assert.equal(renames.at(-1).title, 'planned chat', 'the title is applied after the first message');
   // A second message must not repeat the instructions.
   await (await call('/api/ask', { prompt: 'second', conversation_id: made.conversationId, system: 'Be a pirate.' })).json();
   assert.equal(asks.at(-1).prompt, 'second');

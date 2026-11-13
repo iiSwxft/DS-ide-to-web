@@ -208,7 +208,7 @@ server.registerTool('deepseek_new_chat', {
   },
 }, guard(async ({ title }) => {
   const out = await post('/api/new-chat', { title });
-  const named = out.title ? ` titled "${out.title}"` : '';
+  const named = out.pendingTitle ? ` (it will be titled "${out.pendingTitle}" once the first message is sent, because DeepSeek cannot name an empty chat)` : '';
   return text(`Created an empty chat${named}.\n[conversation_id: ${out.conversationId}]\n${out.chatUrl}`);
 }));
 

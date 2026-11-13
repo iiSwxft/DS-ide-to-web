@@ -191,7 +191,9 @@ export async function askFlow(link, body, extra = {}) {
     });
   }
   // A chat made by deepseek_new_chat has no messages yet, so its first prompt gets the instructions too.
-  const isNew = !conversationId || link.conversations.get(conversationId)?.fresh === true;
+  const startingConvo = conversationId ? link.conversations.get(conversationId) : null;
+  const isNew = !conversationId || startingConvo?.fresh === true;
+  const wantedTitle = body.new_chat_title ?? startingConvo?.pendingTitle;
   const files = body.files?.length ? await loadFiles(body.files) : undefined;
   let prompt = body.prompt;
   if (isNew) {
@@ -214,10 +216,10 @@ export async function askFlow(link, body, extra = {}) {
     files,
     ...extra,
   });
-  if (isNew && body.new_chat_title) {
+  if (isNew && wantedTitle) {
     const sessionId = link.conversations.get(out.conversationId)?.chatSessionId;
     if (sessionId) {
-      try { await renameChat(link, sessionId, body.new_chat_title); out.title = String(body.new_chat_title); }
+      try { await renameChat(link, sessionId, wantedTitle); out.title = String(wantedTitle); }
       catch (error) { out.titleError = error.message; }
     }
   }
@@ -394,8 +396,9 @@ export async function startNewChat(link, body = {}) {
   const out = await link.newChat();
   const result = { ...out, title: null };
   if (body.title) {
-    try { await renameChat(link, out.conversationId, body.title); result.title = String(body.title); }
-    catch (error) { result.titleError = error.message; }
+    // DeepSeek refuses to rename a chat with no messages, so the title is applied after the first one.
+    link.conversations.get(out.conversationId).pendingTitle = String(body.title);
+    result.pendingTitle = String(body.title);
   }
   return result;
 }
