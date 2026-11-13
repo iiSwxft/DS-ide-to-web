@@ -191,7 +191,7 @@ interface ContinueParams {
 /** Run one of the streamed turn actions (regenerate, continue) and report it like a normal answer. */
 async function runStreamedTurn(
   chatSessionId: string,
-  powPath: string,
+  powPath: string | null,
   emit: (out: Out) => void,
   signal: AbortSignal,
   submit: (
@@ -207,7 +207,8 @@ async function runStreamedTurn(
     const clientHeaders = createClientHeaders({
       missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
     });
-    const powHeaders = await createPowHeadersForPath(clientHeaders, powPath, WASM_URL, signal);
+    // Continue needs no proof-of-work: DeepSeek rejects it as an invalid target path.
+    const powHeaders = powPath ? await createPowHeadersForPath(clientHeaders, powPath, WASM_URL, signal) : {};
     let reasoning = '';
     const turn = await submit(clientHeaders, powHeaders, {
       onTextChunk: (text) => emit({ type: 'delta', text }),
@@ -242,7 +243,7 @@ function runRegenerate(params: RegenerateParams, emit: (out: Out) => void, signa
 }
 
 function runContinue(params: ContinueParams, emit: (out: Out) => void, signal: AbortSignal) {
-  return runStreamedTurn(params.chatSessionId, '/api/v0/chat/continue', emit, signal,
+  return runStreamedTurn(params.chatSessionId, null, emit, signal,
     (clientHeaders, powHeaders, callbacks) => submitContinueStreaming({
       chatSessionId: params.chatSessionId,
       messageId: params.messageId,
