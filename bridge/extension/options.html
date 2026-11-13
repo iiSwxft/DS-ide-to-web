@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DS Bridge</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 16px; width: 340px; color: #1a1a1a; }
+    @media (prefers-color-scheme: dark) { body { background: #16181d; color: #e8e8e8; } input { background: #22252c; color: inherit; border-color: #444; } }
+    label { display: block; margin: 10px 0 4px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #bbb; border-radius: 6px; }
+    button { margin-top: 12px; padding: 6px 14px; border-radius: 6px; border: 0; background: #4d6bfe; color: #fff; cursor: pointer; }
+    #state { margin-top: 12px; }
+    small { color: #777; display: block; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h3>DS Bridge</h3>
+  <label for="token">Bridge token</label>
+  <input id="token" type="password" autocomplete="off" placeholder="from ~/.ds-ide-to-web/token">
+  <label for="port">Port</label>
+  <input id="port" type="number" min="1" max="65535" value="8787">
+  <button id="save">Save and connect</button>
+  <div id="state">Status: checking...</div>
+  <small>Run <code>node bridge/server/daemon.mjs</code>, then paste the token it prints the path of.</small>
+  <script src="options.js"></script>
+</body>
+</html>
