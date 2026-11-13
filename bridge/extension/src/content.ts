@@ -21,7 +21,7 @@ type Out =
   | { type: 'done'; result: { chatSessionId: string; responseMessageId: number | null; text: string; reasoning: string } }
   | { type: 'error'; message: string; code?: string };
 
-const WASM_URL = chrome.runtime.getURL('dist/deepseek/sha3_wasm_bg.wasm');
+const WASM_URL = chrome.runtime.getURL('deepseek/sha3_wasm_bg.wasm');
 
 function errorCode(error: unknown): string {
   const name = error instanceof Error ? error.name : '';

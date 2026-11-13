@@ -1,32 +1,60 @@
-// Bundles the bridge extension. Run from the repo root: node bridge/build.mjs
+// Builds the bridge extension for Chromium and Firefox.
+// Run from the repo root: node bridge/build.mjs
+// Output: bridge/build/chrome and bridge/build/firefox (each self-contained).
 import { build } from 'esbuild';
-import { cpSync, mkdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ext = join(here, 'extension');
-const dist = join(ext, 'dist');
+const out = join(here, 'build');
 
-rmSync(dist, { recursive: true, force: true });
-mkdirSync(join(dist, 'deepseek'), { recursive: true });
+const baseManifest = JSON.parse(readFileSync(join(ext, 'manifest.json'), 'utf8'));
 
-await build({
-  entryPoints: { content: join(ext, 'src/content.ts') },
-  outdir: dist,
-  bundle: true,
-  format: 'iife',
-  target: 'chrome120',
-  sourcemap: false,
-  logLevel: 'info',
-});
-await build({
-  entryPoints: { background: join(ext, 'src/background.js') },
-  outdir: dist,
-  bundle: true,
-  format: 'esm',
-  target: 'chrome120',
-  logLevel: 'info',
-});
-cpSync(join(here, '..', 'public', 'deepseek', 'sha3_wasm_bg.wasm'), join(dist, 'deepseek', 'sha3_wasm_bg.wasm'));
-console.log('Built bridge extension ->', dist);
+const targets = {
+  chrome: (m) => m,
+  firefox: (m) => {
+    const { service_worker, ...background } = m.background;
+    return {
+      ...m,
+      // Firefox MV3 uses event pages (background.scripts), not service workers.
+      background: { ...background, scripts: [service_worker] },
+      browser_specific_settings: {
+        gecko: {
+          id: 'ds-bridge@ds-ide-to-web.invalid',
+          strict_min_version: '128.0',
+          data_collection_permissions: { required: ['none'] },
+        },
+      },
+    };
+  },
+};
+
+rmSync(out, { recursive: true, force: true });
+
+for (const [name, transform] of Object.entries(targets)) {
+  const dir = join(out, name);
+  mkdirSync(join(dir, 'deepseek'), { recursive: true });
+
+  await build({
+    entryPoints: { content: join(ext, 'src/content.ts') },
+    outdir: dir,
+    bundle: true,
+    format: 'iife',
+    target: name === 'firefox' ? 'firefox128' : 'chrome120',
+    logLevel: 'warning',
+  });
+  await build({
+    entryPoints: { background: join(ext, 'src/background.js') },
+    outdir: dir,
+    bundle: true,
+    format: 'esm',
+    target: name === 'firefox' ? 'firefox128' : 'chrome120',
+    logLevel: 'warning',
+  });
+  for (const file of ['options.html', 'options.js']) cpSync(join(ext, file), join(dir, file));
+  cpSync(join(here, '..', 'public', 'deepseek', 'sha3_wasm_bg.wasm'), join(dir, 'deepseek', 'sha3_wasm_bg.wasm'));
+  writeFileSync(join(dir, 'manifest.json'), `${JSON.stringify(transform(structuredClone(baseManifest)), null, 2)}\n`);
+  console.log(`Built ${name} -> ${dir}`);
+}

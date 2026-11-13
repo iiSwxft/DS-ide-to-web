@@ -27,7 +27,9 @@ The extension reuses this fork's DeepSeek web client (`core/deepseek/*`: login h
    ```bash
    node bridge/build.mjs
    ```
-   Chrome/Edge: `chrome://extensions` -> Developer mode -> Load unpacked -> `bridge/extension`.
+   This writes `bridge/build/chrome` and `bridge/build/firefox`.
+   - Chrome/Edge: `chrome://extensions` -> Developer mode -> Load unpacked -> `bridge/build/chrome`.
+   - Firefox (128+): `about:debugging#/runtime/this-firefox` -> Load Temporary Add-on -> pick `bridge/build/firefox/manifest.json` (temporary add-ons are removed when Firefox restarts). Then open `about:addons` -> DS Bridge -> Permissions and allow access to `chat.deepseek.com`, because Firefox treats MV3 host permissions as opt-in.
 3. Open the extension, paste the token, save. Keep a logged-in `chat.deepseek.com` tab open (the extension opens one in the background if none exists).
 4. Check: `curl -H "Authorization: Bearer $(cat ~/.ds-ide-to-web/token)" http://127.0.0.1:8787/api/status`
 

@@ -1,3 +1,4 @@
+const api = globalThis.browser ?? globalThis.chrome;
 // Service worker: keeps a WebSocket to the local bridge and relays each request
 // to a chat.deepseek.com tab's content script.
 const DEEPSEEK = 'https://chat.deepseek.com/';
@@ -8,7 +9,7 @@ let connecting = false;
 const active = new Map(); // request id -> content-script port
 
 async function settings() {
-  const { token = '', port = DEFAULT_PORT } = await chrome.storage.local.get(['token', 'port']);
+  const { token = '', port = DEFAULT_PORT } = await api.storage.local.get(['token', 'port']);
   return { token: String(token).trim(), port: Number(port) || DEFAULT_PORT };
 }
 
@@ -17,19 +18,19 @@ function send(message) {
 }
 
 async function findDeepSeekTab() {
-  const tabs = await chrome.tabs.query({ url: `${DEEPSEEK}*` });
+  const tabs = await api.tabs.query({ url: `${DEEPSEEK}*` });
   const ready = tabs.find((t) => t.status === 'complete') ?? tabs[0];
   if (ready) return ready;
-  const created = await chrome.tabs.create({ url: DEEPSEEK, active: false });
+  const created = await api.tabs.create({ url: DEEPSEEK, active: false });
   await new Promise((resolve) => {
     const listener = (id, info) => {
       if (id === created.id && info.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
+        api.tabs.onUpdated.removeListener(listener);
         resolve();
       }
     };
-    chrome.tabs.onUpdated.addListener(listener);
-    setTimeout(() => { chrome.tabs.onUpdated.removeListener(listener); resolve(); }, 20000);
+    api.tabs.onUpdated.addListener(listener);
+    setTimeout(() => { api.tabs.onUpdated.removeListener(listener); resolve(); }, 20000);
   });
   return created;
 }
@@ -38,8 +39,8 @@ async function connectToTab(tab) {
   // The content script registers its listeners at document_idle; ping until it answers.
   for (let attempt = 0; attempt < 20; attempt += 1) {
     try {
-      const reply = await chrome.tabs.sendMessage(tab.id, { type: 'ping' });
-      if (reply?.ok) return chrome.tabs.connect(tab.id, { name: 'ds-bridge' });
+      const reply = await api.tabs.sendMessage(tab.id, { type: 'ping' });
+      if (reply?.ok) return api.tabs.connect(tab.id, { name: 'ds-bridge' });
     } catch {
       // not ready yet
     }
@@ -86,7 +87,7 @@ async function connect() {
     socket = ws;
     ws.onopen = () => {
       connecting = false;
-      ws.send(JSON.stringify({ type: 'hello', version: chrome.runtime.getManifest().version }));
+      ws.send(JSON.stringify({ type: 'hello', version: api.runtime.getManifest().version }));
     };
     ws.onmessage = (event) => {
       try { void handleRequest(JSON.parse(event.data)); } catch { /* ignore malformed */ }
@@ -101,22 +102,22 @@ async function connect() {
 }
 
 // MV3 workers sleep; an alarm wakes us to reconnect, and ping keeps the socket warm.
-chrome.alarms.create('ds-bridge-keepalive', { periodInMinutes: 0.5 });
-chrome.alarms.onAlarm.addListener((alarm) => {
+api.alarms.create('ds-bridge-keepalive', { periodInMinutes: 0.5 });
+api.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== 'ds-bridge-keepalive') return;
-  if (socket && socket.readyState === WebSocket.OPEN) send({ type: 'hello', version: chrome.runtime.getManifest().version });
+  if (socket && socket.readyState === WebSocket.OPEN) send({ type: 'hello', version: api.runtime.getManifest().version });
   else void connect();
 });
-chrome.runtime.onStartup.addListener(() => void connect());
-chrome.runtime.onInstalled.addListener(() => void connect());
-chrome.storage.onChanged.addListener((changes) => {
+api.runtime.onStartup.addListener(() => void connect());
+api.runtime.onInstalled.addListener(() => void connect());
+api.storage.onChanged.addListener((changes) => {
   if (changes.token || changes.port) {
     try { socket?.close(); } catch { /* ignore */ }
     socket = null;
     void connect();
   }
 });
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+api.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === 'connection-state') {
     reply({ connected: Boolean(socket && socket.readyState === WebSocket.OPEN) });
   }
