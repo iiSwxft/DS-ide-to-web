@@ -126,7 +126,7 @@ function mountPill() {
   document.querySelectorAll('[data-ds-bridge-pill]').forEach((el) => el.remove());
   const host = document.createElement('div');
   host.setAttribute('data-ds-bridge-pill', '');
-  host.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:2147483646;';
+  host.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:2147483646;';
   const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `
     <style>
