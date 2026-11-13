@@ -27126,7 +27126,7 @@ ${out.reasoning}
     }));
     server.registerTool("deepseek_continue", {
       title: "Continue a cut-off answer",
-      description: "Ask DeepSeek to keep going when its latest answer was cut off mid-way, like the site's continue button. It only helps for answers that stopped early; for a complete answer DeepSeek may refuse.",
+      description: "Ask DeepSeek to keep going when its latest answer was cut off mid-way, like the site's continue button. It only helps for answers that stopped early; for a complete answer DeepSeek may refuse. The reply is the whole answer so far, including the part already written.",
       inputSchema: {
         chat: external_exports.string().optional().describe("The chat: id, title, or a unique part of the title."),
         conversation_id: external_exports.string().optional().describe("Or the conversation_id returned by deepseek_ask."),

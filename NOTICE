@@ -17,4 +17,5 @@ decoder):
 Everything else in this repository (bridge/server, the extension popup, background worker and page
 script, and the build tooling) was written for this project.
 
-"DeepSeek" is a trademark of its owner. This project is not affiliated with or endorsed by DeepSeek.
+The extension and plugin icons (bridge/extension/icons, .claude-plugin/icon.png) are the DeepSeek logo, used only to show that this tool works with DeepSeek.
+"DeepSeek" and its logo are trademarks of their owner. This project is not affiliated with or endorsed by DeepSeek.

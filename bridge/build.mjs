@@ -62,7 +62,7 @@ for (const [name, transform] of Object.entries(targets)) {
     logLevel: 'warning',
   });
   for (const file of ['options.html', 'options.js']) cpSync(join(ext, file), join(dir, file));
-  // Icons come from bridge/extension/icons (regenerate with: node bridge/tools/make-icons.mjs).
+  // Icons are the DeepSeek logo, stored as ready-made PNGs in bridge/extension/icons.
   for (const name of ['icon-16.png', 'icon-32.png', 'icon-48.png', 'icon-128.png', 'icon.png']) {
     cpSync(join(ext, 'icons', name), join(dir, name));
   }

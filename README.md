@@ -396,9 +396,9 @@ bridge/
   extension/    the browser extension: popup, background worker, page script
     src/vendor/ DeepSeek web client code reused from deepseek-pp (see NOTICE)
     test/       tests for that client code
-    icons/      generated icons
+    icons/      the DeepSeek logo as toolbar icons
     wasm/       DeepSeek's proof-of-work module
-  tools/        bundle.mjs (builds dist/), make-icons.mjs (renders the extension icons)
+  tools/        bundle.mjs (builds dist/)
   build.mjs     bundles the extension for Chrome and Firefox
 docs/           clients.md: exact MCP config for each AI tool
 dist/           ds-ide-to-web.mjs: the MCP server and bridge app as one dependency-free file
@@ -419,4 +419,4 @@ The server tests use a fake extension over a real WebSocket, so they need no bro
 
 ## License and credits
 
-Apache-2.0, see [LICENSE](LICENSE). The DeepSeek web client code under `bridge/extension/src/vendor` comes from [zhu1090093659/deepseek-pp](https://github.com/zhu1090093659/deepseek-pp) and was translated and modified for this project. Details are in [NOTICE](NOTICE).
+Apache-2.0, see [LICENSE](LICENSE). The DeepSeek web client code under `bridge/extension/src/vendor` comes from [zhu1090093659/deepseek-pp](https://github.com/zhu1090093659/deepseek-pp) and was translated and modified for this project. Details are in [NOTICE](NOTICE). The extension and plugin icons are the DeepSeek logo, which belongs to its owner; this project is not affiliated with or endorsed by DeepSeek.
