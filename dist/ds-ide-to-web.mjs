@@ -4792,7 +4792,7 @@ async function ensureDaemon(selfUrl) {
   const running = await probe(base2, token2);
   if (running.up) {
     const mine = bridgeVersion();
-    if (mine === "dev" || !isOlderVersion(running.version, mine)) return "running";
+    if (mine === "dev" || running.version === "dev" || !isOlderVersion(running.version, mine)) return "running";
     await stopDaemon();
     for (let i = 0; i < 20 && await reachable(base2, token2); i += 1) await sleep(150);
     if (await reachable(base2, token2)) return "running";

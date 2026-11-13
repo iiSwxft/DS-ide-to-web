@@ -109,3 +109,39 @@ test('a newer MCP server replaces an older bridge app, but never the other way r
     try { execFileSync(process.execPath, [cli, 'stop'], { env: envFor('9.9.9') }); } catch { /* already gone */ }
   }
 });
+
+test('a bridge app started by hand from source ("dev") is never replaced', async () => {
+  const port = await freePort();
+  const home = mkdtempSync(join(tmpdir(), 'dsb-'));
+  const envFor = (version) => {
+    const env = { ...process.env, DS_BRIDGE_PORT: String(port), DS_BRIDGE_HOME: home, DS_BRIDGE_TEST_VERSION: version };
+    delete env.DS_BRIDGE_TOKEN;
+    return env;
+  };
+  const versionOnPort = async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/version`, { headers: { authorization: 'Bearer deepseek-bridge' }, signal: AbortSignal.timeout(800) });
+      return (await res.json()).version;
+    } catch {
+      return null;
+    }
+  };
+  const run = async (version) => {
+    const child = spawn(process.execPath, [cli], { env: envFor(version), stdio: ['pipe', 'pipe', 'pipe'] });
+    let out = '';
+    child.stdout.on('data', (d) => { out += d; });
+    child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 't', version: '1' } } }) + '\n');
+    const deadline = Date.now() + 20000;
+    while (!/"id":1/.test(out) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+    child.kill();
+    await new Promise((r) => child.on('exit', r));
+  };
+  try {
+    await run('dev');
+    assert.equal(await versionOnPort(), 'dev');
+    await run('3.0.0');
+    assert.equal(await versionOnPort(), 'dev', 'a hand-started app must be left alone');
+  } finally {
+    try { execFileSync(process.execPath, [cli, 'stop'], { env: envFor('9.9.9') }); } catch { /* already gone */ }
+  }
+});

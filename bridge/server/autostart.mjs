@@ -46,7 +46,8 @@ export async function ensureDaemon(selfUrl) {
     // After an update, an old bridge app may still be running from before. Replace it, but never with
     // something older: two tools on different versions must not keep restarting each other's app.
     const mine = bridgeVersion();
-    if (mine === 'dev' || !isOlderVersion(running.version, mine)) return 'running';
+    // An app started by hand from source reports "dev"; leave it alone.
+    if (mine === 'dev' || running.version === 'dev' || !isOlderVersion(running.version, mine)) return 'running';
     await stopDaemon();
     for (let i = 0; i < 20 && (await reachable(base, token)); i += 1) await sleep(150);
     if (await reachable(base, token)) return 'running'; // it would not stop; keep using it

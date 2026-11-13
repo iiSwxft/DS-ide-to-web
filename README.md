@@ -72,6 +72,15 @@ Start a new chat in your AI tool and ask it to call `deepseek_status`. When it r
 
 When your AI tool launches the MCP server, it checks whether the bridge app is already running. If not, it starts one as a background process that keeps running after that AI chat closes, so every chat shares the same bridge and the same browser link. Its log is `~/.ds-ide-to-web/daemon.log`. Stop it with `npx -y github:iiSwxft/DS-ide-to-web stop`.
 
+### Updating
+
+- **MCP server:** nothing to do. With `npx -y github:iiSwxft/DS-ide-to-web`, `npx` fetches the latest version from GitHub each time your AI tool starts the server (the first start after an update takes a few seconds). When the new version starts and finds an older bridge app still running from before, it replaces it. It never replaces a newer app, or one you started yourself from source.
+- **Claude Code plugin:** run `claude plugin update deepseek-bridge@ds-ide-to-web`, then start a new session.
+- **Browser extension:** install the new file from the [latest release](https://github.com/iiSwxft/DS-ide-to-web/releases/latest). Firefox replaces the old one in place. For Chrome, remove the old copy or load the new unzipped folder.
+- **Stay on one version:** pin a release tag instead, for example `npx -y github:iiSwxft/DS-ide-to-web#v0.4.0`, and change the tag when you want to move.
+
+Check which version is running with `npx -y github:iiSwxft/DS-ide-to-web --version`, or look at `version` in the bridge app's status.
+
 ### Only want the OpenAI-compatible API?
 
 You can run the bridge app yourself, without MCP, from a clone of this repository:
