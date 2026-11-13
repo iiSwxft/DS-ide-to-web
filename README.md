@@ -64,6 +64,8 @@ claude mcp add deepseek -- npx -y github:iiSwxft/DS-ide-to-web
 }
 ```
 
+**Codex CLI, Cursor, Windsurf, VS Code, Cline, Continue, Zed, Gemini CLI, opencode, Goose, Amp, and others:** see [docs/clients.md](docs/clients.md) for the exact config for each. It works with any tool that runs a local MCP server. Hosted agents that run in the cloud (Devin, Codex cloud, the Copilot coding agent, the web chat apps) cannot reach it, because the bridge talks to your own browser, and that page explains why.
+
 Start a new chat in your AI tool and ask it to call `deepseek_status`. When it reports `"extensionConnected": true` and `"loggedIn": true`, you are done. The extension and the app share a preset key, `deepseek-bridge`, so there is nothing to configure.
 
 ### How the app starts
@@ -371,6 +373,7 @@ bridge/
     wasm/       DeepSeek's proof-of-work module
   tools/        bundle.mjs (builds dist/), make-icons.mjs (renders the extension icons)
   build.mjs     bundles the extension for Chrome and Firefox
+docs/           clients.md: exact MCP config for each AI tool
 dist/           ds-ide-to-web.mjs: the MCP server and bridge app as one dependency-free file
 .claude-plugin/ and .mcp.json, commands/   the Claude Code plugin and its slash commands
 ```
