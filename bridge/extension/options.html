@@ -3,26 +3,107 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DS Bridge</title>
+  <title>DeepSeek Bridge</title>
   <style>
-    body { font: 14px system-ui, sans-serif; margin: 16px; width: 340px; color: #1a1a1a; }
-    @media (prefers-color-scheme: dark) { body { background: #16181d; color: #e8e8e8; } input { background: #22252c; color: inherit; border-color: #444; } }
-    label { display: block; margin: 10px 0 4px; font-weight: 600; }
-    input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #bbb; border-radius: 6px; }
-    button { margin-top: 12px; padding: 6px 14px; border-radius: 6px; border: 0; background: #4d6bfe; color: #fff; cursor: pointer; }
-    #state { margin-top: 12px; }
-    small { color: #777; display: block; margin-top: 6px; }
+    :root {
+      --bg: #f6f7fb; --card: #ffffff; --text: #171923; --muted: #6b7280; --line: #e5e7ee;
+      --accent: #4d6bfe; --accent-text: #ffffff;
+      --ok: #16a34a; --warn: #d97706; --off: #9ca3af; --bad: #dc2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #14161b; --card: #1c1f27; --text: #eceef4; --muted: #9aa1b2; --line: #2b2f3a; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { width: 340px; background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { padding: 14px; display: grid; gap: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    header img { width: 28px; height: 28px; border-radius: 8px; }
+    header h1 { font-size: 15px; margin: 0; letter-spacing: -.01em; }
+    header p { margin: 0; color: var(--muted); font-size: 12px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .status { display: flex; gap: 10px; align-items: flex-start; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--off); flex: none; }
+    .dot[data-phase="connected"] { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent); }
+    .dot[data-phase="connecting"] { background: var(--warn); }
+    .dot[data-phase="offline"] { background: var(--bad); }
+    .status strong { display: block; font-size: 14px; }
+    .status span { color: var(--muted); }
+    .cmd { display: flex; gap: 6px; margin-top: 10px; }
+    code { flex: 1; min-width: 0; padding: 7px 9px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); font: 12px ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); padding: 6px 10px; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    button:hover { filter: brightness(.96); }
+    .hidden { display: none; }
+    .endpoint { display: grid; gap: 4px; }
+    .endpoint label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+    .row { display: flex; gap: 6px; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; }
+    details[open] summary { margin-bottom: 8px; }
+    .field { display: grid; gap: 4px; margin-bottom: 8px; }
+    .field label { color: var(--muted); font-size: 12px; }
+    input { width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+    input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .hint { color: var(--muted); font-size: 11.5px; margin: 6px 0 0; }
   </style>
 </head>
 <body>
-  <h3>DS Bridge</h3>
-  <label for="token">Bridge token</label>
-  <input id="token" type="password" autocomplete="off" placeholder="from ~/.ds-ide-to-web/token">
-  <label for="port">Port</label>
-  <input id="port" type="number" min="1" max="65535" value="8787">
-  <button id="save">Save and connect</button>
-  <div id="state">Status: checking...</div>
-  <small>Run <code>node bridge/server/daemon.mjs</code>, then paste the token it prints the path of.</small>
+  <main>
+    <header>
+      <img src="icon.png" alt="">
+      <div>
+        <h1>DeepSeek Bridge</h1>
+        <p>Use your DeepSeek chat from any AI tool</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="status">
+        <div id="dot" class="dot" data-phase="no-tab"></div>
+        <div>
+          <strong id="title">Checking...</strong>
+          <span id="detail"></span>
+        </div>
+      </div>
+      <div id="startBox" class="cmd hidden">
+        <code id="startCmd">node bridge/server/daemon.mjs</code>
+        <button id="copyCmd" type="button">Copy</button>
+      </div>
+      <div id="openBox" class="cmd hidden">
+        <button id="openDs" class="primary" type="button">Open chat.deepseek.com</button>
+      </div>
+    </section>
+
+    <section class="card endpoint">
+      <label for="base">OpenAI-compatible base URL</label>
+      <div class="row">
+        <input id="base" readonly>
+        <button id="copyBase" type="button">Copy</button>
+      </div>
+      <label for="key">API key</label>
+      <div class="row">
+        <input id="key" readonly>
+        <button id="copyKey" type="button">Copy</button>
+      </div>
+      <p class="hint">Models: deepseek-web, deepseek-web-thinking, deepseek-web-expert</p>
+    </section>
+
+    <details class="card">
+      <summary>Advanced</summary>
+      <div class="field">
+        <label for="token">Custom token (leave empty to use the default)</label>
+        <input id="token" type="password" autocomplete="off" placeholder="deepseek-bridge">
+      </div>
+      <div class="field">
+        <label for="port">Port</label>
+        <input id="port" type="number" min="1" max="65535" value="8787">
+      </div>
+      <div class="row">
+        <button id="save" class="primary" type="button">Save</button>
+        <button id="reset" type="button">Reset to defaults</button>
+      </div>
+    </details>
+  </main>
   <script src="options.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { request } from 'node:http';
 import { WebSocket } from 'ws';
 import { createBridge } from '../daemon.mjs';
 import { messagesToPrompt } from '../openai.mjs';
@@ -48,6 +49,16 @@ const call = (path, init = {}) => fetch(`http://127.0.0.1:${port}${path}`, {
 test('rejects missing token', async () => {
   const res = await fetch(`http://127.0.0.1:${port}/v1/models`);
   assert.equal(res.status, 401);
+});
+
+test('rejects unexpected Host header (DNS rebinding)', async () => {
+  const status = await new Promise((resolve, reject) => {
+    const req = request({ host: '127.0.0.1', port, path: '/v1/models', headers: { host: 'evil.example', authorization: `Bearer ${TOKEN}` } },
+      (res) => { res.resume(); resolve(res.statusCode); });
+    req.on('error', reject);
+    req.end();
+  });
+  assert.equal(status, 403);
 });
 
 test('rejects browser-origin HTTP requests', async () => {

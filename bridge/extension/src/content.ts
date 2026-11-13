@@ -107,3 +107,61 @@ chrome.runtime.onConnect.addListener((port) => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Small status pill so it is obvious the bridge is live (and what to do if not).
+// ---------------------------------------------------------------------------
+type Phase = 'no-tab' | 'connecting' | 'connected' | 'offline';
+
+const PILL: Record<Phase, { color: string; text: string }> = {
+  'no-tab': { color: '#9ca3af', text: 'DeepSeek Bridge' },
+  connecting: { color: '#d97706', text: 'DeepSeek Bridge: connecting...' },
+  connected: { color: '#16a34a', text: 'DeepSeek Bridge: connected' },
+  offline: { color: '#dc2626', text: 'DeepSeek Bridge: app not running (node bridge/server/daemon.mjs)' },
+};
+
+function mountPill() {
+  if (window.top !== window) return;
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:2147483646;';
+  const root = host.attachShadow({ mode: 'closed' });
+  root.innerHTML = `
+    <style>
+      .pill { display:flex; align-items:center; gap:8px; max-width:340px; padding:6px 11px; border-radius:999px;
+        font:12px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif; color:#e8eaf0; background:rgba(24,27,34,.92);
+        border:1px solid rgba(255,255,255,.12); box-shadow:0 4px 14px rgba(0,0,0,.25); cursor:pointer;
+        transition:opacity .4s ease; backdrop-filter:blur(6px); }
+      .dot { width:8px; height:8px; border-radius:50%; flex:none; }
+      .pill.quiet { opacity:.35; } .pill.quiet:hover { opacity:1; }
+      .pill.quiet .label { display:none; } .pill.quiet:hover .label { display:inline; }
+    </style>
+    <div class="pill" title="Click to hide"><span class="dot"></span><span class="label"></span></div>`;
+  const pill = root.querySelector('.pill') as HTMLElement;
+  const dot = root.querySelector('.dot') as HTMLElement;
+  const label = root.querySelector('.label') as HTMLElement;
+  let quietTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const render = (phase: Phase) => {
+    const view = PILL[phase] ?? PILL['no-tab'];
+    dot.style.background = view.color;
+    label.textContent = view.text;
+    pill.classList.remove('quiet');
+    clearTimeout(quietTimer);
+    if (phase === 'connected') quietTimer = setTimeout(() => pill.classList.add('quiet'), 4000);
+  };
+  pill.addEventListener('click', () => host.remove());
+  document.documentElement.appendChild(host);
+
+  chrome.runtime.onMessage.addListener((msg: { type?: string; phase?: Phase }) => {
+    if (msg?.type === 'state' && msg.phase) render(msg.phase);
+  });
+  try {
+    chrome.runtime.sendMessage({ type: 'connection-state' }, (reply?: { phase?: Phase }) => {
+      render(reply?.phase ?? 'connecting');
+    });
+  } catch {
+    render('connecting');
+  }
+}
+
+mountPill();

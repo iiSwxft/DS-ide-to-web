@@ -7,11 +7,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { HOST, getPort, loadOrCreateToken } from './config.mjs';
+import { HOST, getPort, loadToken } from './config.mjs';
 import { MODELS } from './link.mjs';
 
 const base = `http://${HOST}:${getPort()}`;
-const token = loadOrCreateToken();
+const token = loadToken();
 
 async function api(path, init = {}) {
   let res;

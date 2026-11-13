@@ -7,7 +7,7 @@ A small local bridge so that **any** tool (an MCP client, an IDE assistant, a sc
    |  OpenAI API  (http://127.0.0.1:8787/v1)         MCP (stdio) -> mcp-stdio.mjs
    v                                                      |
  daemon.mjs  <------------------ local HTTP --------------+
-   |  WebSocket (127.0.0.1, token + extension-origin check)
+   |  WebSocket (127.0.0.1, key + extension-origin check)
    v
  browser extension (bridge/extension)  ->  chat.deepseek.com tab (your login, your PoW)
 ```
@@ -16,26 +16,28 @@ The extension reuses this fork's DeepSeek web client (`core/deepseek/*`: login h
 
 > Heads up: this automates the consumer web app with your own session. That is likely outside DeepSeek's terms of service and may get your account limited. For production use, prefer the official API. Use this for personal experiments.
 
-## Setup
+## Setup (about a minute, no token to copy)
 
-1. Install and start the daemon (Node 20+):
+1. Start the bridge app (Node 20+), once:
    ```bash
    cd bridge/server && npm install && node daemon.mjs
    ```
-   It creates a token in `~/.ds-ide-to-web/token` (override the folder with `DS_BRIDGE_HOME`, the port with `DS_BRIDGE_PORT`, default `8787`).
 2. Build and load the extension (from the repo root):
    ```bash
    node bridge/build.mjs
    ```
    This writes `bridge/build/chrome` and `bridge/build/firefox`.
    - Chrome/Edge: `chrome://extensions` -> Developer mode -> Load unpacked -> `bridge/build/chrome`.
-   - Firefox (128+): `about:debugging#/runtime/this-firefox` -> Load Temporary Add-on -> pick `bridge/build/firefox/manifest.json` (temporary add-ons are removed when Firefox restarts). Then open `about:addons` -> DS Bridge -> Permissions and allow access to `chat.deepseek.com`, because Firefox treats MV3 host permissions as opt-in.
-3. Open the extension, paste the token, save. Keep a logged-in `chat.deepseek.com` tab open (the extension opens one in the background if none exists).
-4. Check: `curl -H "Authorization: Bearer $(cat ~/.ds-ide-to-web/token)" http://127.0.0.1:8787/api/status`
+   - Firefox (128+): `about:debugging#/runtime/this-firefox` -> Load Temporary Add-on -> `bridge/build/firefox/manifest.json` (removed on restart). Then `about:addons` -> DeepSeek Bridge -> Permissions and allow `chat.deepseek.com` (Firefox makes MV3 host access opt-in).
+3. Open https://chat.deepseek.com signed in. The extension connects by itself whenever a DeepSeek tab is open and shows a small status pill on the page. The toolbar popup shows status and the base URL / API key to copy.
+
+The extension and the app share a preset key (`deepseek-bridge`), so nothing needs configuring. To lock it down, set `DS_BRIDGE_TOKEN` (or put a value in `~/.ds-ide-to-web/token`) before starting the app and enter the same value under Advanced in the extension popup. `DS_BRIDGE_PORT` changes the port (default `8787`).
+
+Check it: `curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787/api/status`
 
 ## Use it
 
-**OpenAI-compatible** (Cursor, Continue, Open WebUI, LangChain, plain scripts...): base URL `http://127.0.0.1:8787/v1`, API key = your token.
+**OpenAI-compatible** (Cursor, Continue, Open WebUI, LangChain, plain scripts...): base URL `http://127.0.0.1:8787/v1`, API key = `deepseek-bridge` (or your custom token).
 
 | model id | meaning |
 | --- | --- |
@@ -49,10 +51,10 @@ Extra body fields: `conversation_id` (continue a DeepSeek chat; returned in ever
 
 ## Security model
 
-- Everything binds to `127.0.0.1`.
-- HTTP needs `Authorization: Bearer <token>` and refuses any request that carries a browser `Origin` header, so web pages cannot call it.
-- The WebSocket only accepts `chrome-extension://` / `moz-extension://` origins plus the token.
-- The token never leaves your machine; do not share it or commit it.
+- Everything binds to `127.0.0.1`; requests whose `Host` header is not localhost are refused (no DNS rebinding).
+- HTTP needs `Authorization: Bearer <key>` and refuses any request carrying a browser `Origin` header, so web pages cannot call it.
+- The WebSocket only accepts `chrome-extension://` / `moz-extension://` origins plus the key.
+- The default key is public by design, so any program running on your own computer can use the bridge (and therefore your DeepSeek session) while it runs. If that matters to you, set a custom token as described above and stop the app when you are not using it.
 
 ## Develop
 

@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { WebSocketServer } from 'ws';
-import { HOST, getPort, loadOrCreateToken, tokenFile } from './config.mjs';
+import { DEFAULT_TOKEN, HOST, getPort, loadToken, tokenFile } from './config.mjs';
 import { BridgeError, ExtensionLink } from './link.mjs';
 import { handleChatCompletions, listModels } from './openai.mjs';
 
@@ -13,6 +13,8 @@ function safeEqual(a, b) {
   const y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
+
+const HOST_RE = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/;
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -52,6 +54,9 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
       // Browsers must not be able to drive the bridge from a web page.
       if (req.headers.origin) {
         throw new BridgeError('Browser-origin requests are not allowed.', 'forbidden_origin', 403);
+      }
+      if (!HOST_RE.test(req.headers.host ?? '')) {
+        throw new BridgeError('Unexpected Host header.', 'forbidden_host', 403);
       }
       const auth = req.headers.authorization ?? '';
       const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -100,6 +105,7 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, `http://${HOST}`);
     const origin = req.headers.origin ?? '';
+    if (!HOST_RE.test(req.headers.host ?? '')) { socket.destroy(); return; }
     const supplied = url.searchParams.get('token') ?? '';
     // Only a browser extension may connect: web pages carry an http(s) origin.
     const originOk = /^(chrome|moz)-extension:\/\//.test(origin);
@@ -115,14 +121,21 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
 }
 
 async function main() {
-  const token = loadOrCreateToken();
+  const token = loadToken();
   const port = getPort();
   const { server } = createBridge({ token });
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') console.error(`Port ${port} is already in use. Is the bridge already running? Set DS_BRIDGE_PORT to change it.`);
+    else console.error(error);
+    process.exit(1);
+  });
   server.listen(port, HOST, () => {
-    console.log(`DS bridge listening on http://${HOST}:${port}`);
-    console.log(`  OpenAI-compatible base URL: http://${HOST}:${port}/v1   (api key = your bridge token)`);
-    console.log(`  Token file: ${tokenFile()}`);
-    console.log('  Paste the token and port into the browser extension options page.');
+    console.log(`DeepSeek Bridge running on http://${HOST}:${port}`);
+    console.log(`  OpenAI base URL: http://${HOST}:${port}/v1`);
+    console.log(token === DEFAULT_TOKEN
+      ? `  API key: ${DEFAULT_TOKEN}  (default; the extension uses it automatically)`
+      : `  API key: custom token in use (${process.env.DS_BRIDGE_TOKEN ? 'DS_BRIDGE_TOKEN' : tokenFile()}); set the same value in the extension's Advanced settings`);
+    console.log('  Open chat.deepseek.com in a logged-in browser with the extension installed.');
   });
 }
 
