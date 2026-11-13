@@ -145,7 +145,7 @@ Chrome has no equivalent for unpacked builds: load `bridge/build/chrome` with *L
 
 ## Starter prompts
 
-Two ways to put DeepSeek to work. Paste either into any AI that has the DeepSeek MCP server connected, and fill in the task.
+Two ways to put DeepSeek to work. Paste either into any AI that has the DeepSeek MCP server connected, and fill in the task. The same prompts are also in the [`prompts/`](prompts) folder as plain files ([collaborator](prompts/collaborator.md), [director](prompts/director.md)), and as slash commands in the Claude Code plugin.
 
 ### Work with DeepSeek as a collaborator
 
