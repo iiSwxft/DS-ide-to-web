@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { BridgeError, MODELS } from './link.mjs';
+import { askFlow } from './chats.mjs';
 
 function contentToText(content) {
   if (typeof content === 'string') return content;
@@ -55,16 +56,17 @@ export async function handleChatCompletions(link, body, res, abortSignal) {
   const prompt = messagesToPrompt(body.messages);
   const common = {
     prompt,
-    conversationId: body.conversation_id,
+    conversation_id: body.conversation_id,
+    chat: body.chat,
+    new_chat_title: body.new_chat_title,
     model,
     thinking: typeof body.ds_thinking === 'boolean' ? body.ds_thinking : undefined,
     search: body.ds_search,
-    signal: abortSignal,
   };
   const id = `chatcmpl-${randomUUID()}`;
 
   if (!body.stream) {
-    const out = await link.ask(common);
+    const out = await askFlow(link, common, { signal: abortSignal });
     const message = { role: 'assistant', content: out.text };
     if (out.reasoning) message.reasoning_content = out.reasoning;
     res.writeHead(200, { 'content-type': 'application/json' });
@@ -87,8 +89,8 @@ export async function handleChatCompletions(link, body, res, abortSignal) {
   });
   res.write(chunk(id, model, { role: 'assistant' }));
   try {
-    const out = await link.ask({
-      ...common,
+    const out = await askFlow(link, common, {
+      signal: abortSignal,
       onDelta: ({ text, reasoning }) => {
         if (reasoning) res.write(chunk(id, model, { reasoning_content: reasoning }));
         if (text) res.write(chunk(id, model, { content: text }));

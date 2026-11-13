@@ -25,6 +25,8 @@ type Out =
   | { type: 'done'; result: { chatSessionId: string; responseMessageId: number | null; text: string; reasoning: string } }
   | { type: 'error'; message: string; code?: string };
 
+console.log('[DeepSeek Bridge] content script loaded');
+
 const WASM_URL = chrome.runtime.getURL('deepseek/sha3_wasm_bg.wasm');
 
 function errorCode(error: unknown): string {
@@ -83,6 +85,52 @@ async function runAsk(params: AskParams, emit: (out: Out) => void, signal: Abort
   }
 }
 
+// Chat-management calls. A strict allowlist: nothing else on DeepSeek's API can be reached
+// through the bridge (in particular not delete_all, logout, or any account route).
+const API_ALLOWLIST: Record<string, 'GET' | 'POST'> = {
+  '/api/v0/chat_session/fetch_page': 'GET',
+  '/api/v0/chat/history_messages': 'GET',
+  '/api/v0/chat_session/update_title': 'POST',
+  '/api/v0/chat_session/delete': 'POST',
+  '/api/v0/chat_session/batch_update_pinned': 'POST',
+  '/api/v0/chat/stop_stream': 'POST',
+};
+
+interface ApiParams {
+  path: string;
+  query?: Record<string, string | number | boolean | null | undefined>;
+  json?: unknown;
+}
+
+async function runApi(params: ApiParams, emit: (out: Out) => void, signal: AbortSignal) {
+  try {
+    const method = API_ALLOWLIST[params.path];
+    if (!method) throw new Error(`Route not allowed through the bridge: ${params.path}`);
+    const clientHeaders = createClientHeaders({
+      missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
+    });
+    const url = new URL(params.path, location.origin);
+    for (const [key, value] of Object.entries(params.query ?? {})) {
+      if (value !== undefined && value !== null) url.searchParams.set(key, String(value));
+    }
+    const response = await fetch(url.href, {
+      method,
+      credentials: 'include',
+      signal,
+      headers: { 'content-type': 'application/json', ...clientHeaders },
+      body: method === 'POST' ? JSON.stringify(params.json ?? {}) : undefined,
+    });
+    const json = await response.json().catch(() => null);
+    emit({ type: 'done', result: { status: response.status, json } as never });
+  } catch (error) {
+    emit({
+      type: 'error',
+      code: errorCode(error),
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 function loggedIn(): boolean {
   try {
     createClientHeaders();
@@ -101,13 +149,15 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'ds-bridge') return;
   const controller = new AbortController();
   port.onDisconnect.addListener(() => controller.abort());
-  port.onMessage.addListener((msg: { type: string; params?: AskParams }) => {
+  port.onMessage.addListener((msg: { type: string; params?: AskParams | ApiParams }) => {
     if (msg.type === 'cancel') {
       controller.abort();
     } else if (msg.type === 'status') {
       port.postMessage({ type: 'done', result: { ok: true, loggedIn: loggedIn(), url: location.href } });
     } else if (msg.type === 'ask' && msg.params) {
-      void runAsk(msg.params, (out) => port.postMessage(out), controller.signal);
+      void runAsk(msg.params as AskParams, (out) => port.postMessage(out), controller.signal);
+    } else if (msg.type === 'api' && msg.params) {
+      void runApi(msg.params as unknown as ApiParams, (out) => port.postMessage(out), controller.signal);
     }
   });
 });

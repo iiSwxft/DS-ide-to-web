@@ -47,7 +47,23 @@ Check it: `curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787
 
 Extra body fields: `conversation_id` (continue a DeepSeek chat; returned in every response), `ds_search: true` (web search), `ds_thinking: true|false`. Tool/function calling is not supported. Multi-message histories are flattened into one prompt.
 
-**MCP**: add `node /path/to/bridge/server/mcp-stdio.mjs` as a stdio MCP server. Tools: `deepseek_ask` (prompt, optional `conversation_id`, `model`, `search`, `include_reasoning`) and `deepseek_status`.
+**MCP**: add `node /path/to/bridge/server/mcp-stdio.mjs` as a stdio MCP server. Tools:
+
+| tool | what it does |
+| --- | --- |
+| `deepseek_ask` | send a prompt. Starts a new chat by default (`new_chat_title` names it); `chat` (id or title) or `conversation_id` continues one. Flags: `model`, `thinking`, `search`, `include_reasoning` |
+| `deepseek_list_chats` | list your chats, optionally filtered by title |
+| `deepseek_read_chat` | read a chat's messages by id or title |
+| `deepseek_rename_chat` | rename a chat |
+| `deepseek_pin_chat` | pin or unpin a chat |
+| `deepseek_delete_chat` | permanently delete chats. Needs `confirm: true`, takes at most 20, and resolves every target before deleting any |
+| `deepseek_status` | is the extension connected and logged in |
+
+The same actions are plain HTTP on the bridge: `POST /api/ask`, `GET /api/chats`, `GET /api/chat?chat=`, `POST /api/chat/rename`, `POST /api/chat/pin`, `POST /api/chat/delete`. `/v1/chat/completions` also accepts `chat` and `new_chat_title`.
+
+Chat titles are matched exactly first, then by unique substring; an ambiguous title is refused with the candidates listed rather than guessed.
+
+The extension can only call a fixed allowlist of DeepSeek chat routes (list, history, rename, delete, pin, stop). It cannot reach account settings, logout, or "delete all history".
 
 ## Security model
 

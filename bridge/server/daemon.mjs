@@ -5,6 +5,7 @@ import { WebSocketServer } from 'ws';
 import { DEFAULT_TOKEN, HOST, getPort, loadToken, tokenFile } from './config.mjs';
 import { BridgeError, ExtensionLink } from './link.mjs';
 import { handleChatCompletions, listModels } from './openai.mjs';
+import { askFlow, deleteChats, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
@@ -83,15 +84,27 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
         if (typeof body.prompt !== 'string' || !body.prompt.trim()) {
           throw new BridgeError('"prompt" must be a non-empty string.', 'invalid_request', 400);
         }
-        const out = await link.ask({
-          prompt: body.prompt,
-          conversationId: body.conversation_id,
-          model: body.model,
-          thinking: body.thinking,
-          search: body.search,
-          signal: abort.signal,
-        });
-        return sendJson(res, 200, out);
+        return sendJson(res, 200, await askFlow(link, body, { signal: abort.signal }));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/chats') {
+        const chats = await listChats(link, { limit: url.searchParams.get('limit') ?? 30, query: url.searchParams.get('q') ?? undefined });
+        return sendJson(res, 200, { chats });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/chat') {
+        const chat = await resolveChat(link, url.searchParams.get('chat'));
+        return sendJson(res, 200, await readChat(link, chat.id, { includeReasoning: url.searchParams.get('reasoning') === '1' }));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/chat/rename') {
+        const body = await readJson(req);
+        return sendJson(res, 200, await renameChat(link, body.chat, body.title));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/chat/pin') {
+        const body = await readJson(req);
+        return sendJson(res, 200, await pinChat(link, body.chat, body.pinned !== false));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/chat/delete') {
+        const body = await readJson(req);
+        return sendJson(res, 200, await deleteChats(link, body.chats ?? body.chat, { confirm: body.confirm }));
       }
       throw new BridgeError('Not found.', 'not_found', 404);
     } catch (error) {

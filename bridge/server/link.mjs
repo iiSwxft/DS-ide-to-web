@@ -119,6 +119,12 @@ export class ExtensionLink {
     return this.#send('status', {});
   }
 
+  /** Low-level, allowlisted DeepSeek chat-management call (the extension enforces the allowlist). */
+  async api(path, { query, json, signal } = {}) {
+    const out = await this.#send('api', { path, query, json }, { signal });
+    return out; // { status, json }
+  }
+
   /**
    * Send one prompt. With `conversationId`, continues that chat (same DeepSeek
    * session, parented on the last answer); otherwise starts a new chat.

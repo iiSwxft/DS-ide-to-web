@@ -24,6 +24,18 @@ async function deepseekTabs() {
   return api.tabs.query({ url: `${DEEPSEEK}*` });
 }
 
+/** Is the content script alive in a DeepSeek tab? (false = tab open but page script missing) */
+async function pageScriptAlive() {
+  const tabs = await deepseekTabs();
+  for (const tab of tabs) {
+    try {
+      const reply = await api.tabs.sendMessage(tab.id, { type: 'ping' });
+      if (reply?.ok) return true;
+    } catch { /* not injected in this tab */ }
+  }
+  return false;
+}
+
 function setPhase(next) {
   if (phase === next) return;
   phase = next;
@@ -49,10 +61,7 @@ async function handleRequest(msg) {
     return;
   }
   try {
-    const tabs = await deepseekTabs();
-    const tab = tabs.find((t) => t.status === 'complete') ?? tabs[0];
-    if (!tab) throw new Error('No chat.deepseek.com tab is open.');
-    const port = await connectToTab(tab);
+    const port = await connectToAnyTab();
     active.set(id, port);
     let settled = false;
     port.onMessage.addListener((out) => {
@@ -72,18 +81,25 @@ async function handleRequest(msg) {
   }
 }
 
-async function connectToTab(tab) {
-  // The content script registers its listeners at document_idle; ping until it answers.
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    try {
-      const reply = await api.tabs.sendMessage(tab.id, { type: 'ping' });
-      if (reply?.ok) return api.tabs.connect(tab.id, { name: 'ds-bridge' });
-    } catch {
-      // not ready yet
+/** Try every open DeepSeek tab (newest first) and connect to the first one whose page script answers. */
+async function connectToAnyTab() {
+  const notes = [];
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    notes.length = 0;
+    const tabs = (await deepseekTabs()).sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
+    if (tabs.length === 0) throw new Error('No chat.deepseek.com tab is open.');
+    for (const tab of tabs) {
+      try {
+        const reply = await api.tabs.sendMessage(tab.id, { type: 'ping' });
+        if (reply?.ok) return api.tabs.connect(tab.id, { name: 'ds-bridge' });
+        notes.push(`tab ${tab.id} (${tab.status}): empty reply ${JSON.stringify(reply)}`);
+      } catch (error) {
+        notes.push(`tab ${tab.id} (${tab.status}, ${tab.url?.slice(0, 40)}): ${error?.message ?? error}`);
+      }
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error('Could not reach the DeepSeek tab. Reload chat.deepseek.com and retry.');
+  throw new Error(`The extension is not running on any chat.deepseek.com tab. ${notes.join(' | ')}`);
 }
 
 function scheduleRetry(delayMs = 3000) {
@@ -164,10 +180,15 @@ api.alarms.create('ds-bridge-keepalive', { periodInMinutes: 0.5 });
 api.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'ds-bridge-keepalive') void refresh();
 });
-api.tabs.onCreated.addListener(() => void refresh());
-api.tabs.onRemoved.addListener(() => void refresh());
+let tabDebounce = null;
+function refreshSoon() {
+  clearTimeout(tabDebounce);
+  tabDebounce = setTimeout(() => void refresh(), 400);
+}
+api.tabs.onCreated.addListener(refreshSoon);
+api.tabs.onRemoved.addListener(refreshSoon);
 api.tabs.onUpdated.addListener((_id, info) => {
-  if (info.url || info.status === 'complete') void refresh();
+  if (info.url || info.status === 'complete') refreshSoon();
 });
 api.runtime.onStartup.addListener(() => void refresh());
 api.runtime.onInstalled.addListener(() => void refresh());
@@ -179,10 +200,17 @@ api.storage.onChanged.addListener((changes) => {
 });
 api.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (msg?.type === 'connection-state') {
-    reply({ phase, error: lastError });
-  } else if (msg?.type === 'retry-now') {
+    void (async () => {
+      // Re-check the tab list on demand so a stale "connected" never lingers.
+      if ((await deepseekTabs()).length === 0 && phase !== 'no-tab') await refresh();
+      reply({ phase, error: lastError, pageScript: phase === 'no-tab' ? null : await pageScriptAlive() });
+    })();
+    return true; // async reply
+  }
+  if (msg?.type === 'retry-now') {
     void refresh();
     reply({ phase, error: lastError });
   }
+  return undefined;
 });
 void refresh();
