@@ -148,6 +148,37 @@ export class ExtensionLink {
     };
   }
 
+  async #turnAction(type, params, { onDelta, signal }) {
+    const result = await this.#send(type, params, { onDelta, signal });
+    this.conversations.set(params.chatSessionId, {
+      chatSessionId: params.chatSessionId,
+      parentMessageId: result.responseMessageId ?? null,
+    });
+    return {
+      conversationId: params.chatSessionId,
+      text: result.text ?? '',
+      reasoning: result.reasoning ?? '',
+      chatUrl: `https://chat.deepseek.com/a/chat/s/${params.chatSessionId}`,
+    };
+  }
+
+  /** Generate the answer to an assistant message again. The chat continues from the new answer. */
+  regenerate({ chatSessionId, messageId, model, thinking, search, onDelta, signal }) {
+    const preset = typeof model === 'string' || model === undefined ? resolveModel(model) : model;
+    if (!preset) throw new BridgeError(`Unknown model "${model}". Available: ${Object.keys(MODELS).join(', ')}`, 'unknown_model', 400);
+    return this.#turnAction('regenerate', {
+      chatSessionId,
+      messageId,
+      thinking: thinking ?? preset.thinking,
+      search: Boolean(search),
+    }, { onDelta, signal });
+  }
+
+  /** Continue an assistant answer that was cut off. */
+  continueAnswer({ chatSessionId, messageId, onDelta, signal }) {
+    return this.#turnAction('continue', { chatSessionId, messageId }, { onDelta, signal });
+  }
+
   /** Low-level, allowlisted DeepSeek chat-management call (the extension enforces the allowlist). */
   async api(path, { query, json, signal } = {}) {
     const out = await this.#send('api', { path, query, json }, { signal });

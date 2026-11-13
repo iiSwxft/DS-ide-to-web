@@ -9,7 +9,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { HOST, getPort, loadToken } from './config.mjs';
 import { MODELS } from './link.mjs';
-import { presetNames } from './presets.mjs';
+import { PRESETS, presetNames } from './presets.mjs';
 
 const base = `http://${HOST}:${getPort()}`;
 const token = loadToken();
@@ -47,6 +47,7 @@ const INSTRUCTIONS = [
   '2. The reply ends with [conversation_id: ...]. Read DeepSeek\'s answer, do your own work with it (check it, extend it, fix it), then call deepseek_ask again WITH that conversation_id and your follow-up. DeepSeek remembers the whole chat, so send only the new message.',
   '3. Repeat until the task is done. Stop when you have what you need or when answers stop improving; do not loop forever.',
   'Use new_chat_title so the chat is easy to find later, then deepseek_list_chats / deepseek_read_chat to look back at it.',
+  'If your own message was the problem, use deepseek_edit_message. If DeepSeek\'s answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets.',
   'Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted.',
 ].join('\n');
 
@@ -142,6 +143,57 @@ server.registerTool('deepseek_edit_message', {
   if (include_reasoning && out.reasoning) parts.unshift(`<thinking>\n${out.reasoning}\n</thinking>`);
   parts.push(`\n[edited message ${out.editedMessageId}; conversation_id: ${out.conversationId}]`);
   return text(parts.join('\n'));
+}));
+
+server.registerTool('deepseek_regenerate', {
+  title: 'Regenerate DeepSeek\'s answer',
+  description:
+    'Make DeepSeek answer again, like the site\'s regenerate button. Use it when an answer was weak and the question was fine. ' +
+    'Defaults to the latest answer. The old answer stays on the site as an older version, and the chat continues from the new one.',
+  inputSchema: {
+    chat: z.string().optional().describe('The chat: id, title, or a unique part of the title.'),
+    conversation_id: z.string().optional().describe('Or the conversation_id returned by deepseek_ask.'),
+    message_id: z.number().int().optional().describe('Which DeepSeek answer to redo (see deepseek_read_chat ids). Default: the latest.'),
+    model: z.enum(Object.keys(MODELS)).optional().describe('deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert.'),
+    thinking: z.boolean().optional().describe('Turn deep thinking on or off for the new answer.'),
+    search: z.boolean().optional().describe('Turn web search on for the new answer.'),
+    include_reasoning: z.boolean().optional().describe("Also return the model's thinking text when available."),
+  },
+}, guard(async ({ chat, conversation_id, message_id, model, thinking, search, include_reasoning }) => {
+  const out = await post('/api/regenerate', { chat, conversation_id, message_id, model, thinking, search });
+  const parts = [out.text];
+  if (include_reasoning && out.reasoning) parts.unshift(`<thinking>\n${out.reasoning}\n</thinking>`);
+  parts.push(`\n[regenerated message ${out.regeneratedMessageId}; conversation_id: ${out.conversationId}]`);
+  return text(parts.join('\n'));
+}));
+
+server.registerTool('deepseek_continue', {
+  title: 'Continue a cut-off answer',
+  description:
+    'Ask DeepSeek to keep going when its latest answer was cut off mid-way, like the site\'s continue button. ' +
+    'It only helps for answers that stopped early; for a complete answer DeepSeek may refuse.',
+  inputSchema: {
+    chat: z.string().optional().describe('The chat: id, title, or a unique part of the title.'),
+    conversation_id: z.string().optional().describe('Or the conversation_id returned by deepseek_ask.'),
+    message_id: z.number().int().optional().describe('Which DeepSeek answer to continue. Default: the latest.'),
+  },
+}, guard(async ({ chat, conversation_id, message_id }) => {
+  const out = await post('/api/continue', { chat, conversation_id, message_id });
+  return text(`${out.text}\n\n[continued message ${out.continuedMessageId}; conversation_id: ${out.conversationId}]`);
+}));
+
+server.registerTool('deepseek_list_models', {
+  title: 'List models and presets',
+  description: 'List the DeepSeek models and the built-in chat presets you can pass to deepseek_ask, with what each one does.',
+  inputSchema: {},
+}, guard(async () => {
+  const models = Object.entries(MODELS)
+    .map(([id, m]) => `- ${id}: ${m.modelType === 'expert' ? 'expert model' : 'default model'}, deep thinking ${m.thinking ? 'on' : 'off'}`)
+    .join('\n');
+  const presets = presetNames()
+    .map((name) => `- ${name}: ${PRESETS[name].split(/(?<=\.)\s/)[0]}`)
+    .join('\n');
+  return text(`Models (the model parameter):\n${models}\n\nPresets (the preset parameter, new chats only):\n${presets}\n\nAlso: thinking true/false overrides a model's thinking setting, and search true turns on web search.`);
 }));
 
 server.registerTool('deepseek_rename_chat', {

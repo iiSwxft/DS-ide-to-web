@@ -15,6 +15,7 @@ let chats;
 let asks;
 const deleted = [];
 const edits = [];
+const turnActions = [];
 
 const envelope = (biz_data, biz_code = 0) => ({ status: 200, json: { data: { biz_code, biz_msg: biz_code ? 'nope' : '', biz_data } } });
 
@@ -83,6 +84,9 @@ before(async () => {
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: handleApi(msg.params) }));
     } else if (msg.type === 'status') {
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { ok: true, loggedIn: true } }));
+    } else if (msg.type === 'regenerate' || msg.type === 'continue') {
+      turnActions.push({ type: msg.type, ...msg.params });
+      ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { chatSessionId: msg.params.chatSessionId, responseMessageId: 777, text: `${msg.type}-ok`, reasoning: '' } }));
     } else if (msg.type === 'edit') {
       edits.push(msg.params);
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { chatSessionId: msg.params.chatSessionId, responseMessageId: 555, text: 'edited-ok', reasoning: '' } }));
@@ -291,4 +295,31 @@ test('director preset is available and applied to a new chat', async () => {
   assert.match(sent, /NEXT PROMPT:/);
   assert.match(sent, /DONE:/);
   assert.match(sent, /\[First message\]\nGOAL: write a haiku$/);
+});
+
+test('regenerate redoes the latest DeepSeek answer by default and the chat continues from the new one', async () => {
+  turnActions.length = 0;
+  const out = await (await call('/api/regenerate', { chat: A })).json();
+  assert.equal(out.text, 'regenerate-ok');
+  assert.equal(out.regeneratedMessageId, 2);
+  assert.equal(out.previousText, 'hi there');
+  assert.deepEqual(turnActions.at(-1), { type: 'regenerate', chatSessionId: A, messageId: 2, thinking: false, search: false });
+  await (await call('/api/ask', { prompt: 'thanks', conversation_id: A })).json();
+  assert.equal(asks.at(-1).parentMessageId, 777);
+});
+
+test('regenerate can use thinking and rejects a message that is not a DeepSeek answer', async () => {
+  await (await call('/api/regenerate', { chat: A, model: 'deepseek-web-thinking' })).json();
+  assert.equal(turnActions.at(-1).thinking, true);
+  const bad = await call('/api/regenerate', { chat: A, message_id: 1 }); // 1 is the user message
+  assert.equal(bad.status, 404);
+  assert.match((await bad.json()).error.message, /answer ids: 2/);
+  assert.equal((await call('/api/regenerate', {})).status, 400);
+});
+
+test('continue extends the latest answer', async () => {
+  const out = await (await call('/api/continue', { chat: A })).json();
+  assert.equal(out.text, 'continue-ok');
+  assert.equal(out.continuedMessageId, 2);
+  assert.deepEqual(turnActions.at(-1), { type: 'continue', chatSessionId: A, messageId: 2 });
 });

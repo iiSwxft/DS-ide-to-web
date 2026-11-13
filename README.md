@@ -155,8 +155,9 @@ The AI talks to DeepSeek like a colleague: it asks, checks the answer, pushes ba
 
 ```text
 You have a DeepSeek MCP server connected (deepseek_ask, deepseek_edit_message,
-deepseek_read_chat, deepseek_list_chats, deepseek_rename_chat, deepseek_pin_chat,
-deepseek_delete_chat, deepseek_status). It connects you to a second AI, DeepSeek,
+deepseek_regenerate, deepseek_continue, deepseek_list_models, deepseek_read_chat,
+deepseek_list_chats, deepseek_rename_chat, deepseek_pin_chat, deepseek_delete_chat,
+deepseek_status). It connects you to a second AI, DeepSeek,
 running in my browser. Use it as a collaborator on this task:
 
 TASK: <describe what you want done, and what a good result looks like>
@@ -172,7 +173,8 @@ How to work:
 4. After each reply, do your own work before answering: check its claims, read or
    run the code, look for gaps. Respond with specific pushback or the next step, not
    praise. If your last message was unclear or wrong, use deepseek_edit_message
-   instead of sending a correction.
+   instead of sending a correction. If your question was fine but DeepSeek's answer
+   was weak, use deepseek_regenerate; if its answer was cut off, use deepseek_continue.
 5. Use model "deepseek-web-thinking" for hard reasoning. Set search to true only
    when you need current facts.
 6. Stop after at most 5 rounds, or sooner when the result is good enough. Then give
@@ -282,6 +284,9 @@ If you work from a clone of this repository, you can point at the bundled file i
 | --- | --- |
 | `deepseek_ask` | Send a prompt. Starts a new chat by default. `chat` (id or title) or `conversation_id` continues one. Options: `new_chat_title`, `system`, `preset`, `model`, `thinking`, `search`, `include_reasoning`. |
 | `deepseek_edit_message` | Replace one of your earlier messages, like the pencil Edit button on the site, and get DeepSeek's answer to the new text. Defaults to your latest message. Later messages leave the active conversation. |
+| `deepseek_regenerate` | Make DeepSeek answer again, like the site's regenerate button. Defaults to the latest answer, and the chat continues from the new one. |
+| `deepseek_continue` | Keep going when DeepSeek's latest answer was cut off, like the site's continue button. |
+| `deepseek_list_models` | List the models and the built-in presets, with what each one does. |
 | `deepseek_list_chats` | List your chats, optionally filtered by title. |
 | `deepseek_read_chat` | Read a chat's messages by id or title. After an edit, only the live conversation is shown. |
 | `deepseek_rename_chat` | Rename a chat. |

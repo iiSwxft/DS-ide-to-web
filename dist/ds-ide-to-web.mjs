@@ -3846,6 +3846,34 @@ var init_link = __esm({
           chatUrl: `https://chat.deepseek.com/a/chat/s/${chatSessionId}`
         };
       }
+      async #turnAction(type, params, { onDelta, signal }) {
+        const result = await this.#send(type, params, { onDelta, signal });
+        this.conversations.set(params.chatSessionId, {
+          chatSessionId: params.chatSessionId,
+          parentMessageId: result.responseMessageId ?? null
+        });
+        return {
+          conversationId: params.chatSessionId,
+          text: result.text ?? "",
+          reasoning: result.reasoning ?? "",
+          chatUrl: `https://chat.deepseek.com/a/chat/s/${params.chatSessionId}`
+        };
+      }
+      /** Generate the answer to an assistant message again. The chat continues from the new answer. */
+      regenerate({ chatSessionId, messageId, model, thinking, search, onDelta, signal }) {
+        const preset = typeof model === "string" || model === void 0 ? resolveModel(model) : model;
+        if (!preset) throw new BridgeError(`Unknown model "${model}". Available: ${Object.keys(MODELS).join(", ")}`, "unknown_model", 400);
+        return this.#turnAction("regenerate", {
+          chatSessionId,
+          messageId,
+          thinking: thinking ?? preset.thinking,
+          search: Boolean(search)
+        }, { onDelta, signal });
+      }
+      /** Continue an assistant answer that was cut off. */
+      continueAnswer({ chatSessionId, messageId, onDelta, signal }) {
+        return this.#turnAction("continue", { chatSessionId, messageId }, { onDelta, signal });
+      }
       /** Low-level, allowlisted DeepSeek chat-management call (the extension enforces the allowlist). */
       async api(path, { query, json, signal } = {}) {
         const out = await this.#send("api", { path, query, json }, { signal });
@@ -4102,13 +4130,7 @@ async function askFlow(link, body, extra = {}) {
 async function editMessage(link, body, extra = {}) {
   const newText = String(body.prompt ?? "").trim();
   if (!newText) throw new BridgeError('"prompt" (the replacement text) must be a non-empty string.', "invalid_request", 400);
-  let sessionId = null;
-  if (body.conversation_id && link.conversations.has(body.conversation_id)) {
-    sessionId = link.conversations.get(body.conversation_id).chatSessionId;
-  } else if (body.chat || body.conversation_id) {
-    sessionId = (await resolveChat(link, body.chat ?? body.conversation_id)).id;
-  }
-  if (!sessionId) throw new BridgeError('Say which chat to edit: pass "chat" (id or title) or "conversation_id".', "invalid_request", 400);
+  const sessionId = await sessionIdFor(link, body, "edit");
   const history = await readChat(link, sessionId);
   const userMessages = history.messages.filter((m) => m.role === "user");
   if (userMessages.length === 0) throw new BridgeError("That chat has no user messages to edit.", "invalid_request", 400);
@@ -4132,6 +4154,50 @@ async function editMessage(link, body, extra = {}) {
     ...extra
   });
   return { ...out, editedMessageId: target.id, previousText: target.text };
+}
+async function sessionIdFor(link, body, verb) {
+  if (body.conversation_id && link.conversations.has(body.conversation_id)) {
+    return link.conversations.get(body.conversation_id).chatSessionId;
+  }
+  if (body.chat || body.conversation_id) {
+    return (await resolveChat(link, body.chat ?? body.conversation_id)).id;
+  }
+  throw new BridgeError(`Say which chat to ${verb}: pass "chat" (id or title) or "conversation_id".`, "invalid_request", 400);
+}
+async function targetAssistantMessage(link, body, verb) {
+  const sessionId = await sessionIdFor(link, body, verb);
+  const history = await readChat(link, sessionId);
+  const answers = history.messages.filter((m) => m.role === "assistant");
+  if (answers.length === 0) throw new BridgeError("That chat has no answer from DeepSeek yet.", "invalid_request", 400);
+  let target = answers[answers.length - 1];
+  if (body.message_id !== void 0 && body.message_id !== null) {
+    target = answers.find((m) => m.id === Number(body.message_id));
+    if (!target) {
+      throw new BridgeError(
+        `Message ${body.message_id} is not a DeepSeek answer in this chat (answer ids: ${answers.map((m) => m.id).join(", ")}).`,
+        "message_not_found",
+        404
+      );
+    }
+  }
+  return { sessionId, target };
+}
+async function regenerateAnswer(link, body, extra = {}) {
+  const { sessionId, target } = await targetAssistantMessage(link, body, "regenerate in");
+  const out = await link.regenerate({
+    chatSessionId: sessionId,
+    messageId: target.id,
+    model: body.model,
+    thinking: body.thinking,
+    search: body.search,
+    ...extra
+  });
+  return { ...out, regeneratedMessageId: target.id, previousText: target.text };
+}
+async function continueAnswer(link, body, extra = {}) {
+  const { sessionId, target } = await targetAssistantMessage(link, body, "continue");
+  const out = await link.continueAnswer({ chatSessionId: sessionId, messageId: target.id, ...extra });
+  return { ...out, continuedMessageId: target.id };
 }
 var UUID, ROUTES, toChat;
 var init_chats = __esm({
@@ -4369,6 +4435,12 @@ function createBridge({ token: token2, link = new ExtensionLink(), onShutdown = 
       }
       if (req.method === "POST" && url.pathname === "/api/edit") {
         return sendJson(res, 200, await editMessage(link, await readJson(req), { signal: abort.signal }));
+      }
+      if (req.method === "POST" && url.pathname === "/api/regenerate") {
+        return sendJson(res, 200, await regenerateAnswer(link, await readJson(req), { signal: abort.signal }));
+      }
+      if (req.method === "POST" && url.pathname === "/api/continue") {
+        return sendJson(res, 200, await continueAnswer(link, await readJson(req), { signal: abort.signal }));
       }
       if (req.method === "GET" && url.pathname === "/api/chats") {
         const chats = await listChats(link, { limit: url.searchParams.get("limit") ?? 30, query: url.searchParams.get("q") ?? void 0 });
@@ -26751,6 +26823,7 @@ var init_mcp_stdio = __esm({
       "2. The reply ends with [conversation_id: ...]. Read DeepSeek's answer, do your own work with it (check it, extend it, fix it), then call deepseek_ask again WITH that conversation_id and your follow-up. DeepSeek remembers the whole chat, so send only the new message.",
       "3. Repeat until the task is done. Stop when you have what you need or when answers stop improving; do not loop forever.",
       "Use new_chat_title so the chat is easy to find later, then deepseek_list_chats / deepseek_read_chat to look back at it.",
+      "If your own message was the problem, use deepseek_edit_message. If DeepSeek's answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets.",
       "Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted."
     ].join("\n");
     server = new McpServer({ name: "ds-ide-to-web", version: "0.3.0" }, { instructions: INSTRUCTIONS });
@@ -26842,6 +26915,57 @@ ${out.reasoning}
       parts.push(`
 [edited message ${out.editedMessageId}; conversation_id: ${out.conversationId}]`);
       return text(parts.join("\n"));
+    }));
+    server.registerTool("deepseek_regenerate", {
+      title: "Regenerate DeepSeek's answer",
+      description: "Make DeepSeek answer again, like the site's regenerate button. Use it when an answer was weak and the question was fine. Defaults to the latest answer. The old answer stays on the site as an older version, and the chat continues from the new one.",
+      inputSchema: {
+        chat: external_exports.string().optional().describe("The chat: id, title, or a unique part of the title."),
+        conversation_id: external_exports.string().optional().describe("Or the conversation_id returned by deepseek_ask."),
+        message_id: external_exports.number().int().optional().describe("Which DeepSeek answer to redo (see deepseek_read_chat ids). Default: the latest."),
+        model: external_exports.enum(Object.keys(MODELS)).optional().describe("deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert."),
+        thinking: external_exports.boolean().optional().describe("Turn deep thinking on or off for the new answer."),
+        search: external_exports.boolean().optional().describe("Turn web search on for the new answer."),
+        include_reasoning: external_exports.boolean().optional().describe("Also return the model's thinking text when available.")
+      }
+    }, guard(async ({ chat, conversation_id, message_id, model, thinking, search, include_reasoning }) => {
+      const out = await post("/api/regenerate", { chat, conversation_id, message_id, model, thinking, search });
+      const parts = [out.text];
+      if (include_reasoning && out.reasoning) parts.unshift(`<thinking>
+${out.reasoning}
+</thinking>`);
+      parts.push(`
+[regenerated message ${out.regeneratedMessageId}; conversation_id: ${out.conversationId}]`);
+      return text(parts.join("\n"));
+    }));
+    server.registerTool("deepseek_continue", {
+      title: "Continue a cut-off answer",
+      description: "Ask DeepSeek to keep going when its latest answer was cut off mid-way, like the site's continue button. It only helps for answers that stopped early; for a complete answer DeepSeek may refuse.",
+      inputSchema: {
+        chat: external_exports.string().optional().describe("The chat: id, title, or a unique part of the title."),
+        conversation_id: external_exports.string().optional().describe("Or the conversation_id returned by deepseek_ask."),
+        message_id: external_exports.number().int().optional().describe("Which DeepSeek answer to continue. Default: the latest.")
+      }
+    }, guard(async ({ chat, conversation_id, message_id }) => {
+      const out = await post("/api/continue", { chat, conversation_id, message_id });
+      return text(`${out.text}
+
+[continued message ${out.continuedMessageId}; conversation_id: ${out.conversationId}]`);
+    }));
+    server.registerTool("deepseek_list_models", {
+      title: "List models and presets",
+      description: "List the DeepSeek models and the built-in chat presets you can pass to deepseek_ask, with what each one does.",
+      inputSchema: {}
+    }, guard(async () => {
+      const models = Object.entries(MODELS).map(([id, m]) => `- ${id}: ${m.modelType === "expert" ? "expert model" : "default model"}, deep thinking ${m.thinking ? "on" : "off"}`).join("\n");
+      const presets = presetNames().map((name) => `- ${name}: ${PRESETS[name].split(/(?<=\.)\s/)[0]}`).join("\n");
+      return text(`Models (the model parameter):
+${models}
+
+Presets (the preset parameter, new chats only):
+${presets}
+
+Also: thinking true/false overrides a model's thinking setting, and search true turns on web search.`);
     }));
     server.registerTool("deepseek_rename_chat", {
       title: "Rename a DeepSeek chat",

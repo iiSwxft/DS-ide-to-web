@@ -226,13 +226,7 @@ export async function editMessage(link, body, extra = {}) {
   const newText = String(body.prompt ?? '').trim();
   if (!newText) throw new BridgeError('"prompt" (the replacement text) must be a non-empty string.', 'invalid_request', 400);
 
-  let sessionId = null;
-  if (body.conversation_id && link.conversations.has(body.conversation_id)) {
-    sessionId = link.conversations.get(body.conversation_id).chatSessionId;
-  } else if (body.chat || body.conversation_id) {
-    sessionId = (await resolveChat(link, body.chat ?? body.conversation_id)).id;
-  }
-  if (!sessionId) throw new BridgeError('Say which chat to edit: pass "chat" (id or title) or "conversation_id".', 'invalid_request', 400);
+  const sessionId = await sessionIdFor(link, body, 'edit');
 
   const history = await readChat(link, sessionId);
   const userMessages = history.messages.filter((m) => m.role === 'user');
@@ -259,4 +253,64 @@ export async function editMessage(link, body, extra = {}) {
     ...extra,
   });
   return { ...out, editedMessageId: target.id, previousText: target.text };
+}
+
+/** Which chat does this request mean? A conversation id from deepseek_ask, or a chat id/title. */
+async function sessionIdFor(link, body, verb) {
+  if (body.conversation_id && link.conversations.has(body.conversation_id)) {
+    return link.conversations.get(body.conversation_id).chatSessionId;
+  }
+  if (body.chat || body.conversation_id) {
+    return (await resolveChat(link, body.chat ?? body.conversation_id)).id;
+  }
+  throw new BridgeError(`Say which chat to ${verb}: pass "chat" (id or title) or "conversation_id".`, 'invalid_request', 400);
+}
+
+/** Pick the assistant message an action applies to: the given message_id, or the latest answer. */
+async function targetAssistantMessage(link, body, verb) {
+  const sessionId = await sessionIdFor(link, body, verb);
+  const history = await readChat(link, sessionId);
+  const answers = history.messages.filter((m) => m.role === 'assistant');
+  if (answers.length === 0) throw new BridgeError('That chat has no answer from DeepSeek yet.', 'invalid_request', 400);
+  let target = answers[answers.length - 1];
+  if (body.message_id !== undefined && body.message_id !== null) {
+    target = answers.find((m) => m.id === Number(body.message_id));
+    if (!target) {
+      throw new BridgeError(
+        `Message ${body.message_id} is not a DeepSeek answer in this chat (answer ids: ${answers.map((m) => m.id).join(', ')}).`,
+        'message_not_found',
+        404,
+      );
+    }
+  }
+  return { sessionId, target };
+}
+
+/**
+ * Generate DeepSeek's answer again (like the site's regenerate button).
+ *   body.chat | body.conversation_id   which chat
+ *   body.message_id                    which DeepSeek answer to redo (default: the latest)
+ * The old answer stays on the site as an older version; the chat continues from the new one.
+ */
+export async function regenerateAnswer(link, body, extra = {}) {
+  const { sessionId, target } = await targetAssistantMessage(link, body, 'regenerate in');
+  const out = await link.regenerate({
+    chatSessionId: sessionId,
+    messageId: target.id,
+    model: body.model,
+    thinking: body.thinking,
+    search: body.search,
+    ...extra,
+  });
+  return { ...out, regeneratedMessageId: target.id, previousText: target.text };
+}
+
+/**
+ * Continue an answer that was cut off (like the site's continue button).
+ * Works on the latest answer unless body.message_id says otherwise.
+ */
+export async function continueAnswer(link, body, extra = {}) {
+  const { sessionId, target } = await targetAssistantMessage(link, body, 'continue');
+  const out = await link.continueAnswer({ chatSessionId: sessionId, messageId: target.id, ...extra });
+  return { ...out, continuedMessageId: target.id };
 }

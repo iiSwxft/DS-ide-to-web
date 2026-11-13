@@ -203,6 +203,68 @@ export function encodeEditMessageRequest(
   });
 }
 
+export interface DeepSeekRegenerateRequestInput {
+  chatSessionId: string;
+  /** The assistant message whose answer should be generated again. */
+  childMessageId: number;
+  thinkingEnabled: boolean;
+  searchEnabled: boolean;
+  clientHeaders: Record<string, string>;
+  powHeaders: Record<string, string>;
+}
+
+export function encodeRegenerateRequest(
+  input: DeepSeekRegenerateRequestInput,
+): EncodedDeepSeekRequest {
+  return encodeDeepSeekRouteRequest('regenerate', {
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+      [DEEPSEEK_BYPASS_HOOK_HEADER]: '1',
+      ...input.clientHeaders,
+      ...input.powHeaders,
+    },
+    body: JSON.stringify({
+      chat_session_id: input.chatSessionId,
+      child_message_id: input.childMessageId,
+      search_enabled: input.searchEnabled,
+      thinking_enabled: input.thinkingEnabled,
+    }),
+  });
+}
+
+export interface DeepSeekContinueRequestInput {
+  chatSessionId: string;
+  /** The assistant message whose cut-off answer should be continued. */
+  messageId: number;
+  clientHeaders: Record<string, string>;
+  powHeaders: Record<string, string>;
+}
+
+/** The continue route is not in the shared route table, so its URL is built here. */
+export function encodeContinueRequest(
+  input: DeepSeekContinueRequestInput,
+): EncodedDeepSeekRequest {
+  return {
+    url: `${DEEPSEEK_WEB_ORIGIN}/api/v0/chat/continue`,
+    init: {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'content-type': 'application/json',
+        [DEEPSEEK_BYPASS_HOOK_HEADER]: '1',
+        ...input.clientHeaders,
+        ...input.powHeaders,
+      },
+      body: JSON.stringify({
+        chat_session_id: input.chatSessionId,
+        message_id: input.messageId,
+        fallback_to_resume: true,
+      }),
+    },
+  };
+}
+
 export function encodeHistoryRequest(
   chatSessionId: string,
   clientHeaders: Record<string, string>,

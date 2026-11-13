@@ -36,9 +36,13 @@ import {
   encodeDeepSeekRouteRequest,
   encodeCompletionRequest,
   encodeCreateSessionRequest,
+  encodeContinueRequest,
   encodeEditMessageRequest,
   encodeHistoryRequest,
+  encodeRegenerateRequest,
+  type DeepSeekContinueRequestInput,
   type DeepSeekEditMessageRequestInput,
+  type DeepSeekRegenerateRequestInput,
   encodePowChallengeRequest,
   normalizeDeepSeekMessageId,
   normalizeDeepSeekModelType,
@@ -449,26 +453,49 @@ export async function submitPromptStreaming(
   return readCompletionStreamWithCallbacks(response, decoratedCallbacks);
 }
 
-/** Edit an earlier user message and stream DeepSeek's new answer (same SSE stream as a completion). */
-export async function submitEditStreaming(
-  input: DeepSeekEditMessageRequestInput,
+/** Send an already-encoded request that answers with the completion SSE stream, and read the turn. */
+async function streamEncodedTurn(
+  request: { url: string; init: RequestInit },
+  operation: string,
   callbacks: StreamCallbacks,
   signal?: AbortSignal,
 ): Promise<ModelTurn> {
-  const response = await requestDeepSeek(
-    encodeEditMessageRequest(input),
-    'DeepSeek edit message',
-    'completion',
-    { signal },
-  );
+  const response = await requestDeepSeek(request, operation, 'completion', { signal });
 
   if (!response.ok) {
     throw new DeepSeekPayloadError(await readFailureMessage(response), { retryable: true });
   }
   if (!response.body) {
-    throw new DeepSeekPayloadError('DeepSeek edit response did not include a stream body.', { retryable: true });
+    throw new DeepSeekPayloadError(`${operation} response did not include a stream body.`, { retryable: true });
   }
   return readCompletionStreamWithCallbacks(response, callbacks);
+}
+
+/** Edit an earlier user message and stream DeepSeek's new answer (same SSE stream as a completion). */
+export function submitEditStreaming(
+  input: DeepSeekEditMessageRequestInput,
+  callbacks: StreamCallbacks,
+  signal?: AbortSignal,
+): Promise<ModelTurn> {
+  return streamEncodedTurn(encodeEditMessageRequest(input), 'DeepSeek edit message', callbacks, signal);
+}
+
+/** Generate the answer to an assistant message again and stream the new one. */
+export function submitRegenerateStreaming(
+  input: DeepSeekRegenerateRequestInput,
+  callbacks: StreamCallbacks,
+  signal?: AbortSignal,
+): Promise<ModelTurn> {
+  return streamEncodedTurn(encodeRegenerateRequest(input), 'DeepSeek regenerate', callbacks, signal);
+}
+
+/** Continue an answer that was cut off and stream the rest. */
+export function submitContinueStreaming(
+  input: DeepSeekContinueRequestInput,
+  callbacks: StreamCallbacks,
+  signal?: AbortSignal,
+): Promise<ModelTurn> {
+  return streamEncodedTurn(encodeContinueRequest(input), 'DeepSeek continue', callbacks, signal);
 }
 
 async function requestCompletion(

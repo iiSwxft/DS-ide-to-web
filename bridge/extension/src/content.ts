@@ -5,8 +5,10 @@ import {
   createClientHeaders,
   createPowHeaders,
   createPowHeadersForPath,
+  submitContinueStreaming,
   submitEditStreaming,
   submitPromptStreaming,
+  submitRegenerateStreaming,
 } from './vendor/core/deepseek/active-client';
 import { setRawResponseBodies } from './vendor/core/network/request-policy';
 
@@ -141,6 +143,83 @@ async function runEdit(params: EditParams, emit: (out: Out) => void, signal: Abo
   }
 }
 
+interface RegenerateParams {
+  chatSessionId: string;
+  /** The assistant message to generate again. */
+  messageId: number;
+  thinking: boolean;
+  search: boolean;
+}
+
+interface ContinueParams {
+  chatSessionId: string;
+  /** The assistant message whose cut-off answer to continue. */
+  messageId: number;
+}
+
+/** Run one of the streamed turn actions (regenerate, continue) and report it like a normal answer. */
+async function runStreamedTurn(
+  chatSessionId: string,
+  powPath: string,
+  emit: (out: Out) => void,
+  signal: AbortSignal,
+  submit: (
+    clientHeaders: Record<string, string>,
+    powHeaders: Record<string, string>,
+    callbacks: {
+      onTextChunk: (text: string) => void;
+      onReasoningChunk: (delta: string, full: string) => void;
+    },
+  ) => Promise<{ assistantText: string; responseMessageId: number | null }>,
+) {
+  try {
+    const clientHeaders = createClientHeaders({
+      missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
+    });
+    const powHeaders = await createPowHeadersForPath(clientHeaders, powPath, WASM_URL, signal);
+    let reasoning = '';
+    const turn = await submit(clientHeaders, powHeaders, {
+      onTextChunk: (text) => emit({ type: 'delta', text }),
+      onReasoningChunk: (delta, full) => {
+        reasoning = full;
+        emit({ type: 'delta', reasoning: delta });
+      },
+    });
+    emit({
+      type: 'done',
+      result: { chatSessionId, responseMessageId: turn.responseMessageId, text: turn.assistantText, reasoning },
+    });
+  } catch (error) {
+    emit({
+      type: 'error',
+      code: errorCode(error),
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+function runRegenerate(params: RegenerateParams, emit: (out: Out) => void, signal: AbortSignal) {
+  return runStreamedTurn(params.chatSessionId, '/api/v0/chat/regenerate', emit, signal,
+    (clientHeaders, powHeaders, callbacks) => submitRegenerateStreaming({
+      chatSessionId: params.chatSessionId,
+      childMessageId: params.messageId,
+      thinkingEnabled: params.thinking,
+      searchEnabled: params.search,
+      clientHeaders,
+      powHeaders,
+    }, callbacks, signal));
+}
+
+function runContinue(params: ContinueParams, emit: (out: Out) => void, signal: AbortSignal) {
+  return runStreamedTurn(params.chatSessionId, '/api/v0/chat/continue', emit, signal,
+    (clientHeaders, powHeaders, callbacks) => submitContinueStreaming({
+      chatSessionId: params.chatSessionId,
+      messageId: params.messageId,
+      clientHeaders,
+      powHeaders,
+    }, callbacks, signal));
+}
+
 // Chat-management calls. A strict allowlist: nothing else on DeepSeek's API can be reached
 // through the bridge (in particular not delete_all, logout, or any account route).
 const API_ALLOWLIST: Record<string, 'GET' | 'POST'> = {
@@ -214,6 +293,10 @@ chrome.runtime.onConnect.addListener((port) => {
       void runAsk(msg.params as AskParams, (out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'edit' && msg.params) {
       void runEdit(msg.params as unknown as EditParams, (out) => port.postMessage(out), controller.signal);
+    } else if (msg.type === 'regenerate' && msg.params) {
+      void runRegenerate(msg.params as unknown as RegenerateParams, (out) => port.postMessage(out), controller.signal);
+    } else if (msg.type === 'continue' && msg.params) {
+      void runContinue(msg.params as unknown as ContinueParams, (out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'api' && msg.params) {
       void runApi(msg.params as unknown as ApiParams, (out) => port.postMessage(out), controller.signal);
     }

@@ -6,8 +6,9 @@ In Claude Code with the plugin installed, run `/deepseek-bridge:deepseek-collab 
 
 ```text
 You have a DeepSeek MCP server connected (deepseek_ask, deepseek_edit_message,
-deepseek_read_chat, deepseek_list_chats, deepseek_rename_chat, deepseek_pin_chat,
-deepseek_delete_chat, deepseek_status). It connects you to a second AI, DeepSeek,
+deepseek_regenerate, deepseek_continue, deepseek_list_models, deepseek_read_chat,
+deepseek_list_chats, deepseek_rename_chat, deepseek_pin_chat, deepseek_delete_chat,
+deepseek_status). It connects you to a second AI, DeepSeek,
 running in my browser. Use it as a collaborator on this task:
 
 TASK: <describe what you want done, and what a good result looks like>
@@ -23,7 +24,8 @@ How to work:
 4. After each reply, do your own work before answering: check its claims, read or
    run the code, look for gaps. Respond with specific pushback or the next step, not
    praise. If your last message was unclear or wrong, use deepseek_edit_message
-   instead of sending a correction.
+   instead of sending a correction. If your question was fine but DeepSeek's answer
+   was weak, use deepseek_regenerate; if its answer was cut off, use deepseek_continue.
 5. Use model "deepseek-web-thinking" for hard reasoning. Set search to true only
    when you need current facts.
 6. Stop after at most 5 rounds, or sooner when the result is good enough. Then give
