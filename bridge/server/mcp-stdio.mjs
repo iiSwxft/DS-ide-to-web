@@ -7,7 +7,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { HOST, getPort, loadToken } from './config.mjs';
+import { HOST, bridgeVersion, getPort, loadToken } from './config.mjs';
 import { MODELS } from './link.mjs';
 import { PRESETS, presetNames } from './presets.mjs';
 
@@ -51,7 +51,8 @@ const INSTRUCTIONS = [
   'Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted.',
 ].join('\n');
 
-const server = new McpServer({ name: 'ds-ide-to-web', version: '0.3.0' }, { instructions: INSTRUCTIONS });
+// The version clients see follows the real build, so it can never drift from the package version.
+const server = new McpServer({ name: 'ds-ide-to-web', version: bridgeVersion() }, { instructions: INSTRUCTIONS });
 
 server.registerTool('deepseek_ask', {
   title: 'Ask DeepSeek (web)',

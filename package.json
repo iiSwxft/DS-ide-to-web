@@ -1,6 +1,6 @@
 {
   "name": "ds-ide-to-web",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "A local bridge that lets any AI tool talk to your logged-in DeepSeek web chat: OpenAI-compatible API plus MCP, through a browser extension.",
   "license": "Apache-2.0",

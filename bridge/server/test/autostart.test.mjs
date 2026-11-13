@@ -92,6 +92,7 @@ test('a newer MCP server replaces an older bridge app, but never the other way r
     const deadline = Date.now() + 20000;
     while (!/"id":1/.test(out) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
     assert.match(out, /"id":1/, 'MCP did not answer');
+    assert.match(out, new RegExp(`"serverInfo":\\{[^}]*"version":"${version.replace(/\./g, '\\.')}"`), 'the MCP server must announce the real version');
     child.kill();
     await new Promise((r) => child.on('exit', r));
   };

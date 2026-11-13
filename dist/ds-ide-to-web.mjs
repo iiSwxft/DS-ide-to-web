@@ -59,7 +59,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 function bridgeVersion() {
   if (process.env.DS_BRIDGE_TEST_VERSION) return process.env.DS_BRIDGE_TEST_VERSION;
-  return true ? "0.4.0" : "dev";
+  return true ? "0.4.1" : "dev";
 }
 function isOlderVersion(a, b) {
   const parts = (v) => String(v ?? "").split(".").map((n) => Number.parseInt(n, 10) || 0);
@@ -27057,7 +27057,7 @@ var init_mcp_stdio = __esm({
       "If your own message was the problem, use deepseek_edit_message. If DeepSeek's answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets. deepseek_new_chat makes an empty chat, deepseek_stop stops an answer, and deepseek_ask can attach files.",
       "Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted."
     ].join("\n");
-    server = new McpServer({ name: "ds-ide-to-web", version: "0.3.0" }, { instructions: INSTRUCTIONS });
+    server = new McpServer({ name: "ds-ide-to-web", version: bridgeVersion() }, { instructions: INSTRUCTIONS });
     server.registerTool("deepseek_ask", {
       title: "Ask DeepSeek (web)",
       description: "Send a prompt to the DeepSeek web chat running in the user's logged-in browser and return the reply. Omit chat and conversation_id to start a new chat. Pass the returned conversation_id, or a chat id/title, to continue one.",

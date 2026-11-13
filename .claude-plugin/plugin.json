@@ -1,6 +1,6 @@
 {
   "name": "deepseek-bridge",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Use your logged-in DeepSeek web chat from Claude Code as a collaborator or prompt director, through the DeepSeek Bridge MCP server.",
   "author": {
     "name": "iiSwxft"
