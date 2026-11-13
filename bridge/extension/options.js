@@ -32,8 +32,35 @@ async function poll() {
   }
 }
 
+const MAX_SYSTEM = 20000;
+let savedSystem = '';
+
+function renderSystem() {
+  const text = $('system').value;
+  $('sysCount').textContent = `${text.length.toLocaleString()} / ${MAX_SYSTEM.toLocaleString()}`;
+  const on = savedSystem.trim().length > 0;
+  $('sysState').textContent = on ? 'On: used for new chats' : 'Off';
+  $('sysState').classList.toggle('on', on);
+  $('saveSystem').disabled = text.trim() === savedSystem.trim();
+}
+
+async function saveSystem(value) {
+  const text = value.trim().slice(0, MAX_SYSTEM);
+  await api.storage.local.set({ systemPrompt: text });
+  savedSystem = text;
+  $('system').value = text;
+  renderSystem();
+}
+
+$('system').addEventListener('input', renderSystem);
+$('saveSystem').addEventListener('click', () => saveSystem($('system').value));
+$('clearSystem').addEventListener('click', () => saveSystem(''));
+
 async function load() {
-  const stored = await api.storage.local.get(['token', 'port']);
+  const stored = await api.storage.local.get(['token', 'port', 'systemPrompt']);
+  savedSystem = typeof stored.systemPrompt === 'string' ? stored.systemPrompt : '';
+  if (document.activeElement !== $('system')) $('system').value = savedSystem;
+  renderSystem();
   current = {
     token: (typeof stored.token === 'string' && stored.token.trim()) || DEFAULT_TOKEN,
     port: Number(stored.port) || DEFAULT_PORT,

@@ -50,6 +50,23 @@ async function broadcast() {
   } catch { /* no tabs permission yet */ }
 }
 
+async function storedSystemPrompt() {
+  const { systemPrompt } = await api.storage.local.get('systemPrompt');
+  return typeof systemPrompt === 'string' ? systemPrompt : '';
+}
+
+async function sendHello(ws) {
+  ws.send(JSON.stringify({
+    type: 'hello',
+    version: api.runtime.getManifest().version,
+    systemPrompt: await storedSystemPrompt(),
+  }));
+}
+
+async function sendSettings() {
+  send({ type: 'settings', systemPrompt: await storedSystemPrompt() });
+}
+
 function send(message) {
   if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
@@ -156,7 +173,7 @@ async function refreshInner() {
     lastError = '';
     clearTimeout(connectWatchdog);
     setPhase('connected');
-    ws.send(JSON.stringify({ type: 'hello', version: api.runtime.getManifest().version }));
+    void sendHello(ws);
   };
   ws.onmessage = (event) => {
     try { void handleRequest(JSON.parse(event.data)); } catch { /* ignore malformed */ }
@@ -196,6 +213,9 @@ api.storage.onChanged.addListener((changes) => {
   if (changes.token || changes.port) {
     closeSocket();
     void refresh();
+  } else if (changes.systemPrompt) {
+    // The popup's system prompt changed: push it to the bridge right away.
+    void sendSettings();
   }
 });
 api.runtime.onMessage.addListener((msg, _sender, reply) => {

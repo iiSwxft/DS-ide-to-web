@@ -120,6 +120,30 @@ server.registerTool('deepseek_read_chat', {
   return text(`# ${out.chat.title || '(untitled)'} (${out.chat.id})\n\n${lines.join('\n\n')}`);
 }));
 
+server.registerTool('deepseek_edit_message', {
+  title: 'Edit a sent message and get a new answer',
+  description:
+    'Replace one of YOUR earlier messages in a DeepSeek chat and get DeepSeek\'s answer to the new text, like the pencil Edit button on the site. ' +
+    'Use it when a message was unclear or wrong instead of sending a correction. Defaults to your latest message. ' +
+    'Anything after the edited message is no longer part of the active conversation (the site keeps it as an older version), and the chat continues from the new answer.',
+  inputSchema: {
+    chat: z.string().optional().describe('The chat to edit: id, title, or a unique part of the title.'),
+    conversation_id: z.string().optional().describe('Or the conversation_id returned by deepseek_ask.'),
+    prompt: z.string().min(1).describe('The replacement text for your message.'),
+    message_id: z.number().int().optional().describe('Which of your messages to replace (see deepseek_read_chat ids). Default: your latest message.'),
+    model: z.enum(Object.keys(MODELS)).optional().describe('deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert.'),
+    thinking: z.boolean().optional().describe('Turn deep thinking on or off for the new answer.'),
+    search: z.boolean().optional().describe('Turn web search on for the new answer.'),
+    include_reasoning: z.boolean().optional().describe("Also return the model's thinking text when available."),
+  },
+}, guard(async ({ chat, conversation_id, prompt, message_id, model, thinking, search, include_reasoning }) => {
+  const out = await post('/api/edit', { chat, conversation_id, prompt, message_id, model, thinking, search });
+  const parts = [out.text];
+  if (include_reasoning && out.reasoning) parts.unshift(`<thinking>\n${out.reasoning}\n</thinking>`);
+  parts.push(`\n[edited message ${out.editedMessageId}; conversation_id: ${out.conversationId}]`);
+  return text(parts.join('\n'));
+}));
+
 server.registerTool('deepseek_rename_chat', {
   title: 'Rename a DeepSeek chat',
   description: 'Rename an existing DeepSeek chat.',

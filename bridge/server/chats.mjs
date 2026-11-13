@@ -174,7 +174,10 @@ export async function askFlow(link, body, extra = {}) {
   if (isNew) {
     // Only a brand-new chat gets instructions; continuing chats already have them.
     try {
-      prompt = withSystem(pickSystem({ system: body.system, preset: body.preset }), prompt);
+      prompt = withSystem(
+        pickSystem({ system: body.system, preset: body.preset, extensionSystem: link.extensionSystem }),
+        prompt,
+      );
     } catch (error) {
       throw new BridgeError(error.message, 'invalid_request', 400);
     }
@@ -195,4 +198,51 @@ export async function askFlow(link, body, extra = {}) {
     }
   }
   return out;
+}
+
+/**
+ * Edit one of your earlier messages in a chat and get DeepSeek's answer to the new text.
+ *   body.chat | body.conversation_id   which chat (id, title, or a conversation id from deepseek_ask)
+ *   body.message_id                    which USER message to replace (default: your latest message)
+ *   body.prompt                        the replacement text
+ * Messages after the edited one are no longer part of the active branch (the site keeps them as an
+ * older version), so the chat continues from the new answer.
+ */
+export async function editMessage(link, body, extra = {}) {
+  const newText = String(body.prompt ?? '').trim();
+  if (!newText) throw new BridgeError('"prompt" (the replacement text) must be a non-empty string.', 'invalid_request', 400);
+
+  let sessionId = null;
+  if (body.conversation_id && link.conversations.has(body.conversation_id)) {
+    sessionId = link.conversations.get(body.conversation_id).chatSessionId;
+  } else if (body.chat || body.conversation_id) {
+    sessionId = (await resolveChat(link, body.chat ?? body.conversation_id)).id;
+  }
+  if (!sessionId) throw new BridgeError('Say which chat to edit: pass "chat" (id or title) or "conversation_id".', 'invalid_request', 400);
+
+  const history = await readChat(link, sessionId);
+  const userMessages = history.messages.filter((m) => m.role === 'user');
+  if (userMessages.length === 0) throw new BridgeError('That chat has no user messages to edit.', 'invalid_request', 400);
+
+  let target;
+  if (body.message_id !== undefined && body.message_id !== null) {
+    target = userMessages.find((m) => m.id === Number(body.message_id));
+    if (!target) {
+      const ids = userMessages.map((m) => m.id).join(', ');
+      throw new BridgeError(`Message ${body.message_id} is not one of your messages in this chat (editable ids: ${ids}).`, 'message_not_found', 404);
+    }
+  } else {
+    target = userMessages[userMessages.length - 1];
+  }
+
+  const out = await link.edit({
+    chatSessionId: sessionId,
+    messageId: target.id,
+    prompt: newText,
+    model: body.model,
+    thinking: body.thinking,
+    search: body.search,
+    ...extra,
+  });
+  return { ...out, editedMessageId: target.id, previousText: target.text };
 }

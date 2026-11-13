@@ -52,6 +52,7 @@ Extra body fields: `conversation_id` (continue a DeepSeek chat; returned in ever
 | tool | what it does |
 | --- | --- |
 | `deepseek_ask` | send a prompt. Starts a new chat by default (`new_chat_title` names it); `chat` (id or title) or `conversation_id` continues one. Flags: `model`, `thinking`, `search`, `include_reasoning` |
+| `deepseek_edit_message` | replace one of your earlier messages (like the site's pencil Edit button) and get DeepSeek's answer to the new text. Defaults to your latest message; `message_id` picks another. Later messages leave the active branch |
 | `deepseek_list_chats` | list your chats, optionally filtered by title |
 | `deepseek_read_chat` | read a chat's messages by id or title |
 | `deepseek_rename_chat` | rename a chat |
@@ -59,7 +60,7 @@ Extra body fields: `conversation_id` (continue a DeepSeek chat; returned in ever
 | `deepseek_delete_chat` | permanently delete chats. Needs `confirm: true`, takes at most 20, and resolves every target before deleting any |
 | `deepseek_status` | is the extension connected and logged in |
 
-The same actions are plain HTTP on the bridge: `POST /api/ask`, `GET /api/chats`, `GET /api/chat?chat=`, `POST /api/chat/rename`, `POST /api/chat/pin`, `POST /api/chat/delete`. `/v1/chat/completions` also accepts `chat` and `new_chat_title`.
+The same actions are plain HTTP on the bridge: `POST /api/ask`, `POST /api/edit`, `GET /api/chats`, `GET /api/chat?chat=`, `POST /api/chat/rename`, `POST /api/chat/pin`, `POST /api/chat/delete`. `/v1/chat/completions` also accepts `chat` and `new_chat_title`.
 
 Chat titles are matched exactly first, then by unique substring; an ambiguous title is refused with the candidates listed rather than guessed.
 
@@ -70,7 +71,8 @@ The extension can only call a fixed allowlist of DeepSeek chat routes (list, his
 DeepSeek's web chat has no system role, so instructions for a **new** chat are sent inside its first message (clearly labelled), and are never repeated when you continue the chat.
 
 - `system` (any text) or `preset` on a new chat: `collaborator` (written for AI-to-AI work), `reviewer`, `concise`.
-- A default for every new chat: set `DS_BRIDGE_SYSTEM`, or put text in `~/.ds-ide-to-web/system.txt`. An explicit `system`/`preset` wins.
+- A default for every new chat, set in the extension popup: the **System prompt** box. Whatever you paste there is sent as the first message of every new chat (and not again while continuing it). Clear it to turn it off.
+- Other ways to set a default: set `DS_BRIDGE_SYSTEM`, or put text in `~/.ds-ide-to-web/system.txt`. Precedence, most specific first: `system` text, then `preset`, then the popup box, then the env/file default.
 - OpenAI endpoint: `system` messages become the chat's instructions on a new chat. When you pass `conversation_id` or `chat`, only your newest user message is sent, because DeepSeek already has the history.
 - New chats get an automatic title made from the first message, which would include the instructions, so pass `new_chat_title`.
 

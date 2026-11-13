@@ -35,6 +35,7 @@ export class ExtensionLink {
     this.conversations = new Map();
     this.requestTimeoutMs = requestTimeoutMs;
     this.lastHello = null;
+    this.extensionSystem = '';
   }
 
   get connected() {
@@ -63,8 +64,10 @@ export class ExtensionLink {
     let msg;
     try { msg = JSON.parse(String(raw)); } catch { return; }
     if (!msg || typeof msg !== 'object') return;
-    if (msg.type === 'hello') {
-      this.lastHello = { version: msg.version ?? null, at: Date.now() };
+    if (msg.type === 'hello' || msg.type === 'settings') {
+      if (msg.type === 'hello') this.lastHello = { version: msg.version ?? null, at: Date.now() };
+      // The popup's "system prompt" box: default instructions for every new chat.
+      if (typeof msg.systemPrompt === 'string') this.extensionSystem = msg.systemPrompt.trim().slice(0, 20000);
       return;
     }
     const entry = this.pending.get(msg.id);
@@ -117,6 +120,32 @@ export class ExtensionLink {
 
   status() {
     return this.#send('status', {});
+  }
+
+  /**
+   * Replace an earlier USER message in a chat; DeepSeek branches from it and answers the new text.
+   * The conversation then continues from the new answer.
+   */
+  async edit({ chatSessionId, messageId, prompt, model, thinking, search, onDelta, signal }) {
+    const preset = typeof model === 'string' || model === undefined ? resolveModel(model) : model;
+    if (!preset) throw new BridgeError(`Unknown model "${model}". Available: ${Object.keys(MODELS).join(', ')}`, 'unknown_model', 400);
+    const result = await this.#send('edit', {
+      chatSessionId,
+      messageId,
+      prompt,
+      thinking: thinking ?? preset.thinking,
+      search: Boolean(search),
+    }, { onDelta, signal });
+    this.conversations.set(chatSessionId, {
+      chatSessionId,
+      parentMessageId: result.responseMessageId ?? null,
+    });
+    return {
+      conversationId: chatSessionId,
+      text: result.text ?? '',
+      reasoning: result.reasoning ?? '',
+      chatUrl: `https://chat.deepseek.com/a/chat/s/${chatSessionId}`,
+    };
   }
 
   /** Low-level, allowlisted DeepSeek chat-management call (the extension enforces the allowlist). */

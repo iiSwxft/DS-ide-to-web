@@ -57,6 +57,13 @@
     input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .hint { color: var(--muted); font-size: 11.5px; margin: 6px 0 0; }
+    .row.split { justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .row .hint { margin: 0; }
+    .grow { flex: 1; text-align: right; align-self: center; }
+    .title { font-weight: 600; font-size: 13px; }
+    textarea { width: 100%; resize: vertical; min-height: 78px; max-height: 220px; padding: 8px 9px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 12.5px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    #sysState.on { color: var(--ok); }
   </style>
 </head>
 <body>
@@ -84,6 +91,20 @@
       <div id="openBox" class="cmd hidden">
         <button id="openDs" class="primary" type="button">Open chat.deepseek.com</button>
       </div>
+    </section>
+
+    <section class="card">
+      <div class="row split">
+        <label for="system" class="title">System prompt</label>
+        <span id="sysState" class="hint">Off</span>
+      </div>
+      <textarea id="system" rows="4" spellcheck="false" placeholder="Paste instructions here. They are sent as the first message of every NEW chat, then the conversation continues from there."></textarea>
+      <div class="row">
+        <button id="saveSystem" class="primary" type="button">Save</button>
+        <button id="clearSystem" type="button">Clear</button>
+        <span id="sysCount" class="hint grow"></span>
+      </div>
+      <p class="hint">Not sent again when continuing a chat. A prompt passed by the calling tool overrides this one.</p>
     </section>
 
     <section class="card endpoint">

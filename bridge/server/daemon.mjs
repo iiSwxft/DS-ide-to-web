@@ -5,7 +5,7 @@ import { WebSocketServer } from 'ws';
 import { DEFAULT_TOKEN, HOST, getPort, loadToken, tokenFile } from './config.mjs';
 import { BridgeError, ExtensionLink } from './link.mjs';
 import { handleChatCompletions, listModels } from './openai.mjs';
-import { askFlow, deleteChats, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
+import { askFlow, deleteChats, editMessage, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
@@ -71,7 +71,11 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
 
       if (req.method === 'GET' && url.pathname === '/v1/models') return sendJson(res, 200, listModels());
       if (req.method === 'GET' && url.pathname === '/api/status') {
-        const base = { extensionConnected: link.connected, hello: link.lastHello };
+        const base = {
+          extensionConnected: link.connected,
+          hello: link.lastHello,
+          systemPrompt: { fromExtension: link.extensionSystem.length > 0, chars: link.extensionSystem.length },
+        };
         if (!link.connected) return sendJson(res, 200, base);
         try { return sendJson(res, 200, { ...base, ...(await link.status()) }); }
         catch (error) { return sendJson(res, 200, { ...base, error: error.message }); }
@@ -85,6 +89,9 @@ export function createBridge({ token, link = new ExtensionLink() } = {}) {
           throw new BridgeError('"prompt" must be a non-empty string.', 'invalid_request', 400);
         }
         return sendJson(res, 200, await askFlow(link, body, { signal: abort.signal }));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/edit') {
+        return sendJson(res, 200, await editMessage(link, await readJson(req), { signal: abort.signal }));
       }
       if (req.method === 'GET' && url.pathname === '/api/chats') {
         const chats = await listChats(link, { limit: url.searchParams.get('limit') ?? 30, query: url.searchParams.get('q') ?? undefined });

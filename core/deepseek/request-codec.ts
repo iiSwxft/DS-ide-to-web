@@ -168,6 +168,41 @@ export function encodeCompletionRequest(
   });
 }
 
+export interface DeepSeekEditMessageRequestInput {
+  chatSessionId: string;
+  /** The USER message being replaced; DeepSeek branches the chat from it. */
+  messageId: number;
+  prompt: string;
+  refFileIds: string[];
+  thinkingEnabled: boolean;
+  searchEnabled: boolean;
+  clientHeaders: Record<string, string>;
+  powHeaders: Record<string, string>;
+}
+
+export function encodeEditMessageRequest(
+  input: DeepSeekEditMessageRequestInput,
+): EncodedDeepSeekRequest {
+  return encodeDeepSeekRouteRequest('editMessage', {
+    credentials: 'include',
+    headers: {
+      'content-type': 'application/json',
+      [DEEPSEEK_BYPASS_HOOK_HEADER]: '1',
+      ...input.clientHeaders,
+      ...input.powHeaders,
+    },
+    body: JSON.stringify({
+      chat_session_id: input.chatSessionId,
+      message_id: input.messageId,
+      ref_file_ids: input.refFileIds,
+      prompt: input.prompt,
+      search_enabled: input.searchEnabled,
+      thinking_enabled: input.thinkingEnabled,
+      action: null,
+    }),
+  });
+}
+
 export function encodeHistoryRequest(
   chatSessionId: string,
   clientHeaders: Record<string, string>,

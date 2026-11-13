@@ -33,14 +33,18 @@ export function defaultSystem() {
   return '';
 }
 
-/** Pick the instructions for a new chat: explicit text > named preset > default. */
-export function pickSystem({ system, preset } = {}) {
+/**
+ * Pick the instructions for a new chat, most specific first:
+ * explicit text > named preset > the extension popup's prompt > DS_BRIDGE_SYSTEM / system.txt.
+ */
+export function pickSystem({ system, preset, extensionSystem } = {}) {
   if (typeof system === 'string' && system.trim()) return system.trim();
   if (preset) {
     const text = PRESETS[preset];
     if (!text) throw new Error(`Unknown preset "${preset}". Available: ${presetNames().join(', ')}`);
     return text;
   }
+  if (typeof extensionSystem === 'string' && extensionSystem.trim()) return extensionSystem.trim();
   return defaultSystem();
 }
 

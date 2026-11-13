@@ -4,6 +4,8 @@ import {
   createChatSession,
   createClientHeaders,
   createPowHeaders,
+  createPowHeadersForPath,
+  submitEditStreaming,
   submitPromptStreaming,
 } from '../../../core/deepseek/active-client';
 import { setRawResponseBodies } from '../../../core/network/request-policy';
@@ -71,6 +73,60 @@ async function runAsk(params: AskParams, emit: (out: Out) => void, signal: Abort
       type: 'done',
       result: {
         chatSessionId,
+        responseMessageId: turn.responseMessageId,
+        text: turn.assistantText,
+        reasoning,
+      },
+    });
+  } catch (error) {
+    emit({
+      type: 'error',
+      code: errorCode(error),
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+interface EditParams {
+  chatSessionId: string;
+  messageId: number;
+  prompt: string;
+  thinking: boolean;
+  search: boolean;
+}
+
+/** Replace an earlier user message; DeepSeek branches from it and answers the new text. */
+async function runEdit(params: EditParams, emit: (out: Out) => void, signal: AbortSignal) {
+  try {
+    const clientHeaders = createClientHeaders({
+      missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
+    });
+    const powHeaders = await createPowHeadersForPath(clientHeaders, '/api/v0/chat/edit_message', WASM_URL, signal);
+    let reasoning = '';
+    const turn = await submitEditStreaming(
+      {
+        chatSessionId: params.chatSessionId,
+        messageId: params.messageId,
+        prompt: params.prompt,
+        refFileIds: [],
+        thinkingEnabled: params.thinking,
+        searchEnabled: params.search,
+        clientHeaders,
+        powHeaders,
+      },
+      {
+        onTextChunk: (text) => emit({ type: 'delta', text }),
+        onReasoningChunk: (delta, full) => {
+          reasoning = full;
+          emit({ type: 'delta', reasoning: delta });
+        },
+      },
+      signal,
+    );
+    emit({
+      type: 'done',
+      result: {
+        chatSessionId: params.chatSessionId,
         responseMessageId: turn.responseMessageId,
         text: turn.assistantText,
         reasoning,
@@ -156,6 +212,8 @@ chrome.runtime.onConnect.addListener((port) => {
       port.postMessage({ type: 'done', result: { ok: true, loggedIn: loggedIn(), url: location.href } });
     } else if (msg.type === 'ask' && msg.params) {
       void runAsk(msg.params as AskParams, (out) => port.postMessage(out), controller.signal);
+    } else if (msg.type === 'edit' && msg.params) {
+      void runEdit(msg.params as unknown as EditParams, (out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'api' && msg.params) {
       void runApi(msg.params as unknown as ApiParams, (out) => port.postMessage(out), controller.signal);
     }

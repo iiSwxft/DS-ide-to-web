@@ -14,6 +14,7 @@ let ext;
 let chats;
 let asks;
 const deleted = [];
+const edits = [];
 
 const envelope = (biz_data, biz_code = 0) => ({ status: 200, json: { data: { biz_code, biz_msg: biz_code ? 'nope' : '', biz_data } } });
 
@@ -71,6 +72,11 @@ before(async () => {
     const msg = JSON.parse(String(raw));
     if (msg.type === 'api') {
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: handleApi(msg.params) }));
+    } else if (msg.type === 'status') {
+      ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { ok: true, loggedIn: true } }));
+    } else if (msg.type === 'edit') {
+      edits.push(msg.params);
+      ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { chatSessionId: msg.params.chatSessionId, responseMessageId: 555, text: 'edited-ok', reasoning: '' } }));
     } else if (msg.type === 'ask') {
       asks.push(msg.params);
       ext.send(JSON.stringify({
@@ -210,4 +216,53 @@ test('OpenAI endpoint: continuing a chat sends only the newest user message', as
     ],
   });
   assert.equal(asks.at(-1).prompt, 'two');
+});
+
+test('popup system prompt is the default for new chats, overridden by explicit system', async () => {
+  ext.send(JSON.stringify({ type: 'settings', systemPrompt: 'POPUP PROMPT' }));
+  await new Promise((r) => setTimeout(r, 50));
+  const status = await (await call('/api/status')).json();
+  assert.equal(status.systemPrompt.fromExtension, true);
+
+  await (await call('/api/ask', { prompt: 'q1' })).json();
+  assert.match(asks.at(-1).prompt, /POPUP PROMPT/);
+  assert.match(asks.at(-1).prompt, /\[First message\]\nq1$/);
+
+  await (await call('/api/ask', { prompt: 'q2', system: 'EXPLICIT' })).json();
+  assert.match(asks.at(-1).prompt, /EXPLICIT/);
+  assert.doesNotMatch(asks.at(-1).prompt, /POPUP PROMPT/);
+
+  await (await call('/api/ask', { prompt: 'q3', preset: 'concise' })).json();
+  assert.doesNotMatch(asks.at(-1).prompt, /POPUP PROMPT/);
+
+  const first = await (await call('/api/ask', { prompt: 'q4' })).json();
+  await (await call('/api/ask', { prompt: 'q5', conversation_id: first.conversationId })).json();
+  assert.equal(asks.at(-1).prompt, 'q5', 'continuing a chat must not resend the popup prompt');
+
+  ext.send(JSON.stringify({ type: 'settings', systemPrompt: '' }));
+  await new Promise((r) => setTimeout(r, 50));
+  await (await call('/api/ask', { prompt: 'q6' })).json();
+  assert.equal(asks.at(-1).prompt, 'q6', 'clearing the popup prompt turns it off');
+});
+
+test('edit replaces your latest message by default and continues from the new answer', async () => {
+  edits.length = 0;
+  const out = await (await call('/api/edit', { chat: A, prompt: 'better question' })).json();
+  assert.equal(out.text, 'edited-ok');
+  assert.equal(out.editedMessageId, 1);
+  assert.equal(out.previousText, 'hello');
+  assert.deepEqual(edits.at(-1), { chatSessionId: A, messageId: 1, prompt: 'better question', thinking: false, search: false });
+  // The conversation now continues from the edit's answer.
+  await (await call('/api/ask', { prompt: 'follow up', conversation_id: A })).json();
+  assert.equal(asks.at(-1).parentMessageId, 555);
+});
+
+test('edit validates the target message and the replacement text', async () => {
+  let res = await call('/api/edit', { chat: A, prompt: 'x', message_id: 2 }); // 2 is the assistant message
+  assert.equal(res.status, 404);
+  assert.match((await res.json()).error.message, /editable ids: 1/);
+  res = await call('/api/edit', { chat: A, prompt: '   ' });
+  assert.equal(res.status, 400);
+  res = await call('/api/edit', { prompt: 'x' });
+  assert.equal(res.status, 400);
 });

@@ -36,7 +36,9 @@ import {
   encodeDeepSeekRouteRequest,
   encodeCompletionRequest,
   encodeCreateSessionRequest,
+  encodeEditMessageRequest,
   encodeHistoryRequest,
+  type DeepSeekEditMessageRequestInput,
   encodePowChallengeRequest,
   normalizeDeepSeekMessageId,
   normalizeDeepSeekModelType,
@@ -445,6 +447,28 @@ export async function submitPromptStreaming(
     : callbacks;
 
   return readCompletionStreamWithCallbacks(response, decoratedCallbacks);
+}
+
+/** Edit an earlier user message and stream DeepSeek's new answer (same SSE stream as a completion). */
+export async function submitEditStreaming(
+  input: DeepSeekEditMessageRequestInput,
+  callbacks: StreamCallbacks,
+  signal?: AbortSignal,
+): Promise<ModelTurn> {
+  const response = await requestDeepSeek(
+    encodeEditMessageRequest(input),
+    'DeepSeek edit message',
+    'completion',
+    { signal },
+  );
+
+  if (!response.ok) {
+    throw new DeepSeekPayloadError(await readFailureMessage(response), { retryable: true });
+  }
+  if (!response.body) {
+    throw new DeepSeekPayloadError('DeepSeek edit response did not include a stream body.', { retryable: true });
+  }
+  return readCompletionStreamWithCallbacks(response, callbacks);
 }
 
 async function requestCompletion(
