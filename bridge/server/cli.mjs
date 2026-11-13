@@ -7,7 +7,10 @@
  */
 const command = process.argv[2];
 
-if (command === 'daemon') {
+if (command === '--version' || command === '-v') {
+  const { bridgeVersion } = await import('./config.mjs');
+  console.log(bridgeVersion());
+} else if (command === 'daemon') {
   const { startDaemon } = await import('./daemon.mjs');
   await startDaemon();
 } else if (command === 'stop') {
@@ -21,6 +24,7 @@ if (command === 'daemon') {
     '  ds-ide-to-web          start the MCP server on stdio (add this to your MCP client)',
     '  ds-ide-to-web daemon   run the bridge app in the foreground',
     '  ds-ide-to-web stop     stop a running bridge app',
+    '  ds-ide-to-web --version',
     '',
     'Environment: DS_BRIDGE_PORT (default 8787), DS_BRIDGE_TOKEN, DS_BRIDGE_SYSTEM, DS_BRIDGE_HOME',
     'Docs: https://github.com/iiSwxft/DS-ide-to-web#readme',

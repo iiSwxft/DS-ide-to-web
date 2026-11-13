@@ -2,22 +2,26 @@ import { spawn } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, statSync, truncateSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HOST, configDir, getPort, loadToken } from './config.mjs';
+import { HOST, bridgeVersion, configDir, getPort, isOlderVersion, loadToken } from './config.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** True when something already answers on the bridge port (any HTTP answer counts). */
-async function reachable(base, token) {
+/** Is something answering on the bridge port, and which version of the bridge app is it? */
+async function probe(base, token) {
   try {
-    await fetch(`${base}/api/status`, {
+    // An older bridge app has no /api/version: it still answers (404), which tells us it is old.
+    const res = await fetch(`${base}/api/version`, {
       headers: { authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(800),
+      signal: AbortSignal.timeout(2500),
     });
-    return true;
+    const body = await res.json().catch(() => ({}));
+    return { up: true, version: body?.version ?? null };
   } catch {
-    return false;
+    return { up: false, version: null };
   }
 }
+
+const reachable = async (base, token) => (await probe(base, token)).up;
 
 function openLog() {
   const dir = configDir();
@@ -37,7 +41,16 @@ function openLog() {
 export async function ensureDaemon(selfUrl) {
   const base = `http://${HOST}:${getPort()}`;
   const token = loadToken();
-  if (await reachable(base, token)) return 'running';
+  const running = await probe(base, token);
+  if (running.up) {
+    // After an update, an old bridge app may still be running from before. Replace it, but never with
+    // something older: two tools on different versions must not keep restarting each other's app.
+    const mine = bridgeVersion();
+    if (mine === 'dev' || !isOlderVersion(running.version, mine)) return 'running';
+    await stopDaemon();
+    for (let i = 0; i < 20 && (await reachable(base, token)); i += 1) await sleep(150);
+    if (await reachable(base, token)) return 'running'; // it would not stop; keep using it
+  }
 
   let log;
   try {

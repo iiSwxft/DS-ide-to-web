@@ -8,7 +8,7 @@
       "name": "deepseek-bridge",
       "source": "./",
       "description": "Use your logged-in DeepSeek web chat from Claude Code: an MCP server plus /deepseek-collab, /deepseek-director and /deepseek-setup commands. Needs the DeepSeek Bridge browser extension.",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   ],
   "description": "Plugins for using your logged-in DeepSeek web chat from Claude Code, through the DeepSeek Bridge MCP server."

@@ -4,6 +4,25 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export const HOST = '127.0.0.1';
+
+/**
+ * The version of this build. The bundler bakes it in; running from source reports "dev".
+ * DS_BRIDGE_TEST_VERSION lets the tests pretend to be another version.
+ */
+export function bridgeVersion() {
+  if (process.env.DS_BRIDGE_TEST_VERSION) return process.env.DS_BRIDGE_TEST_VERSION;
+  return typeof __BRIDGE_VERSION__ !== 'undefined' ? __BRIDGE_VERSION__ : 'dev';
+}
+
+/** True when version a is older than version b (x.y.z). A missing or non-numeric version counts as 0.0.0. */
+export function isOlderVersion(a, b) {
+  const parts = (v) => String(v ?? '').split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i += 1) {
+    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  }
+  return false;
+}
 export const DEFAULT_PORT = 8787;
 
 export function configDir() {

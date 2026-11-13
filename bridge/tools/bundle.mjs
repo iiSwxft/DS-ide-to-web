@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const outfile = join(root, 'dist/ds-ide-to-web.mjs');
+const { version } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 
 await build({
   entryPoints: [join(root, 'bridge/server/cli.mjs')],
@@ -20,6 +21,7 @@ await build({
   external: ['bufferutil', 'utf-8-validate'],
   // Some bundled dependencies are CommonJS and call require() on Node built-ins.
   banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
+  define: { __BRIDGE_VERSION__: JSON.stringify(version) },
   legalComments: 'none',
   logLevel: 'info',
 });

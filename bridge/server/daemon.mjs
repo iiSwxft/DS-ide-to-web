@@ -2,7 +2,7 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { WebSocketServer } from 'ws';
-import { DEFAULT_TOKEN, HOST, getPort, loadToken, tokenFile } from './config.mjs';
+import { DEFAULT_TOKEN, HOST, bridgeVersion, getPort, loadToken, tokenFile } from './config.mjs';
 import { BridgeError, ExtensionLink } from './link.mjs';
 import { handleChatCompletions, listModels } from './openai.mjs';
 import { askFlow, continueAnswer, createShare, deleteChats, deleteShare, editMessage, listShares, regenerateAnswer, startNewChat, stopAnswer, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
@@ -75,8 +75,12 @@ export function createBridge({ token, link = new ExtensionLink(), onShutdown = n
         setTimeout(onShutdown, 100);
         return;
       }
+      if (req.method === 'GET' && url.pathname === '/api/version') {
+        return sendJson(res, 200, { version: bridgeVersion() }); // cheap: does not wait for the browser extension
+      }
       if (req.method === 'GET' && url.pathname === '/api/status') {
         const base = {
+          version: bridgeVersion(),
           extensionConnected: link.connected,
           hello: link.lastHello,
           systemPrompt: { fromExtension: link.extensionSystem.length > 0, chars: link.extensionSystem.length },

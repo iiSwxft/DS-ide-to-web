@@ -39,6 +39,76 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// bridge/server/config.mjs
+var config_exports = {};
+__export(config_exports, {
+  DEFAULT_PORT: () => DEFAULT_PORT,
+  DEFAULT_TOKEN: () => DEFAULT_TOKEN,
+  HOST: () => HOST,
+  bridgeVersion: () => bridgeVersion,
+  configDir: () => configDir,
+  createCustomToken: () => createCustomToken,
+  getPort: () => getPort,
+  isOlderVersion: () => isOlderVersion,
+  loadToken: () => loadToken,
+  tokenFile: () => tokenFile
+});
+import { randomBytes } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+function bridgeVersion() {
+  if (process.env.DS_BRIDGE_TEST_VERSION) return process.env.DS_BRIDGE_TEST_VERSION;
+  return true ? "0.4.0" : "dev";
+}
+function isOlderVersion(a, b) {
+  const parts = (v) => String(v ?? "").split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i += 1) {
+    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  }
+  return false;
+}
+function configDir() {
+  return process.env.DS_BRIDGE_HOME || join(homedir(), ".ds-ide-to-web");
+}
+function getPort() {
+  const raw = process.env.DS_BRIDGE_PORT;
+  const port = raw ? Number(raw) : DEFAULT_PORT;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid DS_BRIDGE_PORT: ${raw}`);
+  }
+  return port;
+}
+function tokenFile() {
+  return join(configDir(), "token");
+}
+function loadToken() {
+  if (process.env.DS_BRIDGE_TOKEN) return process.env.DS_BRIDGE_TOKEN;
+  const file = tokenFile();
+  if (existsSync(file)) {
+    const custom3 = readFileSync(file, "utf8").trim();
+    if (custom3) return custom3;
+  }
+  return DEFAULT_TOKEN;
+}
+function createCustomToken() {
+  mkdirSync(configDir(), { recursive: true });
+  const token2 = randomBytes(24).toString("hex");
+  writeFileSync(tokenFile(), `${token2}
+`, { mode: 384 });
+  return token2;
+}
+var HOST, DEFAULT_PORT, DEFAULT_TOKEN;
+var init_config = __esm({
+  "bridge/server/config.mjs"() {
+    "use strict";
+    HOST = "127.0.0.1";
+    DEFAULT_PORT = 8787;
+    DEFAULT_TOKEN = "deepseek-bridge";
+  }
+});
+
 // node_modules/ws/lib/constants.js
 var require_constants = __commonJS({
   "node_modules/ws/lib/constants.js"(exports, module) {
@@ -2241,7 +2311,7 @@ var require_websocket = __commonJS({
     var http = __require("http");
     var net = __require("net");
     var tls = __require("tls");
-    var { randomBytes, createHash } = __require("crypto");
+    var { randomBytes: randomBytes2, createHash } = __require("crypto");
     var { Duplex, Readable } = __require("stream");
     var { URL: URL2 } = __require("url");
     var PerMessageDeflate = require_permessage_deflate();
@@ -2768,7 +2838,7 @@ var require_websocket = __commonJS({
         }
       }
       const defaultPort = isSecure ? 443 : 80;
-      const key = randomBytes(16).toString("base64");
+      const key = randomBytes2(16).toString("base64");
       const request = isSecure ? https.request : http.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
@@ -3659,43 +3729,6 @@ var init_wrapper = __esm({
   }
 });
 
-// bridge/server/config.mjs
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-function configDir() {
-  return process.env.DS_BRIDGE_HOME || join(homedir(), ".ds-ide-to-web");
-}
-function getPort() {
-  const raw = process.env.DS_BRIDGE_PORT;
-  const port = raw ? Number(raw) : DEFAULT_PORT;
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid DS_BRIDGE_PORT: ${raw}`);
-  }
-  return port;
-}
-function tokenFile() {
-  return join(configDir(), "token");
-}
-function loadToken() {
-  if (process.env.DS_BRIDGE_TOKEN) return process.env.DS_BRIDGE_TOKEN;
-  const file = tokenFile();
-  if (existsSync(file)) {
-    const custom3 = readFileSync(file, "utf8").trim();
-    if (custom3) return custom3;
-  }
-  return DEFAULT_TOKEN;
-}
-var HOST, DEFAULT_PORT, DEFAULT_TOKEN;
-var init_config = __esm({
-  "bridge/server/config.mjs"() {
-    "use strict";
-    HOST = "127.0.0.1";
-    DEFAULT_PORT = 8787;
-    DEFAULT_TOKEN = "deepseek-bridge";
-  }
-});
-
 // bridge/server/link.mjs
 import { randomUUID } from "node:crypto";
 function resolveModel(name) {
@@ -4580,8 +4613,12 @@ function createBridge({ token: token2, link = new ExtensionLink(), onShutdown = 
         setTimeout(onShutdown, 100);
         return;
       }
+      if (req.method === "GET" && url.pathname === "/api/version") {
+        return sendJson(res, 200, { version: bridgeVersion() });
+      }
       if (req.method === "GET" && url.pathname === "/api/status") {
         const base2 = {
+          version: bridgeVersion(),
           extensionConnected: link.connected,
           hello: link.lastHello,
           systemPrompt: { fromExtension: link.extensionSystem.length > 0, chars: link.extensionSystem.length }
@@ -4727,15 +4764,16 @@ import { spawn } from "node:child_process";
 import { closeSync, mkdirSync as mkdirSync2, openSync, statSync, truncateSync } from "node:fs";
 import { join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
-async function reachable(base2, token2) {
+async function probe(base2, token2) {
   try {
-    await fetch(`${base2}/api/status`, {
+    const res = await fetch(`${base2}/api/version`, {
       headers: { authorization: `Bearer ${token2}` },
-      signal: AbortSignal.timeout(800)
+      signal: AbortSignal.timeout(2500)
     });
-    return true;
+    const body = await res.json().catch(() => ({}));
+    return { up: true, version: body?.version ?? null };
   } catch {
-    return false;
+    return { up: false, version: null };
   }
 }
 function openLog() {
@@ -4751,7 +4789,14 @@ function openLog() {
 async function ensureDaemon(selfUrl) {
   const base2 = `http://${HOST}:${getPort()}`;
   const token2 = loadToken();
-  if (await reachable(base2, token2)) return "running";
+  const running = await probe(base2, token2);
+  if (running.up) {
+    const mine = bridgeVersion();
+    if (mine === "dev" || !isOlderVersion(running.version, mine)) return "running";
+    await stopDaemon();
+    for (let i = 0; i < 20 && await reachable(base2, token2); i += 1) await sleep(150);
+    if (await reachable(base2, token2)) return "running";
+  }
   let log;
   try {
     log = openLog();
@@ -4788,12 +4833,13 @@ async function stopDaemon() {
     return false;
   }
 }
-var sleep;
+var sleep, reachable;
 var init_autostart = __esm({
   "bridge/server/autostart.mjs"() {
     "use strict";
     init_config();
     sleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+    reachable = async (base2, token2) => (await probe(base2, token2)).up;
   }
 });
 
@@ -27257,7 +27303,10 @@ ${out.chatUrl}`);
 
 // bridge/server/cli.mjs
 var command = process.argv[2];
-if (command === "daemon") {
+if (command === "--version" || command === "-v") {
+  const { bridgeVersion: bridgeVersion2 } = await Promise.resolve().then(() => (init_config(), config_exports));
+  console.log(bridgeVersion2());
+} else if (command === "daemon") {
   const { startDaemon: startDaemon2 } = await Promise.resolve().then(() => (init_daemon(), daemon_exports));
   await startDaemon2();
 } else if (command === "stop") {
@@ -27271,6 +27320,7 @@ if (command === "daemon") {
     "  ds-ide-to-web          start the MCP server on stdio (add this to your MCP client)",
     "  ds-ide-to-web daemon   run the bridge app in the foreground",
     "  ds-ide-to-web stop     stop a running bridge app",
+    "  ds-ide-to-web --version",
     "",
     "Environment: DS_BRIDGE_PORT (default 8787), DS_BRIDGE_TOKEN, DS_BRIDGE_SYSTEM, DS_BRIDGE_HOME",
     "Docs: https://github.com/iiSwxft/DS-ide-to-web#readme"
