@@ -15,7 +15,17 @@
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; }
-    body { width: 340px; background: var(--bg); color: var(--text); font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    html { overflow: hidden; }
+    body {
+      width: 340px;
+      max-height: 560px;            /* Firefox/Chrome popups cap around 600px tall */
+      overflow-y: auto;             /* scroll inside the popup instead of clipping */
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+      background: var(--bg); color: var(--text);
+      font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
     main { padding: 14px; display: grid; gap: 12px; }
     header { display: flex; align-items: center; gap: 10px; }
     header img { width: 28px; height: 28px; border-radius: 8px; }

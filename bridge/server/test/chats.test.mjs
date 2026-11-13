@@ -162,3 +162,52 @@ test('DeepSeek refusal surfaces as an error', async () => {
   assert.equal(res.status, 502);
   assert.match((await res.json()).error.message, /code 1004/);
 });
+
+test('new chat gets the system instructions inside its first message', async () => {
+  await (await call('/api/ask', { prompt: 'do the thing', system: 'You are a pirate.' })).json();
+  const sent = asks.at(-1);
+  assert.equal(sent.chatSessionId, null);
+  assert.match(sent.prompt, /Instructions for this whole conversation/);
+  assert.match(sent.prompt, /You are a pirate\./);
+  assert.match(sent.prompt, /\[First message\]\ndo the thing$/);
+});
+
+test('named preset is applied; unknown preset is a 400', async () => {
+  await (await call('/api/ask', { prompt: 'hi', preset: 'collaborator' })).json();
+  assert.match(asks.at(-1).prompt, /another AI assistant/);
+  const bad = await call('/api/ask', { prompt: 'hi', preset: 'nope' });
+  assert.equal(bad.status, 400);
+});
+
+test('continuing a chat does NOT resend the system instructions', async () => {
+  const first = await (await call('/api/ask', { prompt: 'start', system: 'Be formal.' })).json();
+  await (await call('/api/ask', { prompt: 'next', conversation_id: first.conversationId, system: 'Be formal.' })).json();
+  assert.equal(asks.at(-1).prompt, 'next');
+  await (await call('/api/ask', { prompt: 'again', chat: A, system: 'Be formal.' })).json();
+  assert.equal(asks.at(-1).prompt, 'again');
+});
+
+test('OpenAI endpoint: system message becomes chat instructions on a new chat', async () => {
+  const res = await call('/v1/chat/completions', {
+    model: 'deepseek-web',
+    messages: [{ role: 'system', content: 'Answer in French.' }, { role: 'user', content: 'hello' }],
+  });
+  assert.equal(res.status, 200);
+  const sent = asks.at(-1).prompt;
+  assert.match(sent, /Answer in French\./);
+  assert.match(sent, /\[First message\]\nhello$/);
+});
+
+test('OpenAI endpoint: continuing a chat sends only the newest user message', async () => {
+  const first = await (await call('/v1/chat/completions', { messages: [{ role: 'user', content: 'one' }] })).json();
+  await call('/v1/chat/completions', {
+    conversation_id: first.conversation_id,
+    messages: [
+      { role: 'system', content: 'ignored on continue' },
+      { role: 'user', content: 'one' },
+      { role: 'assistant', content: 'ok' },
+      { role: 'user', content: 'two' },
+    ],
+  });
+  assert.equal(asks.at(-1).prompt, 'two');
+});

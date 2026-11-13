@@ -1,4 +1,5 @@
 import { BridgeError } from './link.mjs';
+import { pickSystem, withSystem } from './presets.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -169,8 +170,17 @@ export async function askFlow(link, body, extra = {}) {
     });
   }
   const isNew = !conversationId;
+  let prompt = body.prompt;
+  if (isNew) {
+    // Only a brand-new chat gets instructions; continuing chats already have them.
+    try {
+      prompt = withSystem(pickSystem({ system: body.system, preset: body.preset }), prompt);
+    } catch (error) {
+      throw new BridgeError(error.message, 'invalid_request', 400);
+    }
+  }
   const out = await link.ask({
-    prompt: body.prompt,
+    prompt,
     conversationId,
     model: body.model,
     thinking: body.thinking,

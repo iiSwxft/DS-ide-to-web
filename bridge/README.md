@@ -65,6 +65,17 @@ Chat titles are matched exactly first, then by unique substring; an ambiguous ti
 
 The extension can only call a fixed allowlist of DeepSeek chat routes (list, history, rename, delete, pin, stop). It cannot reach account settings, logout, or "delete all history".
 
+## System prompts and AI-to-AI work
+
+DeepSeek's web chat has no system role, so instructions for a **new** chat are sent inside its first message (clearly labelled), and are never repeated when you continue the chat.
+
+- `system` (any text) or `preset` on a new chat: `collaborator` (written for AI-to-AI work), `reviewer`, `concise`.
+- A default for every new chat: set `DS_BRIDGE_SYSTEM`, or put text in `~/.ds-ide-to-web/system.txt`. An explicit `system`/`preset` wins.
+- OpenAI endpoint: `system` messages become the chat's instructions on a new chat. When you pass `conversation_id` or `chat`, only your newest user message is sent, because DeepSeek already has the history.
+- New chats get an automatic title made from the first message, which would include the instructions, so pass `new_chat_title`.
+
+**Making your AI talk back and forth with DeepSeek.** The AI you are using drives the loop: it calls `deepseek_ask`, reads the reply, does its own work with it, and calls `deepseek_ask` again with the `conversation_id` from the previous reply. The MCP server ships these instructions to the client, so most assistants pick the pattern up on their own. Typical prompt to your assistant: *"Start a chat with DeepSeek using the collaborator preset, have it draft X, review what it says, push back on anything weak, and iterate until it is solid. Stop after at most 5 rounds."* The bridge does not run the loop itself, because the other side of the conversation has to be an AI that you pick.
+
 ## Security model
 
 - Everything binds to `127.0.0.1`; requests whose `Host` header is not localhost are refused (no DNS rebinding).

@@ -12,12 +12,9 @@ const COPY = {
 
 let current = { token: DEFAULT_TOKEN, port: DEFAULT_PORT };
 
-function render(phase, error = '', pageScript = null) {
-  if (phase === 'connected' && pageScript === false) {
-    error = 'The bridge is connected, but the extension is not running on your DeepSeek tab yet. Refresh the chat.deepseek.com tab (and check the extension may access that site).';
-  }
+function render(phase, error = '') {
   $('err').textContent = error;
-  $('err').classList.toggle('hidden', !error || (phase === 'connected' && pageScript !== false));
+  $('err').classList.toggle('hidden', !error || phase === 'connected');
   const copy = COPY[phase] ?? COPY['no-tab'];
   $('dot').dataset.phase = phase;
   $('title').textContent = copy.title;
@@ -29,7 +26,7 @@ function render(phase, error = '', pageScript = null) {
 async function poll() {
   try {
     const reply = await api.runtime.sendMessage({ type: 'connection-state' });
-    render(reply?.phase ?? 'no-tab', reply?.error ?? '', reply?.pageScript ?? null);
+    render(reply?.phase ?? 'no-tab', reply?.error ?? '');
   } catch {
     render('offline', 'Extension background is not responding. Reload the extension.');
   }

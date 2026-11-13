@@ -33,6 +33,29 @@ export function messagesToPrompt(messages) {
   return `${lines.join('\n\n')}\n\nAssistant:`;
 }
 
+/**
+ * Turn an OpenAI `messages` array into what the bridge sends.
+ * - Continuing an existing chat: DeepSeek already has the history, so only the newest user message is sent.
+ * - New chat: system messages become the chat's instructions; the rest is sent as the first prompt.
+ */
+export function splitMessages(messages, continuing) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new BridgeError('"messages" must be a non-empty array.', 'invalid_request', 400);
+  }
+  if (continuing) {
+    const lastUser = [...messages].reverse().find((m) => m?.role === 'user' && contentToText(m.content).trim());
+    if (!lastUser) throw new BridgeError('No user message to send.', 'invalid_request', 400);
+    return { prompt: contentToText(lastUser.content).trim(), system: undefined };
+  }
+  const system = messages
+    .filter((m) => m?.role === 'system')
+    .map((m) => contentToText(m.content).trim())
+    .filter(Boolean)
+    .join('\n\n');
+  const rest = messages.filter((m) => m?.role !== 'system');
+  return { prompt: messagesToPrompt(rest.length ? rest : messages), system: system || undefined };
+}
+
 export function listModels() {
   return {
     object: 'list',
@@ -53,9 +76,11 @@ function chunk(id, model, delta, finish = null) {
 /** POST /v1/chat/completions */
 export async function handleChatCompletions(link, body, res, abortSignal) {
   const model = body.model || 'deepseek-web';
-  const prompt = messagesToPrompt(body.messages);
+  const { prompt, system } = splitMessages(body.messages, Boolean(body.conversation_id || body.chat));
   const common = {
     prompt,
+    system: body.system ?? system,
+    preset: body.preset,
     conversation_id: body.conversation_id,
     chat: body.chat,
     new_chat_title: body.new_chat_title,

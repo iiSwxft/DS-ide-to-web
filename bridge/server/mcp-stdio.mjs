@@ -9,6 +9,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { HOST, getPort, loadToken } from './config.mjs';
 import { MODELS } from './link.mjs';
+import { presetNames } from './presets.mjs';
 
 const base = `http://${HOST}:${getPort()}`;
 const token = loadToken();
@@ -39,7 +40,17 @@ const guard = (fn) => async (args) => {
   }
 };
 
-const server = new McpServer({ name: 'ds-ide-to-web', version: '0.2.0' });
+const INSTRUCTIONS = [
+  'These tools let you collaborate with DeepSeek, running in the user\'s browser, as a second AI.',
+  'Working back and forth:',
+  '1. Start with deepseek_ask WITHOUT a conversation_id. Give it a clear task and, on this first call, a `preset` ("collaborator" is meant for AI-to-AI work) or your own `system` text. Instructions only apply to a new chat.',
+  '2. The reply ends with [conversation_id: ...]. Read DeepSeek\'s answer, do your own work with it (check it, extend it, fix it), then call deepseek_ask again WITH that conversation_id and your follow-up. DeepSeek remembers the whole chat, so send only the new message.',
+  '3. Repeat until the task is done. Stop when you have what you need or when answers stop improving; do not loop forever.',
+  'Use new_chat_title so the chat is easy to find later, then deepseek_list_chats / deepseek_read_chat to look back at it.',
+  'Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted.',
+].join('\n');
+
+const server = new McpServer({ name: 'ds-ide-to-web', version: '0.3.0' }, { instructions: INSTRUCTIONS });
 
 server.registerTool('deepseek_ask', {
   title: 'Ask DeepSeek (web)',
@@ -51,13 +62,15 @@ server.registerTool('deepseek_ask', {
     conversation_id: z.string().optional().describe('Continue a conversation returned by this tool.'),
     chat: z.string().optional().describe('Continue an existing DeepSeek chat by its id or title (or a unique part of the title).'),
     new_chat_title: z.string().optional().describe('Title for the new chat (only when starting a new chat).'),
+    system: z.string().optional().describe('Instructions for the whole new chat (e.g. a role or rules). Only used when starting a new chat.'),
+    preset: z.enum(presetNames()).optional().describe('Built-in instructions for a new chat: collaborator (AI-to-AI work), reviewer, concise. Ignored if system is given.'),
     model: z.enum(Object.keys(MODELS)).optional().describe('deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert.'),
     thinking: z.boolean().optional().describe('Turn deep thinking on or off (overrides the model preset).'),
     search: z.boolean().optional().describe('Turn DeepSeek web search on for this message.'),
     include_reasoning: z.boolean().optional().describe("Also return the model's thinking text when available."),
   },
-}, guard(async ({ prompt, conversation_id, chat, new_chat_title, model, thinking, search, include_reasoning }) => {
-  const out = await post('/api/ask', { prompt, conversation_id, chat, new_chat_title, model, thinking, search });
+}, guard(async ({ prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, include_reasoning }) => {
+  const out = await post('/api/ask', { prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search });
   const parts = [out.text];
   if (include_reasoning && out.reasoning) parts.unshift(`<thinking>\n${out.reasoning}\n</thinking>`);
   parts.push(`\n[conversation_id: ${out.conversationId}]`);
