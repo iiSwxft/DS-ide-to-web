@@ -523,6 +523,21 @@ export function splitDeepSeekResponseText(
     return consumeFragmentsInitialContent(fragments, types);
   }
 
+  // Fragment list replacement: `{"p":"response/fragments","v":[THINK..., RESPONSE...]}`
+  // (no `o`). Thinking streams close the THINK fragment and open the RESPONSE
+  // fragment this way: the list is cumulative, so only fragments beyond the ones
+  // already observed carry new content.
+  if (parsed?.p === 'response/fragments' && parsed.o !== 'APPEND' && Array.isArray(parsed.v)) {
+    const fragments = parsed.v as unknown[];
+    const types: DeepSeekResponseFragmentType[] = fragments.map((fragment) =>
+      String((fragment as Record<string, unknown> | null)?.type ?? 'RESPONSE'));
+    const seen = state.fragmentTypes.length;
+    state.fragmentTypes = types;
+    state.currentIndex = types.length - 1;
+    state.observed = true;
+    return consumeFragmentsInitialContent(fragments.slice(seen), types.slice(seen));
+  }
+
   // Full response snapshot: `{"v":{"response":{...,"fragments":[...]}}}`.
   // It declares (or re-declares) the fragment list. Its embedded content is
   // only consumed on the FIRST observation — the snapshot is cumulative, so
