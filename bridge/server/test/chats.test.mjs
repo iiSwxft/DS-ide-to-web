@@ -283,3 +283,12 @@ test('reading a chat shows only the live branch after an edit; all=1 shows every
   const all = await (await call(`/api/chat?chat=${BR}&all=1`)).json();
   assert.deepEqual(all.messages.map((m) => m.id), [1, 2, 3, 4, 5, 6]);
 });
+
+test('director preset is available and applied to a new chat', async () => {
+  await (await call('/api/ask', { prompt: 'GOAL: write a haiku', preset: 'director' })).json();
+  const sent = asks.at(-1).prompt;
+  assert.match(sent, /prompt director/);
+  assert.match(sent, /NEXT PROMPT:/);
+  assert.match(sent, /DONE:/);
+  assert.match(sent, /\[First message\]\nGOAL: write a haiku$/);
+});
