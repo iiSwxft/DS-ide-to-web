@@ -53,6 +53,44 @@ curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787/api/status
 
 The extension and the app share a preset key, `deepseek-bridge`, so there is nothing to configure.
 
+## For AI assistants: setting this up and using it
+
+If you are an AI assistant helping a user with this repository, follow this.
+
+**Set up** (you can do steps 1 to 3; the user must do step 4, because only they can install a browser extension and sign in):
+
+1. Check `node --version` is 20 or newer.
+2. Run `npm run setup`, then `npm run build`.
+3. Start the bridge app in the background with `npm start` and leave it running. A second browser needs its own port: `DS_BRIDGE_PORT=8788 npm start`. See "Using two browsers at once".
+4. Ask the user to load `bridge/build/chrome` (Chrome or Edge) or `bridge/build/firefox/manifest.json` (Firefox) as described in the quick start, sign in at https://chat.deepseek.com, and refresh that tab.
+5. Verify with `curl -H "Authorization: Bearer deepseek-bridge" http://127.0.0.1:8787/api/status`. You need `"extensionConnected": true` and `"loggedIn": true`. If `loggedIn` is missing, read the `error` field.
+
+The app has to be running whenever the bridge is used. The extension cannot start it, so if the popup says **Bridge app not running**, start it with `npm start`.
+
+**Use it** through the MCP tools (or the OpenAI-compatible endpoint):
+
+- Start a new chat by calling `deepseek_ask` without `conversation_id` or `chat`. Pass `new_chat_title`, and for AI-to-AI work pass `preset: "collaborator"`. Keep the `conversation_id` from the reply and pass it on every follow-up. Send only the new message each time, because DeepSeek remembers the chat.
+- To change a message you already sent, use `deepseek_edit_message` instead of sending a correction.
+- Do not call `deepseek_delete_chat` unless the user explicitly asked to delete those specific chats. Deletion is permanent.
+- Stop looping when you have what you need. Do not run an open-ended back and forth.
+
+**Errors** the bridge returns, and what to do:
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `extension_not_connected` (503) | No browser extension is connected. | Ask the user to open chat.deepseek.com with the extension installed, and check the bridge app is running on the right port. |
+| `no_deepseek_tab` | The extension is connected but its page script is not running on a DeepSeek tab. | Ask the user to refresh the chat.deepseek.com tab. |
+| `not_logged_in` | The DeepSeek tab is signed out. | Ask the user to sign in, then retry. |
+| `unauthorized` (401) | Wrong or missing key. | Use `Authorization: Bearer deepseek-bridge`, or the custom key if one is set. |
+| `forbidden_origin`, `forbidden_host` (403) | The request came from a web page or with a non-local host. | Call the bridge from a local program, not from a browser page. |
+| `chat_not_found` (404), `unknown_conversation` (404) | No chat matches that title or conversation id. | List chats with `deepseek_list_chats` and use an id. |
+| `chat_ambiguous` (409) | The title matches several chats. | Use the id from the candidates in the message. |
+| `message_not_found` (404) | That message is not one of the user's messages in the chat. | Read the chat and use an id from the editable list in the message. |
+| `confirmation_required` (400) | A delete was sent without `confirm: true`. | Only add it after the user has explicitly confirmed. |
+| `unknown_model`, `invalid_request` (400) | A bad parameter. | Fix the request. The message says which one. |
+| `deepseek_refused`, `deepseek_http_error` (502) | DeepSeek rejected the call, or its web routes changed. | Show the user the message. Do not retry in a loop. |
+| `extension_disconnected`, `timeout` (504), `cancelled` | The connection dropped, took too long, or the caller cancelled. | Retry once. If it repeats, check the status endpoint. |
+
 ## The extension popup
 
 | Tab | What it does |
