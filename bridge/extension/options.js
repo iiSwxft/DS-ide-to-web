@@ -54,6 +54,11 @@ async function copy(value, button) {
   } catch { /* clipboard unavailable */ }
 }
 
+// Port is a plain text field (no browser spinner arrows); keep it digits-only.
+$('port').addEventListener('input', () => {
+  $('port').value = $('port').value.replace(/\D/g, '').slice(0, 5);
+});
+
 $('copyCmd').addEventListener('click', (e) => copy($('startCmd').textContent, e.currentTarget));
 $('copyBase').addEventListener('click', (e) => copy($('base').value, e.currentTarget));
 $('copyKey').addEventListener('click', (e) => copy($('key').value, e.currentTarget));

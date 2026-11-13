@@ -60,8 +60,10 @@ for (const [name, transform] of Object.entries(targets)) {
     logLevel: 'warning',
   });
   for (const file of ['options.html', 'options.js']) cpSync(join(ext, file), join(dir, file));
-  for (const size of [16, 32, 48, 128]) cpSync(join(here, '..', 'public', 'icon', `${size}.png`), join(dir, `icon-${size}.png`));
-  cpSync(join(here, '..', 'public', 'icon', '48.png'), join(dir, 'icon.png'));
+  // Icons come from bridge/extension/icons (regenerate with: node bridge/tools/make-icons.mjs).
+  for (const name of ['icon-16.png', 'icon-32.png', 'icon-48.png', 'icon-128.png', 'icon.png']) {
+    cpSync(join(ext, 'icons', name), join(dir, name));
+  }
   cpSync(join(here, '..', 'public', 'deepseek', 'sha3_wasm_bg.wasm'), join(dir, 'deepseek', 'sha3_wasm_bg.wasm'));
   writeFileSync(join(dir, 'manifest.json'), `${JSON.stringify(transform(structuredClone(baseManifest)), null, 2)}\n`);
   console.log(`Built ${name} -> ${dir}`);
