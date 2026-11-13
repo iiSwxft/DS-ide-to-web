@@ -1,5 +1,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { WebSocket } from 'ws';
 import { createBridge } from '../daemon.mjs';
 
@@ -16,6 +19,11 @@ let asks;
 const deleted = [];
 const edits = [];
 const turnActions = [];
+const stops = [];
+const shares = [];
+const shareCreates = [];
+let heldAsk = null;
+const cancelled = [];
 
 const envelope = (biz_data, biz_code = 0) => ({ status: 200, json: { data: { biz_code, biz_msg: biz_code ? 'nope' : '', biz_data } } });
 
@@ -37,6 +45,10 @@ function handleApi({ path, query = {}, json = {} }) {
       chat_messages: [user(1, null, 'q1'), bot(2, 1, 'a1'), user(3, 2, 'old q'), bot(4, 3, 'old a'), user(5, 2, 'new q'), bot(6, 5, 'new a')],
     });
   }
+  if (path === '/api/v0/chat/history_messages' && String(query.chat_session_id).startsWith('aaaaaaaa-')) {
+    // A chat made by new_chat: it exists, but has no messages yet.
+    return envelope({ chat_session: { id: query.chat_session_id, title: '', current_message_id: null, updated_at: 1 }, chat_messages: [] });
+  }
   if (path === '/api/v0/chat/history_messages') {
     const chat = chats.find((c) => c.id === query.chat_session_id);
     if (!chat) return envelope({}, 1004);
@@ -49,12 +61,29 @@ function handleApi({ path, query = {}, json = {} }) {
     });
   }
   if (path === '/api/v0/chat_session/update_title') {
-    chats.find((c) => c.id === json.chat_session_id).title = json.title;
+    const chat = chats.find((c) => c.id === json.chat_session_id);
+    if (chat) chat.title = json.title; // brand-new empty chats are not in the fake list
     return envelope({ title: json.title });
   }
   if (path === '/api/v0/chat_session/batch_update_pinned') {
     for (const id of json.chat_session_ids) chats.find((c) => c.id === id).pinned = json.pinned;
     return envelope({ illegal_chat_session_ids: [] });
+  }
+  if (path === '/api/v0/chat/stop_stream') {
+    stops.push(json);
+    return envelope({});
+  }
+  if (path === '/api/v0/share/create') {
+    shares.push({ share_id: 'share-' + shares.length, chat_session_id: json.chat_session_id, created_at: 1700000000, hint: 'hello' });
+    shareCreates.push(json);
+    return envelope({ share_id: shares.at(-1).share_id });
+  }
+  if (path === '/api/v0/share/list') return envelope({ shares: [...shares] });
+  if (path === '/api/v0/share/delete') {
+    const i = shares.findIndex((s) => s.share_id === json.share_id);
+    if (i === -1) return envelope({}, 40003);
+    shares.splice(i, 1);
+    return envelope({});
   }
   if (path === '/api/v0/chat_session/delete') {
     for (const id of json.chat_session_ids) {
@@ -82,6 +111,8 @@ before(async () => {
     const msg = JSON.parse(String(raw));
     if (msg.type === 'api') {
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: handleApi(msg.params) }));
+    } else if (msg.type === 'new_chat') {
+      ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { chatSessionId: 'aaaaaaaa-aaaa-4aaa-8aaa-' + String(Date.now()).padStart(12, '0').slice(-12), responseMessageId: null, text: '', reasoning: '' } }));
     } else if (msg.type === 'status') {
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { ok: true, loggedIn: true } }));
     } else if (msg.type === 'regenerate' || msg.type === 'continue') {
@@ -90,6 +121,11 @@ before(async () => {
     } else if (msg.type === 'edit') {
       edits.push(msg.params);
       ext.send(JSON.stringify({ id: msg.id, type: 'done', result: { chatSessionId: msg.params.chatSessionId, responseMessageId: 555, text: 'edited-ok', reasoning: '' } }));
+    } else if (msg.type === 'ask' && /SLOW/.test(msg.params.prompt)) {
+      asks.push(msg.params);
+      heldAsk = msg; // never answered: the test stops it
+    } else if (msg.type === 'cancel') {
+      cancelled.push(msg.id);
     } else if (msg.type === 'ask') {
       asks.push(msg.params);
       ext.send(JSON.stringify({
@@ -322,4 +358,82 @@ test('continue extends the latest answer', async () => {
   assert.equal(out.text, 'continue-ok');
   assert.equal(out.continuedMessageId, 2);
   assert.deepEqual(turnActions.at(-1), { type: 'continue', chatSessionId: A, messageId: 2 });
+});
+
+test('new chat makes an empty chat, names it, and the first ask in it gets the instructions', async () => {
+  const made = await (await call('/api/new-chat', { title: 'planned chat' })).json();
+  assert.ok(made.conversationId);
+  assert.equal(made.title, 'planned chat');
+  assert.match(made.chatUrl, /chat\.deepseek\.com\/a\/chat\/s\//);
+  const out = await (await call('/api/ask', { prompt: 'first words', conversation_id: made.conversationId, system: 'Be a pirate.' })).json();
+  assert.equal(out.text, 'ok');
+  const sent = asks.at(-1);
+  assert.equal(sent.chatSessionId, made.conversationId);
+  assert.equal(sent.parentMessageId, null);
+  assert.match(sent.prompt, /Be a pirate\./);
+  // A second message must not repeat the instructions.
+  await (await call('/api/ask', { prompt: 'second', conversation_id: made.conversationId, system: 'Be a pirate.' })).json();
+  assert.equal(asks.at(-1).prompt, 'second');
+});
+
+test('stop tells DeepSeek to stop and abandons a request waiting on that chat', async () => {
+  stops.length = 0;
+  const made = await (await call('/api/new-chat', {})).json();
+  const pending = call('/api/ask', { prompt: 'SLOW essay', conversation_id: made.conversationId });
+  await new Promise((r) => setTimeout(r, 100)); // the request is now waiting on the extension
+  const out = await (await call('/api/stop', { conversation_id: A })).json();
+  assert.equal(out.stoppedRequests, 0, 'a different chat must not be affected');
+  const stoppedOut = await (await call('/api/stop', { conversation_id: made.conversationId })).json();
+  assert.equal(stoppedOut.stoppedRequests, 1);
+  const res = await pending;
+  assert.equal(res.status, 499);
+  assert.equal((await res.json()).error.code, 'stopped');
+  assert.ok(cancelled.length >= 1, 'the extension was told to cancel');
+  assert.ok(stops.some((s) => s.chat_session_id === A && s.message_id === 2), 'stop_stream was sent for the chat latest message');
+});
+
+test('public share links need explicit confirmation, can be listed, and turned off', async () => {
+  const refused = await call('/api/share', { chat: A });
+  assert.equal(refused.status, 400);
+  assert.equal((await refused.json()).error.code, 'confirmation_required');
+  assert.equal(shares.length, 0, 'nothing may be shared without confirm');
+
+  const made = await (await call('/api/share', { chat: A, confirm: true })).json();
+  assert.match(made.url, /^https:\/\/chat\.deepseek\.com\/share\/share-0$/);
+  assert.deepEqual(shareCreates.at(-1).message_ids, [1, 2], 'the live conversation is shared by default');
+
+  const listed = await (await call('/api/shares')).json();
+  assert.equal(listed.shares.length, 1);
+  assert.equal(listed.shares[0].shareId, 'share-0');
+
+  const off = await (await call('/api/share/delete', { share_id: 'share-0' })).json();
+  assert.equal(off.deleted, true);
+  assert.equal((await (await call('/api/shares')).json()).shares.length, 0);
+  assert.equal((await call('/api/share/delete', {})).status, 400);
+});
+
+test('files are read from disk, limited to safe types and sizes, and sent with the prompt', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsb-files-'));
+  const note = join(dir, 'notes.txt');
+  const pic = join(dir, 'pic.png');
+  writeFileSync(note, 'hello file');
+  writeFileSync(pic, Buffer.from([137, 80, 78, 71]));
+  await (await call('/api/ask', { prompt: 'look', files: [note, pic] })).json();
+  const sent = asks.at(-1).files;
+  assert.deepEqual(sent.map((f) => [f.name, f.mime]), [['notes.txt', 'text/plain'], ['pic.png', 'image/png']]);
+  assert.equal(Buffer.from(sent[0].base64, 'base64').toString(), 'hello file');
+
+  const secret = join(dir, '.env');
+  writeFileSync(secret, 'KEY=1');
+  let res = await call('/api/ask', { prompt: 'x', files: [secret] });
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error.code, 'unsupported_file');
+  res = await call('/api/ask', { prompt: 'x', files: [join(dir, 'missing.txt')] });
+  assert.equal(res.status, 404);
+  const big = join(dir, 'big.txt');
+  writeFileSync(big, Buffer.alloc(9 * 1024 * 1024));
+  res = await call('/api/ask', { prompt: 'x', files: [big] });
+  assert.equal(res.status, 413);
+  res = await call('/api/ask', { prompt: 'x', files: [note, note, note, note, note] });
+  assert.equal(res.status, 400);
 });

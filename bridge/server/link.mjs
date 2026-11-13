@@ -83,7 +83,7 @@ export class ExtensionLink {
     }
   }
 
-  #send(type, params, { onDelta, signal } = {}) {
+  #send(type, params, { onDelta, signal, chatSessionId = null } = {}) {
     if (!this.connected) {
       return Promise.reject(new BridgeError(
         'No browser extension is connected. Open chat.deepseek.com in a logged-in browser with the DS bridge extension installed and its token configured.',
@@ -110,8 +110,16 @@ export class ExtensionLink {
       };
       this.pending.set(id, {
         onDelta,
+        chatSessionId,
         succeed: (value) => { cleanup(); resolve(value); },
         fail: (error) => { cleanup(); reject(error); },
+        // Used by deepseek_stop: abandon this request and tell the extension to stop reading.
+        stop: () => {
+          if (!this.pending.delete(id)) return;
+          cleanup();
+          try { this.socket?.send(JSON.stringify({ id, type: 'cancel' })); } catch { /* socket gone */ }
+          reject(new BridgeError('Stopped by deepseek_stop.', 'stopped', 499));
+        },
       });
       signal?.addEventListener('abort', onAbort, { once: true });
       this.socket.send(JSON.stringify({ id, type, params }));
@@ -120,6 +128,29 @@ export class ExtensionLink {
 
   status() {
     return this.#send('status', {});
+  }
+
+  /** Abandon every request this bridge has in flight for a chat. Returns how many were stopped. */
+  stopRequestsFor(chatSessionId) {
+    let stopped = 0;
+    for (const entry of [...this.pending.values()]) {
+      if (entry.chatSessionId === chatSessionId) { entry.stop(); stopped += 1; }
+    }
+    return stopped;
+  }
+
+  /** Create an empty chat without sending a message. Instructions are applied to its first message. */
+  async newChat() {
+    const result = await this.#send('new_chat', {});
+    this.conversations.set(result.chatSessionId, {
+      chatSessionId: result.chatSessionId,
+      parentMessageId: null,
+      fresh: true,
+    });
+    return {
+      conversationId: result.chatSessionId,
+      chatUrl: `https://chat.deepseek.com/a/chat/s/${result.chatSessionId}`,
+    };
   }
 
   /**
@@ -135,7 +166,7 @@ export class ExtensionLink {
       prompt,
       thinking: thinking ?? preset.thinking,
       search: Boolean(search),
-    }, { onDelta, signal });
+    }, { onDelta, signal, chatSessionId });
     this.conversations.set(chatSessionId, {
       chatSessionId,
       parentMessageId: result.responseMessageId ?? null,
@@ -149,7 +180,7 @@ export class ExtensionLink {
   }
 
   async #turnAction(type, params, { onDelta, signal }) {
-    const result = await this.#send(type, params, { onDelta, signal });
+    const result = await this.#send(type, params, { onDelta, signal, chatSessionId: params.chatSessionId });
     this.conversations.set(params.chatSessionId, {
       chatSessionId: params.chatSessionId,
       parentMessageId: result.responseMessageId ?? null,
@@ -189,7 +220,7 @@ export class ExtensionLink {
    * Send one prompt. With `conversationId`, continues that chat (same DeepSeek
    * session, parented on the last answer); otherwise starts a new chat.
    */
-  async ask({ prompt, conversationId, model, thinking, search, onDelta, signal }) {
+  async ask({ prompt, conversationId, model, thinking, search, files, onDelta, signal }) {
     const preset = typeof model === 'string' || model === undefined ? resolveModel(model) : model;
     if (!preset) throw new BridgeError(`Unknown model "${model}". Available: ${Object.keys(MODELS).join(', ')}`, 'unknown_model', 400);
     let convo = null;
@@ -204,7 +235,8 @@ export class ExtensionLink {
       modelType: preset.modelType,
       thinking: thinking ?? preset.thinking,
       search: Boolean(search),
-    }, { onDelta, signal });
+      files: files?.length ? files : undefined,
+    }, { onDelta, signal, chatSessionId: convo?.chatSessionId ?? null });
 
     const id = conversationId ?? randomUUID();
     this.conversations.set(id, {

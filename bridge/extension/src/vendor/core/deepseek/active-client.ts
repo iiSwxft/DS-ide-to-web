@@ -103,6 +103,8 @@ export interface DeepSeekFileUploadInput {
   modelType: string | null;
   clientHeaders: Record<string, string>;
   powHeaders: Record<string, string>;
+  /** Accept documents (text, PDF, ...) as well as images. The size limit still applies. */
+  allowAnyFile?: boolean;
 }
 
 export type { DeepSeekUploadedFile } from './contracts';
@@ -294,7 +296,7 @@ export async function loadClientHeadersFromStorage(): Promise<Record<string, str
 }
 
 export async function uploadDeepSeekFile(input: DeepSeekFileUploadInput, signal?: AbortSignal): Promise<DeepSeekUploadedFile> {
-  if (!input.file.type.startsWith('image/')) {
+  if (!input.allowAnyFile && !input.file.type.startsWith('image/')) {
     throw new DeepSeekPayloadError(`${input.filename} is not an image file.`);
   }
   if (input.file.size > DEEPSEEK_IMAGE_UPLOAD_MAX_BYTES) {

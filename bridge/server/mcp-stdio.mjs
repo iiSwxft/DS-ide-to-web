@@ -47,7 +47,7 @@ const INSTRUCTIONS = [
   '2. The reply ends with [conversation_id: ...]. Read DeepSeek\'s answer, do your own work with it (check it, extend it, fix it), then call deepseek_ask again WITH that conversation_id and your follow-up. DeepSeek remembers the whole chat, so send only the new message.',
   '3. Repeat until the task is done. Stop when you have what you need or when answers stop improving; do not loop forever.',
   'Use new_chat_title so the chat is easy to find later, then deepseek_list_chats / deepseek_read_chat to look back at it.',
-  'If your own message was the problem, use deepseek_edit_message. If DeepSeek\'s answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets.',
+  'If your own message was the problem, use deepseek_edit_message. If DeepSeek\'s answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets. deepseek_new_chat makes an empty chat, deepseek_stop stops an answer, and deepseek_ask can attach files.',
   'Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted.',
 ].join('\n');
 
@@ -68,10 +68,11 @@ server.registerTool('deepseek_ask', {
     model: z.enum(Object.keys(MODELS)).optional().describe('deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert.'),
     thinking: z.boolean().optional().describe('Turn deep thinking on or off (overrides the model preset).'),
     search: z.boolean().optional().describe('Turn DeepSeek web search on for this message.'),
+    files: z.array(z.string()).max(4).optional().describe('Local file paths to attach (images: png, jpg, webp, gif; documents: txt, md, csv, json, pdf, code files; 8 MB each, at most 4). The contents are sent to DeepSeek, so only attach what the user wants shared. With images DeepSeek uses its vision model; with any file, search and thinking are off.'),
     include_reasoning: z.boolean().optional().describe("Also return the model's thinking text when available."),
   },
-}, guard(async ({ prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, include_reasoning }) => {
-  const out = await post('/api/ask', { prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search });
+}, guard(async ({ prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, files, include_reasoning }) => {
+  const out = await post('/api/ask', { prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, files });
   const parts = [out.text];
   if (include_reasoning && out.reasoning) parts.unshift(`<thinking>\n${out.reasoning}\n</thinking>`);
   parts.push(`\n[conversation_id: ${out.conversationId}]`);
@@ -194,6 +195,81 @@ server.registerTool('deepseek_list_models', {
     .map((name) => `- ${name}: ${PRESETS[name].split(/(?<=\.)\s/)[0]}`)
     .join('\n');
   return text(`Models (the model parameter):\n${models}\n\nPresets (the preset parameter, new chats only):\n${presets}\n\nAlso: thinking true/false overrides a model's thinking setting, and search true turns on web search.`);
+}));
+
+server.registerTool('deepseek_new_chat', {
+  title: 'Start an empty DeepSeek chat',
+  description:
+    'Create a new, empty DeepSeek chat without sending a message, and get its conversation_id. ' +
+    'Pass that conversation_id to deepseek_ask for the first message; instructions (system, preset, or the extension\'s prompt) are applied to that first message. ' +
+    'Optionally give the chat a title now.',
+  inputSchema: {
+    title: z.string().optional().describe('A title for the new chat.'),
+  },
+}, guard(async ({ title }) => {
+  const out = await post('/api/new-chat', { title });
+  const named = out.title ? ` titled "${out.title}"` : '';
+  return text(`Created an empty chat${named}.\n[conversation_id: ${out.conversationId}]\n${out.chatUrl}`);
+}));
+
+server.registerTool('deepseek_stop', {
+  title: 'Stop DeepSeek mid-answer',
+  description:
+    'Stop DeepSeek from writing its current answer, like the site\'s stop button. Also abandons any request waiting on that chat. ' +
+    'The chat can continue afterwards from the partly written answer. Only useful while an answer is still being written.',
+  inputSchema: {
+    chat: z.string().optional().describe('The chat: id, title, or a unique part of the title.'),
+    conversation_id: z.string().optional().describe('Or the conversation_id returned by deepseek_ask.'),
+  },
+}, guard(async ({ chat, conversation_id }) => {
+  const out = await post('/api/stop', { chat, conversation_id });
+  const lines = [out.stopped ? 'Stopped the answer.' : 'Nothing was stopped.'];
+  if (out.stoppedRequests) lines.push(`Abandoned ${out.stoppedRequests} waiting request(s) from this bridge.`);
+  if (out.note) lines.push(out.note);
+  lines.push(`[conversation_id: ${out.conversationId}]`);
+  return text(lines.join('\n'));
+}));
+
+server.registerTool('deepseek_share_chat', {
+  title: 'Create a PUBLIC share link for a chat',
+  description:
+    'Create a PUBLIC link to a DeepSeek chat: anyone who has the link can read it. ' +
+    'Only call this when the user explicitly asked for a public link to this chat, and set confirm to true. ' +
+    'Shares the live conversation unless message_ids is given. Use deepseek_delete_share to turn a link off.',
+  inputSchema: {
+    chat: z.string().optional().describe('The chat: id, title, or a unique part of the title.'),
+    conversation_id: z.string().optional().describe('Or the conversation_id returned by deepseek_ask.'),
+    message_ids: z.array(z.number().int()).optional().describe('Only share these messages (see deepseek_read_chat ids). Default: the whole live conversation.'),
+    confirm: z.boolean().describe('Must be true. Set it only after the user explicitly asked for a public link.'),
+  },
+}, guard(async ({ chat, conversation_id, message_ids, confirm }) => {
+  const out = await post('/api/share', { chat, conversation_id, message_ids, confirm });
+  return text(`Public link created (${out.messageCount} messages): ${out.url}\n[share_id: ${out.shareId}]`);
+}));
+
+server.registerTool('deepseek_list_shares', {
+  title: 'List public share links',
+  description: 'List the public share links that exist for your DeepSeek chats.',
+  inputSchema: {
+    limit: z.number().int().min(1).max(100).optional().describe('How many links to return (default 20).'),
+  },
+}, guard(async ({ limit }) => {
+  const params = new URLSearchParams();
+  if (limit) params.set('limit', String(limit));
+  const { shares } = await api(`/api/shares?${params}`);
+  if (shares.length === 0) return text('No public share links.');
+  return text(shares.map((s) => `${s.url}  |  share_id ${s.shareId}  |  ${s.createdAt ?? ''}  |  ${s.hint}`).join('\n'));
+}));
+
+server.registerTool('deepseek_delete_share', {
+  title: 'Turn a public share link off',
+  description: 'Turn a public share link off so it stops working. The chat itself is not deleted.',
+  inputSchema: {
+    share_id: z.string().min(1).describe('The share_id from deepseek_share_chat or deepseek_list_shares.'),
+  },
+}, guard(async ({ share_id }) => {
+  const out = await post('/api/share/delete', { share_id });
+  return text(`Share link ${out.shareId} turned off.`);
 }));
 
 server.registerTool('deepseek_rename_chat', {

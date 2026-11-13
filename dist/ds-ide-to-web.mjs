@@ -3775,7 +3775,7 @@ var init_link = __esm({
           entry.fail(new BridgeError(msg.message || "Extension reported an error.", msg.code || "extension_error"));
         }
       }
-      #send(type, params, { onDelta, signal } = {}) {
+      #send(type, params, { onDelta, signal, chatSessionId = null } = {}) {
         if (!this.connected) {
           return Promise.reject(new BridgeError(
             "No browser extension is connected. Open chat.deepseek.com in a logged-in browser with the DS bridge extension installed and its token configured.",
@@ -3784,7 +3784,7 @@ var init_link = __esm({
           ));
         }
         const id = randomUUID();
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           const timer = setTimeout(() => {
             this.pending.delete(id);
             this.socket?.send(JSON.stringify({ id, type: "cancel" }));
@@ -3805,13 +3805,24 @@ var init_link = __esm({
           };
           this.pending.set(id, {
             onDelta,
+            chatSessionId,
             succeed: (value) => {
               cleanup();
-              resolve(value);
+              resolve2(value);
             },
             fail: (error2) => {
               cleanup();
               reject(error2);
+            },
+            // Used by deepseek_stop: abandon this request and tell the extension to stop reading.
+            stop: () => {
+              if (!this.pending.delete(id)) return;
+              cleanup();
+              try {
+                this.socket?.send(JSON.stringify({ id, type: "cancel" }));
+              } catch {
+              }
+              reject(new BridgeError("Stopped by deepseek_stop.", "stopped", 499));
             }
           });
           signal?.addEventListener("abort", onAbort, { once: true });
@@ -3820,6 +3831,30 @@ var init_link = __esm({
       }
       status() {
         return this.#send("status", {});
+      }
+      /** Abandon every request this bridge has in flight for a chat. Returns how many were stopped. */
+      stopRequestsFor(chatSessionId) {
+        let stopped = 0;
+        for (const entry of [...this.pending.values()]) {
+          if (entry.chatSessionId === chatSessionId) {
+            entry.stop();
+            stopped += 1;
+          }
+        }
+        return stopped;
+      }
+      /** Create an empty chat without sending a message. Instructions are applied to its first message. */
+      async newChat() {
+        const result = await this.#send("new_chat", {});
+        this.conversations.set(result.chatSessionId, {
+          chatSessionId: result.chatSessionId,
+          parentMessageId: null,
+          fresh: true
+        });
+        return {
+          conversationId: result.chatSessionId,
+          chatUrl: `https://chat.deepseek.com/a/chat/s/${result.chatSessionId}`
+        };
       }
       /**
        * Replace an earlier USER message in a chat; DeepSeek branches from it and answers the new text.
@@ -3834,7 +3869,7 @@ var init_link = __esm({
           prompt,
           thinking: thinking ?? preset.thinking,
           search: Boolean(search)
-        }, { onDelta, signal });
+        }, { onDelta, signal, chatSessionId });
         this.conversations.set(chatSessionId, {
           chatSessionId,
           parentMessageId: result.responseMessageId ?? null
@@ -3847,7 +3882,7 @@ var init_link = __esm({
         };
       }
       async #turnAction(type, params, { onDelta, signal }) {
-        const result = await this.#send(type, params, { onDelta, signal });
+        const result = await this.#send(type, params, { onDelta, signal, chatSessionId: params.chatSessionId });
         this.conversations.set(params.chatSessionId, {
           chatSessionId: params.chatSessionId,
           parentMessageId: result.responseMessageId ?? null
@@ -3883,7 +3918,7 @@ var init_link = __esm({
        * Send one prompt. With `conversationId`, continues that chat (same DeepSeek
        * session, parented on the last answer); otherwise starts a new chat.
        */
-      async ask({ prompt, conversationId, model, thinking, search, onDelta, signal }) {
+      async ask({ prompt, conversationId, model, thinking, search, files, onDelta, signal }) {
         const preset = typeof model === "string" || model === void 0 ? resolveModel(model) : model;
         if (!preset) throw new BridgeError(`Unknown model "${model}". Available: ${Object.keys(MODELS).join(", ")}`, "unknown_model", 400);
         let convo = null;
@@ -3897,8 +3932,9 @@ var init_link = __esm({
           parentMessageId: convo?.parentMessageId ?? null,
           modelType: preset.modelType,
           thinking: thinking ?? preset.thinking,
-          search: Boolean(search)
-        }, { onDelta, signal });
+          search: Boolean(search),
+          files: files?.length ? files : void 0
+        }, { onDelta, signal, chatSessionId: convo?.chatSessionId ?? null });
         const id = conversationId ?? randomUUID();
         this.conversations.set(id, {
           chatSessionId: result.chatSessionId,
@@ -3960,6 +3996,9 @@ var init_presets = __esm({
 });
 
 // bridge/server/chats.mjs
+import { readFile, stat } from "node:fs/promises";
+import { homedir as homedir2 } from "node:os";
+import { basename, extname, resolve } from "node:path";
 async function call(link, path, opts) {
   const { status, json } = await link.api(path, opts);
   const data = json?.data;
@@ -4094,7 +4133,8 @@ async function askFlow(link, body, extra = {}) {
       parentMessageId: opened.parentMessageId
     });
   }
-  const isNew = !conversationId;
+  const isNew = !conversationId || link.conversations.get(conversationId)?.fresh === true;
+  const files = body.files?.length ? await loadFiles(body.files) : void 0;
   let prompt = body.prompt;
   if (isNew) {
     try {
@@ -4112,6 +4152,7 @@ async function askFlow(link, body, extra = {}) {
     model: body.model,
     thinking: body.thinking,
     search: body.search,
+    files,
     ...extra
   });
   if (isNew && body.new_chat_title) {
@@ -4199,7 +4240,110 @@ async function continueAnswer(link, body, extra = {}) {
   const out = await link.continueAnswer({ chatSessionId: sessionId, messageId: target.id, ...extra });
   return { ...out, continuedMessageId: target.id };
 }
-var UUID, ROUTES, toChat;
+async function loadFiles(paths) {
+  const list = Array.isArray(paths) ? paths : [paths];
+  if (list.length > MAX_FILES) {
+    throw new BridgeError(`At most ${MAX_FILES} files can be attached to one message.`, "too_many_files", 400);
+  }
+  const files = [];
+  for (const raw of list) {
+    const text2 = String(raw ?? "").trim();
+    if (!text2) throw new BridgeError("A file path is empty.", "invalid_request", 400);
+    const path = resolve(text2.startsWith("~") ? text2.replace(/^~/, homedir2()) : text2);
+    const mime = FILE_TYPES[extname(path).toLowerCase()];
+    if (!mime) {
+      throw new BridgeError(
+        `${basename(path)}: this file type cannot be attached. Allowed: ${Object.keys(FILE_TYPES).join(", ")}.`,
+        "unsupported_file",
+        400
+      );
+    }
+    let info;
+    try {
+      info = await stat(path);
+    } catch {
+      throw new BridgeError(`File not found: ${path}`, "file_not_found", 404);
+    }
+    if (!info.isFile()) throw new BridgeError(`${path} is not a file.`, "unsupported_file", 400);
+    if (info.size > MAX_FILE_BYTES) {
+      throw new BridgeError(`${basename(path)} is ${Math.round(info.size / 1024 / 1024)} MB; the limit is ${MAX_FILE_BYTES / 1024 / 1024} MB.`, "file_too_large", 413);
+    }
+    files.push({ name: basename(path), mime, base64: (await readFile(path)).toString("base64") });
+  }
+  return files;
+}
+async function startNewChat(link, body = {}) {
+  const out = await link.newChat();
+  const result = { ...out, title: null };
+  if (body.title) {
+    try {
+      await renameChat(link, out.conversationId, body.title);
+      result.title = String(body.title);
+    } catch (error2) {
+      result.titleError = error2.message;
+    }
+  }
+  return result;
+}
+async function stopAnswer(link, body) {
+  const sessionId = await sessionIdFor(link, body, "stop");
+  const stoppedRequests = link.stopRequestsFor(sessionId);
+  const history = await readChat(link, sessionId);
+  const messageId = history.currentMessageId;
+  if (messageId === null || messageId === void 0) {
+    return { conversationId: sessionId, stopped: false, stoppedRequests, note: "That chat has no messages yet." };
+  }
+  let stopped = true;
+  let note;
+  try {
+    await call(link, ROUTES.stop, { json: { chat_session_id: sessionId, message_id: messageId } });
+  } catch (error2) {
+    if (!(error2 instanceof BridgeError) || error2.code !== "deepseek_refused") throw error2;
+    stopped = false;
+    note = `DeepSeek did not stop anything (${error2.message}). The answer may already be finished.`;
+  }
+  link.conversations.set(sessionId, { chatSessionId: sessionId, parentMessageId: messageId });
+  return { conversationId: sessionId, messageId, stopped, stoppedRequests, ...note ? { note } : {} };
+}
+async function createShare(link, body) {
+  if (body.confirm !== true) {
+    throw new BridgeError(
+      "This creates a PUBLIC link: anyone who has it can read the chat. Pass confirm: true only if the user asked for a public link.",
+      "confirmation_required",
+      400
+    );
+  }
+  const sessionId = await sessionIdFor(link, body, "share");
+  let ids = body.message_ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    ids = (await readChat(link, sessionId)).messages.map((m) => m.id);
+  }
+  if (ids.length === 0) throw new BridgeError("That chat has no messages to share.", "invalid_request", 400);
+  const data = await call(link, ROUTES.shareCreate, { json: { chat_session_id: sessionId, message_ids: ids } });
+  const shareId = data.share_id;
+  if (!shareId) throw new BridgeError("DeepSeek did not return a share id.", "deepseek_refused", 502);
+  return { shareId, url: shareUrl(shareId), conversationId: sessionId, messageCount: ids.length };
+}
+async function listShares(link, { limit = 20 } = {}) {
+  const count = Math.max(1, Math.min(Number(limit) || 20, 100));
+  const data = await call(link, ROUTES.shareList, { query: { count } });
+  return {
+    shares: (data.shares ?? []).map((s) => ({
+      shareId: s.share_id,
+      url: shareUrl(s.share_id),
+      chatId: s.chat_session_id,
+      createdAt: s.created_at ? new Date(s.created_at * 1e3).toISOString() : null,
+      hint: s.hint ?? ""
+    }))
+  };
+}
+async function deleteShare(link, body) {
+  const shareId = String(body.share_id ?? "").trim();
+  if (!shareId) throw new BridgeError('"share_id" is required (see deepseek_list_shares).', "invalid_request", 400);
+  await call(link, ROUTES.shareDelete, { json: { share_id: shareId } });
+  return { shareId, deleted: true };
+}
+var UUID, ROUTES, toChat, MAX_FILES, MAX_FILE_BYTES, FILE_TYPES, shareUrl;
 var init_chats = __esm({
   "bridge/server/chats.mjs"() {
     "use strict";
@@ -4211,7 +4355,11 @@ var init_chats = __esm({
       history: "/api/v0/chat/history_messages",
       rename: "/api/v0/chat_session/update_title",
       remove: "/api/v0/chat_session/delete",
-      pin: "/api/v0/chat_session/batch_update_pinned"
+      pin: "/api/v0/chat_session/batch_update_pinned",
+      stop: "/api/v0/chat/stop_stream",
+      shareCreate: "/api/v0/share/create",
+      shareList: "/api/v0/share/list",
+      shareDelete: "/api/v0/share/delete"
     };
     toChat = (s) => ({
       id: s.id,
@@ -4220,6 +4368,30 @@ var init_chats = __esm({
       updatedAt: s.updated_at ? new Date(s.updated_at * 1e3).toISOString() : null,
       modelType: s.model_type ?? null
     });
+    MAX_FILES = 4;
+    MAX_FILE_BYTES = 8 * 1024 * 1024;
+    FILE_TYPES = {
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".webp": "image/webp",
+      ".gif": "image/gif",
+      ".txt": "text/plain",
+      ".md": "text/markdown",
+      ".csv": "text/csv",
+      ".json": "application/json",
+      ".pdf": "application/pdf",
+      ".log": "text/plain",
+      ".py": "text/x-python",
+      ".js": "text/javascript",
+      ".ts": "text/plain",
+      ".html": "text/html",
+      ".css": "text/css",
+      ".xml": "application/xml",
+      ".yaml": "text/yaml",
+      ".yml": "text/yaml"
+    };
+    shareUrl = (shareId) => `https://chat.deepseek.com/share/${shareId}`;
   }
 });
 
@@ -4354,7 +4526,7 @@ function safeEqual(a, b) {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 function readJson(req) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve2, reject) => {
     let size = 0;
     const chunks = [];
     req.on("data", (c) => {
@@ -4368,7 +4540,7 @@ function readJson(req) {
     });
     req.on("end", () => {
       try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
+        resolve2(JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"));
       } catch {
         reject(new BridgeError("Invalid JSON body.", "invalid_json", 400));
       }
@@ -4441,6 +4613,21 @@ function createBridge({ token: token2, link = new ExtensionLink(), onShutdown = 
       }
       if (req.method === "POST" && url.pathname === "/api/continue") {
         return sendJson(res, 200, await continueAnswer(link, await readJson(req), { signal: abort.signal }));
+      }
+      if (req.method === "POST" && url.pathname === "/api/new-chat") {
+        return sendJson(res, 200, await startNewChat(link, await readJson(req)));
+      }
+      if (req.method === "POST" && url.pathname === "/api/stop") {
+        return sendJson(res, 200, await stopAnswer(link, await readJson(req)));
+      }
+      if (req.method === "POST" && url.pathname === "/api/share") {
+        return sendJson(res, 200, await createShare(link, await readJson(req)));
+      }
+      if (req.method === "GET" && url.pathname === "/api/shares") {
+        return sendJson(res, 200, await listShares(link, { limit: url.searchParams.get("limit") ?? 20 }));
+      }
+      if (req.method === "POST" && url.pathname === "/api/share/delete") {
+        return sendJson(res, 200, await deleteShare(link, await readJson(req)));
       }
       if (req.method === "GET" && url.pathname === "/api/chats") {
         const chats = await listChats(link, { limit: url.searchParams.get("limit") ?? 30, query: url.searchParams.get("q") ?? void 0 });
@@ -4608,7 +4795,7 @@ var init_autostart = __esm({
   "bridge/server/autostart.mjs"() {
     "use strict";
     init_config();
-    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    sleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
   }
 });
 
@@ -17368,7 +17555,7 @@ var init_protocol = __esm({
               return;
             }
             const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-            await new Promise((resolve) => setTimeout(resolve, pollInterval));
+            await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
             options?.signal?.throwIfAborted();
           }
         } catch (error2) {
@@ -17385,7 +17572,7 @@ var init_protocol = __esm({
        */
       request(request, resultSchema, options) {
         const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           const earlyReject = (error2) => {
             reject(error2);
           };
@@ -17463,7 +17650,7 @@ var init_protocol = __esm({
               if (!parseResult.success) {
                 reject(parseResult.error);
               } else {
-                resolve(parseResult.data);
+                resolve2(parseResult.data);
               }
             } catch (error2) {
               reject(error2);
@@ -17724,12 +17911,12 @@ var init_protocol = __esm({
           }
         } catch {
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           if (signal.aborted) {
             reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
             return;
           }
-          const timeoutId = setTimeout(resolve, interval);
+          const timeoutId = setTimeout(resolve2, interval);
           signal.addEventListener("abort", () => {
             clearTimeout(timeoutId);
             reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -20756,7 +20943,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -20783,7 +20970,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -21647,7 +21834,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
@@ -22038,7 +22225,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -26165,7 +26352,7 @@ var init_mcp = __esm({
         let task = createTaskResult.task;
         const pollInterval = task.pollInterval ?? 5e3;
         while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+          await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
           const updatedTask = await extra.taskStore.getTask(taskId);
           if (!updatedTask) {
             throw new McpError(ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -26759,12 +26946,12 @@ var init_stdio2 = __esm({
         this.onclose?.();
       }
       send(message) {
-        return new Promise((resolve) => {
+        return new Promise((resolve2) => {
           const json = serializeMessage(message);
           if (this._stdout.write(json)) {
-            resolve();
+            resolve2();
           } else {
-            this._stdout.once("drain", resolve);
+            this._stdout.once("drain", resolve2);
           }
         });
       }
@@ -26823,7 +27010,7 @@ var init_mcp_stdio = __esm({
       "2. The reply ends with [conversation_id: ...]. Read DeepSeek's answer, do your own work with it (check it, extend it, fix it), then call deepseek_ask again WITH that conversation_id and your follow-up. DeepSeek remembers the whole chat, so send only the new message.",
       "3. Repeat until the task is done. Stop when you have what you need or when answers stop improving; do not loop forever.",
       "Use new_chat_title so the chat is easy to find later, then deepseek_list_chats / deepseek_read_chat to look back at it.",
-      "If your own message was the problem, use deepseek_edit_message. If DeepSeek's answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets.",
+      "If your own message was the problem, use deepseek_edit_message. If DeepSeek's answer was weak, use deepseek_regenerate. If its answer was cut off, use deepseek_continue. deepseek_list_models shows the models and presets. deepseek_new_chat makes an empty chat, deepseek_stop stops an answer, and deepseek_ask can attach files.",
       "Deleting chats is permanent: only call deepseek_delete_chat when the user explicitly asked for those chats to be deleted."
     ].join("\n");
     server = new McpServer({ name: "ds-ide-to-web", version: "0.3.0" }, { instructions: INSTRUCTIONS });
@@ -26840,10 +27027,11 @@ var init_mcp_stdio = __esm({
         model: external_exports.enum(Object.keys(MODELS)).optional().describe("deepseek-web (default), deepseek-web-thinking, or deepseek-web-expert."),
         thinking: external_exports.boolean().optional().describe("Turn deep thinking on or off (overrides the model preset)."),
         search: external_exports.boolean().optional().describe("Turn DeepSeek web search on for this message."),
+        files: external_exports.array(external_exports.string()).max(4).optional().describe("Local file paths to attach (images: png, jpg, webp, gif; documents: txt, md, csv, json, pdf, code files; 8 MB each, at most 4). The contents are sent to DeepSeek, so only attach what the user wants shared. With images DeepSeek uses its vision model; with any file, search and thinking are off."),
         include_reasoning: external_exports.boolean().optional().describe("Also return the model's thinking text when available.")
       }
-    }, guard(async ({ prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, include_reasoning }) => {
-      const out = await post("/api/ask", { prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search });
+    }, guard(async ({ prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, files, include_reasoning }) => {
+      const out = await post("/api/ask", { prompt, conversation_id, chat, new_chat_title, system, preset, model, thinking, search, files });
       const parts = [out.text];
       if (include_reasoning && out.reasoning) parts.unshift(`<thinking>
 ${out.reasoning}
@@ -26966,6 +27154,71 @@ Presets (the preset parameter, new chats only):
 ${presets}
 
 Also: thinking true/false overrides a model's thinking setting, and search true turns on web search.`);
+    }));
+    server.registerTool("deepseek_new_chat", {
+      title: "Start an empty DeepSeek chat",
+      description: "Create a new, empty DeepSeek chat without sending a message, and get its conversation_id. Pass that conversation_id to deepseek_ask for the first message; instructions (system, preset, or the extension's prompt) are applied to that first message. Optionally give the chat a title now.",
+      inputSchema: {
+        title: external_exports.string().optional().describe("A title for the new chat.")
+      }
+    }, guard(async ({ title }) => {
+      const out = await post("/api/new-chat", { title });
+      const named = out.title ? ` titled "${out.title}"` : "";
+      return text(`Created an empty chat${named}.
+[conversation_id: ${out.conversationId}]
+${out.chatUrl}`);
+    }));
+    server.registerTool("deepseek_stop", {
+      title: "Stop DeepSeek mid-answer",
+      description: "Stop DeepSeek from writing its current answer, like the site's stop button. Also abandons any request waiting on that chat. The chat can continue afterwards from the partly written answer. Only useful while an answer is still being written.",
+      inputSchema: {
+        chat: external_exports.string().optional().describe("The chat: id, title, or a unique part of the title."),
+        conversation_id: external_exports.string().optional().describe("Or the conversation_id returned by deepseek_ask.")
+      }
+    }, guard(async ({ chat, conversation_id }) => {
+      const out = await post("/api/stop", { chat, conversation_id });
+      const lines = [out.stopped ? "Stopped the answer." : "Nothing was stopped."];
+      if (out.stoppedRequests) lines.push(`Abandoned ${out.stoppedRequests} waiting request(s) from this bridge.`);
+      if (out.note) lines.push(out.note);
+      lines.push(`[conversation_id: ${out.conversationId}]`);
+      return text(lines.join("\n"));
+    }));
+    server.registerTool("deepseek_share_chat", {
+      title: "Create a PUBLIC share link for a chat",
+      description: "Create a PUBLIC link to a DeepSeek chat: anyone who has the link can read it. Only call this when the user explicitly asked for a public link to this chat, and set confirm to true. Shares the live conversation unless message_ids is given. Use deepseek_delete_share to turn a link off.",
+      inputSchema: {
+        chat: external_exports.string().optional().describe("The chat: id, title, or a unique part of the title."),
+        conversation_id: external_exports.string().optional().describe("Or the conversation_id returned by deepseek_ask."),
+        message_ids: external_exports.array(external_exports.number().int()).optional().describe("Only share these messages (see deepseek_read_chat ids). Default: the whole live conversation."),
+        confirm: external_exports.boolean().describe("Must be true. Set it only after the user explicitly asked for a public link.")
+      }
+    }, guard(async ({ chat, conversation_id, message_ids, confirm }) => {
+      const out = await post("/api/share", { chat, conversation_id, message_ids, confirm });
+      return text(`Public link created (${out.messageCount} messages): ${out.url}
+[share_id: ${out.shareId}]`);
+    }));
+    server.registerTool("deepseek_list_shares", {
+      title: "List public share links",
+      description: "List the public share links that exist for your DeepSeek chats.",
+      inputSchema: {
+        limit: external_exports.number().int().min(1).max(100).optional().describe("How many links to return (default 20).")
+      }
+    }, guard(async ({ limit }) => {
+      const params = new URLSearchParams();
+      if (limit) params.set("limit", String(limit));
+      const { shares } = await api(`/api/shares?${params}`);
+      if (shares.length === 0) return text("No public share links.");
+      return text(shares.map((s) => `${s.url}  |  share_id ${s.shareId}  |  ${s.createdAt ?? ""}  |  ${s.hint}`).join("\n"));
+    }));
+    server.registerTool("deepseek_delete_share", {
+      title: "Turn a public share link off",
+      description: "Turn a public share link off so it stops working. The chat itself is not deleted.",
+      inputSchema: {
+        share_id: external_exports.string().min(1).describe("The share_id from deepseek_share_chat or deepseek_list_shares.")
+      }
+    }, guard(async ({ share_id }) => {
+      const out = await post("/api/share/delete", { share_id });
+      return text(`Share link ${out.shareId} turned off.`);
     }));
     server.registerTool("deepseek_rename_chat", {
       title: "Rename a DeepSeek chat",

@@ -1,3 +1,6 @@
+import { readFile, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { basename, extname, resolve } from 'node:path';
 import { BridgeError } from './link.mjs';
 import { pickSystem, withSystem } from './presets.mjs';
 
@@ -9,6 +12,10 @@ const ROUTES = {
   rename: '/api/v0/chat_session/update_title',
   remove: '/api/v0/chat_session/delete',
   pin: '/api/v0/chat_session/batch_update_pinned',
+  stop: '/api/v0/chat/stop_stream',
+  shareCreate: '/api/v0/share/create',
+  shareList: '/api/v0/share/list',
+  shareDelete: '/api/v0/share/delete',
 };
 
 /** Run an allowlisted call and unwrap DeepSeek's { data: { biz_code, biz_msg, biz_data } } envelope. */
@@ -183,7 +190,9 @@ export async function askFlow(link, body, extra = {}) {
       parentMessageId: opened.parentMessageId,
     });
   }
-  const isNew = !conversationId;
+  // A chat made by deepseek_new_chat has no messages yet, so its first prompt gets the instructions too.
+  const isNew = !conversationId || link.conversations.get(conversationId)?.fresh === true;
+  const files = body.files?.length ? await loadFiles(body.files) : undefined;
   let prompt = body.prompt;
   if (isNew) {
     // Only a brand-new chat gets instructions; continuing chats already have them.
@@ -202,6 +211,7 @@ export async function askFlow(link, body, extra = {}) {
     model: body.model,
     thinking: body.thinking,
     search: body.search,
+    files,
     ...extra,
   });
   if (isNew && body.new_chat_title) {
@@ -313,4 +323,153 @@ export async function continueAnswer(link, body, extra = {}) {
   const { sessionId, target } = await targetAssistantMessage(link, body, 'continue');
   const out = await link.continueAnswer({ chatSessionId: sessionId, messageId: target.id, ...extra });
   return { ...out, continuedMessageId: target.id };
+}
+
+// ---------------------------------------------------------------------------
+// Files sent with a prompt
+// ---------------------------------------------------------------------------
+
+const MAX_FILES = 4;
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+
+/** Only these types can be attached. Anything else (keys, .env files, archives) is refused. */
+const FILE_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.txt': 'text/plain',
+  '.md': 'text/markdown',
+  '.csv': 'text/csv',
+  '.json': 'application/json',
+  '.pdf': 'application/pdf',
+  '.log': 'text/plain',
+  '.py': 'text/x-python',
+  '.js': 'text/javascript',
+  '.ts': 'text/plain',
+  '.html': 'text/html',
+  '.css': 'text/css',
+  '.xml': 'application/xml',
+  '.yaml': 'text/yaml',
+  '.yml': 'text/yaml',
+};
+
+/** Read local files for attaching. Paths are resolved against the folder the MCP server runs in. */
+export async function loadFiles(paths) {
+  const list = Array.isArray(paths) ? paths : [paths];
+  if (list.length > MAX_FILES) {
+    throw new BridgeError(`At most ${MAX_FILES} files can be attached to one message.`, 'too_many_files', 400);
+  }
+  const files = [];
+  for (const raw of list) {
+    const text = String(raw ?? '').trim();
+    if (!text) throw new BridgeError('A file path is empty.', 'invalid_request', 400);
+    const path = resolve(text.startsWith('~') ? text.replace(/^~/, homedir()) : text);
+    const mime = FILE_TYPES[extname(path).toLowerCase()];
+    if (!mime) {
+      throw new BridgeError(
+        `${basename(path)}: this file type cannot be attached. Allowed: ${Object.keys(FILE_TYPES).join(', ')}.`,
+        'unsupported_file',
+        400,
+      );
+    }
+    let info;
+    try { info = await stat(path); } catch { throw new BridgeError(`File not found: ${path}`, 'file_not_found', 404); }
+    if (!info.isFile()) throw new BridgeError(`${path} is not a file.`, 'unsupported_file', 400);
+    if (info.size > MAX_FILE_BYTES) {
+      throw new BridgeError(`${basename(path)} is ${Math.round(info.size / 1024 / 1024)} MB; the limit is ${MAX_FILE_BYTES / 1024 / 1024} MB.`, 'file_too_large', 413);
+    }
+    files.push({ name: basename(path), mime, base64: (await readFile(path)).toString('base64') });
+  }
+  return files;
+}
+
+// ---------------------------------------------------------------------------
+// New empty chat, stop, share links
+// ---------------------------------------------------------------------------
+
+/** Create an empty chat without sending a message. Optionally name it. */
+export async function startNewChat(link, body = {}) {
+  const out = await link.newChat();
+  const result = { ...out, title: null };
+  if (body.title) {
+    try { await renameChat(link, out.conversationId, body.title); result.title = String(body.title); }
+    catch (error) { result.titleError = error.message; }
+  }
+  return result;
+}
+
+/**
+ * Stop DeepSeek from writing an answer (like the site's stop button). Also abandons any request this
+ * bridge has waiting on that chat. The chat then continues from the partly written answer.
+ */
+export async function stopAnswer(link, body) {
+  const sessionId = await sessionIdFor(link, body, 'stop');
+  const stoppedRequests = link.stopRequestsFor(sessionId);
+  const history = await readChat(link, sessionId);
+  const messageId = history.currentMessageId;
+  if (messageId === null || messageId === undefined) {
+    return { conversationId: sessionId, stopped: false, stoppedRequests, note: 'That chat has no messages yet.' };
+  }
+  let stopped = true;
+  let note;
+  try {
+    await call(link, ROUTES.stop, { json: { chat_session_id: sessionId, message_id: messageId } });
+  } catch (error) {
+    if (!(error instanceof BridgeError) || error.code !== 'deepseek_refused') throw error;
+    stopped = false;
+    note = `DeepSeek did not stop anything (${error.message}). The answer may already be finished.`;
+  }
+  link.conversations.set(sessionId, { chatSessionId: sessionId, parentMessageId: messageId });
+  return { conversationId: sessionId, messageId, stopped, stoppedRequests, ...(note ? { note } : {}) };
+}
+
+const shareUrl = (shareId) => `https://chat.deepseek.com/share/${shareId}`;
+
+/**
+ * Make a PUBLIC link to a chat (anyone with the link can read it). Needs confirm: true.
+ * Shares the live conversation unless message_ids is given.
+ */
+export async function createShare(link, body) {
+  if (body.confirm !== true) {
+    throw new BridgeError(
+      'This creates a PUBLIC link: anyone who has it can read the chat. Pass confirm: true only if the user asked for a public link.',
+      'confirmation_required',
+      400,
+    );
+  }
+  const sessionId = await sessionIdFor(link, body, 'share');
+  let ids = body.message_ids;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    ids = (await readChat(link, sessionId)).messages.map((m) => m.id);
+  }
+  if (ids.length === 0) throw new BridgeError('That chat has no messages to share.', 'invalid_request', 400);
+  const data = await call(link, ROUTES.shareCreate, { json: { chat_session_id: sessionId, message_ids: ids } });
+  const shareId = data.share_id;
+  if (!shareId) throw new BridgeError('DeepSeek did not return a share id.', 'deepseek_refused', 502);
+  return { shareId, url: shareUrl(shareId), conversationId: sessionId, messageCount: ids.length };
+}
+
+/** List the public links you have created. */
+export async function listShares(link, { limit = 20 } = {}) {
+  const count = Math.max(1, Math.min(Number(limit) || 20, 100));
+  const data = await call(link, ROUTES.shareList, { query: { count } });
+  return {
+    shares: (data.shares ?? []).map((s) => ({
+      shareId: s.share_id,
+      url: shareUrl(s.share_id),
+      chatId: s.chat_session_id,
+      createdAt: s.created_at ? new Date(s.created_at * 1000).toISOString() : null,
+      hint: s.hint ?? '',
+    })),
+  };
+}
+
+/** Turn a public link off. The chat itself is not touched. */
+export async function deleteShare(link, body) {
+  const shareId = String(body.share_id ?? '').trim();
+  if (!shareId) throw new BridgeError('"share_id" is required (see deepseek_list_shares).', 'invalid_request', 400);
+  await call(link, ROUTES.shareDelete, { json: { share_id: shareId } });
+  return { shareId, deleted: true };
 }

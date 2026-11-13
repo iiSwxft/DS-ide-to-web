@@ -5,7 +5,7 @@ import { WebSocketServer } from 'ws';
 import { DEFAULT_TOKEN, HOST, getPort, loadToken, tokenFile } from './config.mjs';
 import { BridgeError, ExtensionLink } from './link.mjs';
 import { handleChatCompletions, listModels } from './openai.mjs';
-import { askFlow, continueAnswer, deleteChats, editMessage, regenerateAnswer, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
+import { askFlow, continueAnswer, createShare, deleteChats, deleteShare, editMessage, listShares, regenerateAnswer, startNewChat, stopAnswer, listChats, pinChat, readChat, renameChat, resolveChat } from './chats.mjs';
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
@@ -103,6 +103,21 @@ export function createBridge({ token, link = new ExtensionLink(), onShutdown = n
       }
       if (req.method === 'POST' && url.pathname === '/api/continue') {
         return sendJson(res, 200, await continueAnswer(link, await readJson(req), { signal: abort.signal }));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/new-chat') {
+        return sendJson(res, 200, await startNewChat(link, await readJson(req)));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/stop') {
+        return sendJson(res, 200, await stopAnswer(link, await readJson(req)));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/share') {
+        return sendJson(res, 200, await createShare(link, await readJson(req)));
+      }
+      if (req.method === 'GET' && url.pathname === '/api/shares') {
+        return sendJson(res, 200, await listShares(link, { limit: url.searchParams.get('limit') ?? 20 }));
+      }
+      if (req.method === 'POST' && url.pathname === '/api/share/delete') {
+        return sendJson(res, 200, await deleteShare(link, await readJson(req)));
       }
       if (req.method === 'GET' && url.pathname === '/api/chats') {
         const chats = await listChats(link, { limit: url.searchParams.get('limit') ?? 30, query: url.searchParams.get('q') ?? undefined });

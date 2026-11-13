@@ -5,10 +5,12 @@ import {
   createClientHeaders,
   createPowHeaders,
   createPowHeadersForPath,
+  DEEPSEEK_FILE_UPLOAD_PATH,
   submitContinueStreaming,
   submitEditStreaming,
   submitPromptStreaming,
   submitRegenerateStreaming,
+  uploadDeepSeekFile,
 } from './vendor/core/deepseek/active-client';
 import { setRawResponseBodies } from './vendor/core/network/request-policy';
 
@@ -22,6 +24,15 @@ interface AskParams {
   modelType: string;
   thinking: boolean;
   search: boolean;
+  /** Files to attach to this message, sent by the bridge app as base64. */
+  files?: { name: string; mime: string; base64: string }[];
+}
+
+function base64ToBlob(base64: string, mime: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
 
 type Out =
@@ -47,6 +58,26 @@ async function runAsk(params: AskParams, emit: (out: Out) => void, signal: Abort
       missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
     });
     const chatSessionId = params.chatSessionId ?? (await createChatSession(clientHeaders, signal));
+
+    // Attachments: upload each file first (DeepSeek processes it), then reference it from the prompt.
+    const files = params.files ?? [];
+    const refFileIds: string[] = [];
+    const hasImage = files.some((f) => f.mime.startsWith('image/'));
+    // DeepSeek reads images with its vision model, and cannot search or think while a file is attached.
+    const modelType = hasImage ? 'vision' : params.modelType;
+    for (const file of files) {
+      const uploadPow = await createPowHeadersForPath(clientHeaders, DEEPSEEK_FILE_UPLOAD_PATH, WASM_URL, signal);
+      const uploaded = await uploadDeepSeekFile({
+        file: base64ToBlob(file.base64, file.mime),
+        filename: file.name,
+        modelType,
+        clientHeaders,
+        powHeaders: uploadPow,
+        allowAnyFile: true,
+      }, signal);
+      refFileIds.push(uploaded.id);
+    }
+
     const powHeaders = await createPowHeaders(clientHeaders, WASM_URL, signal);
 
     let reasoning = '';
@@ -54,11 +85,11 @@ async function runAsk(params: AskParams, emit: (out: Out) => void, signal: Abort
       {
         chatSessionId,
         parentMessageId: params.parentMessageId,
-        modelType: params.modelType,
+        modelType,
         prompt: params.prompt,
-        refFileIds: [],
-        thinkingEnabled: params.thinking,
-        searchEnabled: params.search,
+        refFileIds,
+        thinkingEnabled: files.length > 0 ? false : params.thinking,
+        searchEnabled: files.length > 0 ? false : params.search,
         clientHeaders,
         powHeaders,
       },
@@ -220,6 +251,23 @@ function runContinue(params: ContinueParams, emit: (out: Out) => void, signal: A
     }, callbacks, signal));
 }
 
+/** Create an empty chat without sending a message. */
+async function runNewChat(emit: (out: Out) => void, signal: AbortSignal) {
+  try {
+    const clientHeaders = createClientHeaders({
+      missingTokenMessage: 'Not logged in to chat.deepseek.com. Sign in on the DeepSeek tab, then retry.',
+    });
+    const chatSessionId = await createChatSession(clientHeaders, signal);
+    emit({ type: 'done', result: { chatSessionId, responseMessageId: null, text: '', reasoning: '' } });
+  } catch (error) {
+    emit({
+      type: 'error',
+      code: errorCode(error),
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 // Chat-management calls. A strict allowlist: nothing else on DeepSeek's API can be reached
 // through the bridge (in particular not delete_all, logout, or any account route).
 const API_ALLOWLIST: Record<string, 'GET' | 'POST'> = {
@@ -229,6 +277,9 @@ const API_ALLOWLIST: Record<string, 'GET' | 'POST'> = {
   '/api/v0/chat_session/delete': 'POST',
   '/api/v0/chat_session/batch_update_pinned': 'POST',
   '/api/v0/chat/stop_stream': 'POST',
+  '/api/v0/share/create': 'POST',
+  '/api/v0/share/list': 'GET',
+  '/api/v0/share/delete': 'POST',
 };
 
 interface ApiParams {
@@ -293,6 +344,8 @@ chrome.runtime.onConnect.addListener((port) => {
       void runAsk(msg.params as AskParams, (out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'edit' && msg.params) {
       void runEdit(msg.params as unknown as EditParams, (out) => port.postMessage(out), controller.signal);
+    } else if (msg.type === 'new_chat') {
+      void runNewChat((out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'regenerate' && msg.params) {
       void runRegenerate(msg.params as unknown as RegenerateParams, (out) => port.postMessage(out), controller.signal);
     } else if (msg.type === 'continue' && msg.params) {
