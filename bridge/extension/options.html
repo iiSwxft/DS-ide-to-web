@@ -41,23 +41,35 @@
     main { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; padding: 14px 16px 16px; }
     section[hidden] { display: none; }
 
-    /* The bridge: one drawing whose line says what the connection is doing. */
-    .bridge { width: 100%; height: auto; display: block; margin: 2px 0 6px; overflow: visible; }
-    .bridge .node { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; transition: stroke .3s; }
+    /* The bridge: a suspension bridge whose look says what the connection is doing. */
+    .bridge { width: 100%; height: auto; display: block; margin: 0 0 4px; overflow: visible; }
     .bridge .label { fill: var(--muted); font-size: 10.5px; }
-    .bridge .arch { fill: none; stroke: var(--idle); stroke-width: 3; stroke-linecap: round; transition: stroke .3s; }
-    .bridge .deck { stroke: var(--idle); stroke-width: 3; stroke-linecap: round; transition: stroke .3s; }
-    .bridge .pulse { fill: var(--ok); opacity: 0; }
-    .bridge[data-phase="no-tab"] .arch { stroke-dasharray: 2 7; }
-    .bridge[data-phase="connecting"] .arch { stroke: var(--warn); stroke-dasharray: 6 6; animation: flow 1s linear infinite; }
-    .bridge[data-phase="connecting"] .deck { stroke: var(--warn); }
-    .bridge[data-phase="connected"] .arch, .bridge[data-phase="connected"] .deck { stroke: var(--ok); }
-    .bridge[data-phase="connected"] .node { stroke: var(--ok); }
-    .bridge[data-phase="connected"] .pulse { opacity: 1; }
-    .bridge[data-phase="offline"] .arch { stroke: var(--bad); stroke-dasharray: 38 24 38; }
-    .bridge[data-phase="offline"] .deck { stroke: var(--bad); stroke-dasharray: 34 20 34; }
-    @keyframes flow { to { stroke-dashoffset: -24; } }
-    @media (prefers-reduced-motion: reduce) { .bridge .arch { animation: none !important; } .bridge .pulse { display: none; } }
+    .bridge .road { stroke: var(--line); stroke-width: 2; stroke-linecap: round; }
+    .bridge .deck { stroke: var(--idle); stroke-width: 4; stroke-linecap: round; transition: stroke .3s; }
+    .bridge .cable { fill: none; stroke: var(--idle); stroke-width: 2.2; stroke-linecap: round; transition: stroke .3s; }
+    .bridge .hangers line { stroke: var(--idle); stroke-width: 1.2; opacity: .55; transition: stroke .3s, opacity .3s; }
+    .bridge .tower { fill: var(--panel); stroke: var(--idle); stroke-width: 1.6; transition: stroke .3s; }
+    .bridge .car { fill: var(--ok); opacity: 0; }
+    .bridge .car.back { fill: var(--accent); }
+
+    .bridge[data-phase="no-tab"] .cable { stroke-dasharray: 1 6; }
+    .bridge[data-phase="no-tab"] .deck { stroke-dasharray: 1 7; }
+    .bridge[data-phase="no-tab"] .hangers { opacity: .5; }
+
+    .bridge[data-phase="connecting"] .deck, .bridge[data-phase="connecting"] .cable, .bridge[data-phase="connecting"] .tower { stroke: var(--warn); }
+    .bridge[data-phase="connecting"] .deck { stroke-dasharray: 8 7; animation: flow 1s linear infinite; }
+    .bridge[data-phase="connecting"] .hangers line { stroke: var(--warn); }
+
+    .bridge[data-phase="connected"] .deck, .bridge[data-phase="connected"] .cable, .bridge[data-phase="connected"] .tower { stroke: var(--ok); }
+    .bridge[data-phase="connected"] .hangers line { stroke: var(--ok); opacity: .8; }
+    .bridge[data-phase="connected"] .car { opacity: 1; }
+
+    .bridge[data-phase="offline"] .deck { stroke: var(--bad); stroke-dasharray: 42 34 42; stroke-dashoffset: 0; }
+    .bridge[data-phase="offline"] .cable, .bridge[data-phase="offline"] .tower { stroke: var(--bad); }
+    .bridge[data-phase="offline"] .hangers line { stroke: var(--bad); opacity: .7; }
+    .bridge[data-phase="offline"] .hangers .mid { opacity: 0; }
+    @keyframes flow { to { stroke-dashoffset: -30; } }
+    @media (prefers-reduced-motion: reduce) { .bridge .deck { animation: none !important; } .bridge .car { display: none; } }
 
     .state h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
     .state p { margin: 3px 0 0; color: var(--muted); }
@@ -126,14 +138,25 @@
 
     <main>
       <section id="tab-connect" role="tabpanel" aria-labelledby="t-connect">
-        <svg id="bridge" class="bridge" data-phase="no-tab" viewBox="0 0 320 68" role="img" aria-label="Connection status">
-          <circle class="node" cx="22" cy="40" r="11"/>
-          <circle class="node" cx="298" cy="40" r="11"/>
-          <path class="arch" id="archPath" d="M 33 40 C 33 2, 287 2, 287 40" pathLength="100"/>
-          <line class="deck" x1="33" y1="40" x2="287" y2="40" pathLength="100"/>
-          <circle class="pulse" r="3.5"><animateMotion dur="2.4s" repeatCount="indefinite" path="M 33 40 C 33 2, 287 2, 287 40"/></circle>
-          <text class="label" x="22" y="64" text-anchor="middle">Your tools</text>
-          <text class="label" x="298" y="64" text-anchor="middle">DeepSeek</text>
+        <svg id="bridge" class="bridge" data-phase="no-tab" viewBox="0 0 320 84" role="img" aria-label="Connection status">
+          <!-- suspension bridge: approach roads, deck, hangers, main cable, towers -->
+          <line class="road" x1="6" y1="52" x2="314" y2="52"/>
+          <g class="hangers">
+            <line x1="60" y1="21" x2="60" y2="52"/><line x1="80" y1="26" x2="80" y2="52"/>
+            <line x1="100" y1="30" x2="100" y2="52"/><line x1="120" y1="34" x2="120" y2="52"/>
+            <line class="mid" x1="140" y1="35" x2="140" y2="52"/><line class="mid" x1="160" y1="36" x2="160" y2="52"/>
+            <line class="mid" x1="180" y1="35" x2="180" y2="52"/><line x1="200" y1="34" x2="200" y2="52"/>
+            <line x1="220" y1="30" x2="220" y2="52"/><line x1="240" y1="26" x2="240" y2="52"/>
+            <line x1="260" y1="21" x2="260" y2="52"/>
+          </g>
+          <path class="cable" d="M 40 14 Q 160 58 280 14" pathLength="100"/>
+          <line class="deck" x1="40" y1="52" x2="280" y2="52" pathLength="100"/>
+          <rect class="tower" x="35" y="8" width="10" height="56" rx="3"/>
+          <rect class="tower" x="275" y="8" width="10" height="56" rx="3"/>
+          <circle class="car" r="3.2"><animateMotion dur="2.2s" repeatCount="indefinite" path="M 46 49 L 274 49"/></circle>
+          <circle class="car back" r="3.2"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite" path="M 274 49 L 46 49"/></circle>
+          <text class="label" x="40" y="80" text-anchor="middle">Your tools</text>
+          <text class="label" x="280" y="80" text-anchor="middle">DeepSeek</text>
         </svg>
 
         <div class="state">
