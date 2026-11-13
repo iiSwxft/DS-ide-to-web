@@ -1,7 +1,0 @@
-The DeepSeek web app is great, but long-running work needs context that sticks and the ability to keep executing. DeepSeek++ turns the DeepSeek web app into an agent workbench in your browser: memory, projects, skills, MCP tools, browser control, media analysis, conversation export, and automation, all in one flow.
-
-Keep project background right beside the chat, lock in your go-to workflows with skills, and let tool results flow back into the same conversation so generation continues. Connect local or remote MCP servers, and enable browser actions only after you pick a target tab. When a task goes beyond text, attach images or videos so the model carries the analysis forward.
-
-Recurring tasks can become automations: DeepSeek runs your prompts on schedule in separate sessions and keeps a record of every run. DeepSeek++ stays local-first and user-controlled.
-
-Install it from the Chrome Web Store, or build it from source. DeepSeek++, the agent workbench for the DeepSeek web app.

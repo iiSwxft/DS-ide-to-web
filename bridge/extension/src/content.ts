@@ -7,8 +7,8 @@ import {
   createPowHeadersForPath,
   submitEditStreaming,
   submitPromptStreaming,
-} from '../../../core/deepseek/active-client';
-import { setRawResponseBodies } from '../../../core/network/request-policy';
+} from './vendor/core/deepseek/active-client';
+import { setRawResponseBodies } from './vendor/core/network/request-policy';
 
 // Firefox blocks the size-limit wrapper around fetch bodies in content scripts.
 setRawResponseBodies(true);

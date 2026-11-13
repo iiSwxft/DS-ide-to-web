@@ -1,0 +1,20 @@
+DS IDE to Web
+
+This project is a derivative work of DeepSeek++ (https://github.com/zhu1090093659/deepseek-pp),
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+Files taken from DeepSeek++ and modified here (changes: translated comments and strings to English,
+moved into bridge/extension/src/vendor, small additions such as encodeEditMessageRequest,
+submitEditStreaming and setRawResponseBodies, and the fragment-list replacement case in the stream
+decoder):
+
+  bridge/extension/src/vendor/core/deepseek/*
+  bridge/extension/src/vendor/core/network/*
+  bridge/extension/src/vendor/core/token/estimator.ts
+  bridge/extension/test/*  (tests for the files above)
+  bridge/extension/wasm/sha3_wasm_bg.wasm  (proof-of-work module, unmodified)
+
+Everything else in this repository (bridge/server, the extension popup, background worker and page
+script, and the build tooling) was written for this project.
+
+"DeepSeek" is a trademark of its owner. This project is not affiliated with or endorsed by DeepSeek.
