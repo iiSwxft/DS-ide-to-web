@@ -122,7 +122,10 @@ const PILL: Record<Phase, { color: string; text: string }> = {
 
 function mountPill() {
   if (window.top !== window) return;
+  // A reloaded extension leaves the previous copy's pill behind; keep exactly one.
+  document.querySelectorAll('[data-ds-bridge-pill]').forEach((el) => el.remove());
   const host = document.createElement('div');
+  host.setAttribute('data-ds-bridge-pill', '');
   host.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:2147483646;';
   const root = host.attachShadow({ mode: 'closed' });
   root.innerHTML = `
