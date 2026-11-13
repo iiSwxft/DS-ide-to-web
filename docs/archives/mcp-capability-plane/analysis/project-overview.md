@@ -2,11 +2,11 @@
 
 ## Implemented Direction
 
-DeepSeek++ 的 MCP 已从“每轮注入全部工具 Schema”升级为受预算控制的 Capability Plane：常用工具可直接暴露，长尾工具通过后台签发的 capability handle 按需检索、说明和调用，且不削弱真实工具的授权、审计或执行边界。
+DeepSeek++'s MCP has been upgraded from "injecting all tool schemas every turn" to a budget-controlled Capability Plane: commonly used tools can be exposed directly, while long-tail tools are searched, described, and invoked on demand through capability handles issued by the background, without weakening the authorization, audit, or execution boundaries of the real tools.
 
 ## Confirmed Task Definition
 
-范围限定为桌面 Chrome、Edge、Firefox 上的 MCP 工具提示词投影、能力句柄、统一授权执行、Side Panel/automation/inline-agent 接入和 MCP 设置入口。实现不内置第三方 dynamic-mcp 服务，也不新增移动端路径。
+Scope is limited to MCP tool prompt projection, capability handles, unified authorized execution, Side Panel/automation/inline-agent integration, and MCP settings entry points on desktop Chrome, Edge, and Firefox. The implementation does not bundle a third-party dynamic-mcp service and adds no mobile paths.
 
 ## Current Architecture
 
@@ -22,31 +22,31 @@ flowchart LR
   Mcp --> Servers["MCP servers"]
 ```
 
-MCP cache 持有完整 `ToolDescriptor`，执行前会重新发现服务并通过 descriptor security snapshot 验证。`ToolProviderRegistry` 是 provider 聚合与 provider-first 路由的唯一入口；`core/tool/authorization.ts` 持有 receiver-owned grant、descriptor snapshot 与一次性 call reservation。本次实现把四个聊天/执行面的 prompt selection 收拢为同一 projection service：完整 descriptors 只留在扩展侧，模型仅看到 direct projection 或受限的 discover/describe/invoke helpers。
+The MCP cache holds the full `ToolDescriptor`, and before execution it rediscovers the service and verifies it through the descriptor security snapshot. `ToolProviderRegistry` is the sole entry point for provider aggregation and provider-first routing; `core/tool/authorization.ts` holds receiver-owned grants, descriptor snapshots, and one-time call reservations. This implementation consolidates the prompt selection of the four chat/execution surfaces into the same projection service: full descriptors stay on the extension side only, and the model sees only direct projections or restricted discover/describe/invoke helpers.
 
 ## Technology Stack
 
 | Layer | Current | Implemented change |
 |:--|:--|:--|
-| Language | TypeScript / ESM | 保持 |
-| Extension | WXT MV3 | 保持 PC 浏览器范围 |
-| UI | React 19 / Side Panel | 每服务器 visible/adaptive/on-demand 和 adaptive prompt budget 控件 |
-| Persistence | `chrome.storage.local` / IndexedDB | 独立、严格版本化 capability settings 与 session-scoped lease state |
-| Tool runtime | `ToolDescriptor`、authorization、provider registry | 单一真实 target resolver，支持 direct 与 opaque handle 两种投影 |
-| MCP | HTTP/SSE/Streamable HTTP/bridge/native | 不改 transport 语义；Catalog 建立在已发现 descriptors 上 |
+| Language | TypeScript / ESM | Keep |
+| Extension | WXT MV3 | Keep PC browser scope |
+| UI | React 19 / Side Panel | Per-server visible/adaptive/on-demand and adaptive prompt budget controls |
+| Persistence | `chrome.storage.local` / IndexedDB | Independent, strictly versioned capability settings and session-scoped lease state |
+| Tool runtime | `ToolDescriptor`, authorization, provider registry | Single real target resolver, supporting both direct and opaque-handle projections |
+| MCP | HTTP/SSE/Streamable HTTP/bridge/native | Transport semantics unchanged; the Catalog is built on already-discovered descriptors |
 
 ## Entry Points
 
 | Entry | Relevant responsibility |
 |:--|:--|
-| `entrypoints/content.ts` | 手动聊天 prompt authorization、工具执行、inline agent 发起 |
-| `entrypoints/background.ts` | runtime composition、Side Panel prompt、automation prompt/execute |
-| `entrypoints/background/tool-provider-composition.ts` | 真实 MCP 与 local tool providers 的组合根 |
+| `entrypoints/content.ts` | Manual chat prompt authorization, tool execution, inline agent initiation |
+| `entrypoints/background.ts` | runtime composition, Side Panel prompt, automation prompt/execute |
+| `entrypoints/background/tool-provider-composition.ts` | Composition root of real MCP and local tool providers |
 | `entrypoints/background/tool-execution-handlers.ts` | content/background authorization bridge |
-| `entrypoints/background/chat-runtime-service.ts` | Side Panel/Web/API 工具 continuation loop |
-| `core/mcp/*` | server config、discovery、cache、真实 MCP execution |
-| `core/tool/*` | descriptor、provider registry、authorization、runtime/history |
-| `core/prompt/augmentation.ts` | 工具 Schema 的模型可见渲染 |
+| `entrypoints/background/chat-runtime-service.ts` | Side Panel/Web/API tool continuation loop |
+| `core/mcp/*` | Server config, discovery, cache, real MCP execution |
+| `core/tool/*` | descriptor, provider registry, authorization, runtime/history |
+| `core/prompt/augmentation.ts` | Model-visible rendering of tool schemas |
 
 ## Build & Run
 
@@ -61,7 +61,7 @@ MCP cache 持有完整 `ToolDescriptor`，执行前会重新发现服务并通�
 
 ## Testing Baseline
 
-新增的 projection、lease 和 runtime suites覆盖自适应排序/预算、句柄签发与一次性消费、target identity 拒绝和四个运行时表面；同时保留 MCP execution policy、持久化、授权、provider routing、runtime handler、request augmentation、Side Panel、inline-agent 与 automation 回归面。最终 `npm run ci:quality` 全绿。
+The new projection, lease, and runtime suites cover adaptive ordering/budget, handle issuance and one-time consumption, target identity rejection, and the four runtime surfaces; the regression surfaces for MCP execution policy, persistence, authorization, provider routing, runtime handler, request augmentation, Side Panel, inline-agent, and automation are retained. The final `npm run ci:quality` was all green.
 
 ## Project Governance Baseline
 

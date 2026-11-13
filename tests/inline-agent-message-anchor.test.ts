@@ -23,19 +23,19 @@ function buildMessage(ownText: string, injected?: string): HTMLElement {
 }
 
 describe('findAssistantMessageByContentSnippet (Issue #551 follow-up)', () => {
-  const snippet = '用户要求重新绘制 Anthropic ARR 折线图，需要先获取最新数据。';
+  const snippet = 'The user asked to redraw the Anthropic ARR line chart; fetch the latest data first.';
 
   it('anchors to the newest matching message, never an older one', () => {
-    const older = buildMessage(`旧轮次：${snippet}`);
-    const newer = buildMessage(`新一轮：${snippet}`);
+    const older = buildMessage(`Older round: ${snippet}`);
+    const newer = buildMessage(`Newer round: ${snippet}`);
     expect(findAssistantMessageByContentSnippet([older, newer], snippet, new Set())).toBe(newer);
   });
 
   it('ignores text inside injected agent consoles when matching', () => {
     // The old run's message contains the snippet only inside its injected
     // console timeline — it must not claim the new run's anchor.
-    const oldWithConsole = buildMessage('旧轮次回答内容', `Step 1 ${snippet} Step 2`);
-    const freshText = '我先调用工具获取最新的月度数据。';
+    const oldWithConsole = buildMessage('Older round answer content', `Step 1 ${snippet} Step 2`);
+    const freshText = 'I will call the tool first to fetch the latest monthly data.';
     const fresh = buildMessage(freshText);
     const messages = [oldWithConsole, fresh];
     expect(
@@ -47,39 +47,39 @@ describe('findAssistantMessageByContentSnippet (Issue #551 follow-up)', () => {
   });
 
   it('skips messages already claimed via usedMessages', () => {
-    const claimed = buildMessage(`旧轮次：${snippet}`);
-    const fresh = buildMessage(`新一轮：${snippet}`);
+    const claimed = buildMessage(`Older round: ${snippet}`);
+    const fresh = buildMessage(`Newer round: ${snippet}`);
     expect(
       findAssistantMessageByContentSnippet([claimed, fresh], snippet, new Set([claimed])),
     ).toBe(fresh);
   });
 
   it('returns null for snippets shorter than 12 normalized chars', () => {
-    const message = buildMessage('短文本');
-    expect(findAssistantMessageByContentSnippet([message], '短文本', new Set())).toBeNull();
+    const message = buildMessage('short');
+    expect(findAssistantMessageByContentSnippet([message], 'short', new Set())).toBeNull();
   });
 });
 
 describe('getAssistantMessageOwnText', () => {
   it('excludes console, final-answer, tool-block, and autosave-note subtrees', () => {
-    const message = buildMessage('消息正文');
+    const message = buildMessage('message body');
     const host = message.querySelector('.ds-markdown')!;
     const answer = document.createElement('div');
     answer.setAttribute('data-dpp-body-text', 'true');
-    answer.textContent = '最终答案区';
+    answer.textContent = 'final answer area';
     const toolBlock = document.createElement('div');
     toolBlock.className = 'dpp-tool-block';
-    toolBlock.textContent = '已调用工具 3 次';
+    toolBlock.textContent = 'Tool called 3 times';
     const note = document.createElement('div');
     note.className = 'dpp-agent-autosave-note';
-    note.textContent = '已自动保存';
+    note.textContent = 'Auto-saved';
     host.append(answer, toolBlock, note);
 
     const ownText = getAssistantMessageOwnText(message);
-    expect(ownText).toContain('消息正文');
-    expect(ownText).not.toContain('最终答案区');
-    expect(ownText).not.toContain('已调用工具');
-    expect(ownText).not.toContain('已自动保存');
+    expect(ownText).toContain('message body');
+    expect(ownText).not.toContain('final answer area');
+    expect(ownText).not.toContain('Tool called');
+    expect(ownText).not.toContain('Auto-saved');
   });
 });
 
@@ -89,8 +89,8 @@ describe('findInlineAgentRestoreTarget (Issue #551 follow-up: virtual-window-saf
   // scrolled out must stay pending — never mount onto an unrelated message
   // that happens to sit at a colliding window position.
 
-  const oldAnchorText = '旧一轮 agent 运行所在的助手消息正文，包含 Anthropic ARR 月度增长的搜索结果。';
-  const newAnchorText = '用户要的是「重新绘制一版」折线图，我先获取最新数据再渲染。';
+  const oldAnchorText = 'Assistant message body of the older agent run, containing search results on Anthropic ARR monthly growth.';
+  const newAnchorText = 'The user wants the line chart "redrawn"; I will fetch the latest data first, then render.';
 
   function buildMessageWithId(ownText: string, messageId?: string): HTMLElement {
     const message = buildMessage(ownText);

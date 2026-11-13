@@ -33,7 +33,7 @@ describe('Shell Host modular runtime ownership', () => {
       logLine: (message: unknown) => logs.push(String(message)),
       onInvalidFrame: () => { throw new Error('unexpected invalid frame'); },
     });
-    const first = { sequence: 1, text: '分片' };
+    const first = { sequence: 1, text: 'chunk' };
     const second = { sequence: 2, text: 'queued' };
     const firstFrame = createNativeFrame(first);
     const secondFrame = createNativeFrame(second);

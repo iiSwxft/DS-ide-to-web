@@ -36,6 +36,7 @@ export const SANDBOX_REJECTED_REQUESTS: ReadonlyArray<{
   { name: 'unsupported language', input: { language: 'ruby', code: 'puts 42' }, error: 'language must be javascript, typescript, python, or html' },
   { name: 'missing code', input: { language: 'javascript' }, error: 'code must be a non-empty string' },
   { name: 'empty code', input: { language: 'javascript', code: '   ' }, error: 'code must be a non-empty string' },
+  // '界' is a deliberate 3-byte UTF-8 CJK character used to exercise byte-size (not char-count) limits.
   { name: 'over 30000 UTF-8 bytes', input: { language: 'javascript', code: '界'.repeat(10_001) }, error: 'code is too large; max 30000 bytes' },
 ];
 

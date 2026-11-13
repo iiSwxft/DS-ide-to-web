@@ -377,12 +377,12 @@ describe('augmentRequestBody', () => {
     });
 
     const body = JSON.parse(result?.body ?? '{}') as { prompt?: string };
-    // 本地索引 Skill 的 localDirectory 必须回传，供 content.ts 钉死 cwd。
+    // The local-index Skill's localDirectory must be returned so content.ts can pin the cwd.
     expect(result?.activeLocalSkillDir).toBe(skillDir);
-    // 索引 + 激活指令应进入系统上下文（如同 ## Tools 段），而非可见用户输入。
+    // Index + activation instructions should go into the system context (like the ## Tools section), not the visible user input.
     expect(body.prompt).toContain('## 本地 Skill 激活（Local Skill Activated）');
     expect(body.prompt).toContain('local_file_read');
-    // 真实用户 query 仍为可见用户输入；索引不再占据可见用户输入位（修复 Bug ② framing 倒置）。
+    // The real user query remains the visible user input; the index no longer occupies the visible user-input slot (fixes Bug (2), framing inversion).
     expect(extractVisibleUserPrompt(body.prompt ?? '')).toBe('/demo');
   });
 

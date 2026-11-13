@@ -279,7 +279,7 @@ describe('persistence and sync compatibility contract', () => {
     const scenarios = await getAllScenarios();
     expect(scenarios.find((scenario) => scenario.id === 'summarize')).toEqual({
       id: 'summarize',
-      label: '总结',
+      label: 'Summarize',
       template: 'Custom summary template: {text}',
       builtIn: true,
       enabled: false,
@@ -386,7 +386,7 @@ describe('persistence and sync compatibility contract', () => {
       decodeSavedItemsState,
     )).toThrow('saved-items.json.schemaVersion is not supported');
     expect(() => parseValidatedJson('memories.json', '{bad json}', (value) => value))
-      .toThrow('云端 memories.json 不是有效 JSON，已停止下载');
+      .toThrow('Remote memories.json is not valid JSON, download stopped');
     expect(SYNC_VERSIONING_FIXTURES.map((fixture) => fixture.expected)).toEqual([
       'lossless-migration',
       'reject-without-overwrite',

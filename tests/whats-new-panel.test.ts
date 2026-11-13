@@ -69,13 +69,13 @@ describe('WhatsNewPanel', () => {
 
     await renderPanel();
 
-    expect(container.textContent).toContain('版本更新内容');
+    expect(container.textContent).toContain("What's new");
     expect(container.textContent).toContain('v0.7.2');
-    expect(container.textContent).toContain('浏览器控制可在侧边栏选择目标标签页');
-    expect(container.textContent).toContain('第三方 Skill 会按来源分组展示');
+    expect(container.textContent).toContain('Browser Control can select a target tab from the side panel');
+    expect(container.textContent).toContain('Third-party Skills are grouped by source');
 
     const button = container.querySelector('button');
-    expect(button?.textContent).toBe('知道了');
+    expect(button?.textContent).toBe('Got it');
 
     await act(async () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -83,7 +83,7 @@ describe('WhatsNewPanel', () => {
       await Promise.resolve();
     });
 
-    expect(container.textContent).not.toContain('版本更新内容');
+    expect(container.textContent).not.toContain("What's new");
     expect(storage[LAST_SEEN_VERSION_KEY]).toBe('0.7.2');
     expect(storage[PENDING_UPDATE_VERSION_KEY]).toBeUndefined();
     expect(sendMessage).toHaveBeenCalledWith({ type: 'WHATS_NEW_DISMISSED' });

@@ -110,7 +110,7 @@ describe('usage daily trend X axis', () => {
     usageResponse = makeUsageSummary(7);
     await renderUsagePage();
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     await act(async () => {
       lastSevenDays!.click();
@@ -157,7 +157,7 @@ describe('usage daily trend X axis', () => {
     usageResponse = makeUsageSummary(7);
     await renderUsagePage();
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     await act(async () => {
       lastSevenDays!.click();

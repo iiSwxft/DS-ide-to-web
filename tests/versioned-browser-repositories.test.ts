@@ -241,7 +241,7 @@ describe('versioned browser repositories', () => {
 
     const summarize = (await getAllScenarios()).find((scenario) => scenario.id === 'summarize');
     expect(summarize).toMatchObject({
-      label: '总结',
+      label: 'Summarize',
       template: 'Custom summary template: {text}',
       enabled: false,
       additiveField: { preserve: true },

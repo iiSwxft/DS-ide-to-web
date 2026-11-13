@@ -43,6 +43,7 @@ const pathAllowlist = new Map([
   ['scripts/web-search-smoke.mjs', 'legacy smoke fixture intentionally simulates zh-CN web-search prompts and output'],
 ]);
 
+// The Chinese fragments below are match patterns for Chinese-language detection and must stay verbatim.
 const lineAllowlist = [
   {
     path: 'core/i18n/resources/en/locale.ts',
@@ -78,16 +79,6 @@ const lineAllowlist = [
     path: 'core/inline-agent/prompt.ts',
     includes: '不要调用任何工具',
     reason: 'inline-agent continuation prompt marker detection',
-  },
-  {
-    path: 'core/interceptor/tool-parser.ts',
-    includes: '格式错误',
-    reason: 'unused legacy DSML summary renderer retained for compatibility',
-  },
-  {
-    path: 'core/interceptor/tool-parser.ts',
-    includes: '已调用工具',
-    reason: 'unused legacy DSML summary renderer retained for compatibility',
   },
   {
     path: 'entrypoints/content.ts',

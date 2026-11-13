@@ -1,64 +1,64 @@
-# Module Inventory — pi-agent-core 集成
+# Module Inventory — pi-agent-core Integration
 
-> 范围：与"inline agent loop 替换 + StreamFn 适配"直接相关的模块。全量项目分析见 `docs/archives/deepseek-pp-reliability-compatibility-refactor/analysis/module-inventory.md`。
+> Scope: modules directly related to "inline agent loop replacement + StreamFn adaptation". For the full project analysis see `docs/archives/deepseek-pp-reliability-compatibility-refactor/analysis/module-inventory.md`.
 
-## 总览表
+## Overview Table
 
 | Module | Responsibility | Files | Lines | S.U.P.E.R |
 |:-------|:---------------|------:|------:|:----------|
-| inline-agent | 自研 agent loop + 执行策略 + 渲染 + trace | 9 | ~2003 | S🟡 U🟡 P🟢 E🟡 R🟡 |
-| tool-loop/engine | 通用工具执行/续跑循环（注入式解耦） | 1 | 114 | S🟢 U🟢 P🟢 E🟢 R🟢 |
-| deepseek | DS 网页会话客户端（认证/PoW/SSE/编解码）+ 官方 API | 10 | ~2223 | S🟢 U🟢 P🟢 E🟢 R🟢 |
-| interceptor | 页面透明拦截 + prompt 增强 + 工具调用解析/剥离 | 7 | ~3442 | S🟡 U🟡 P🟢 E🟡 R🟢 |
-| tool（invocation 面） | 工具描述/调用建模、XML 解析、授权类型族 | 4 | ~751 | S🟢 U🟢 P🟢 E🟢 R🟢 |
-| pi-agent-core（目标引入） | 外部 agent loop 引擎（npm 0.83.0，MIT） | - | 271K dist | S🟡（多功能巨砖，需窄入口） |
+| inline-agent | Self-built agent loop + execution policy + rendering + trace | 9 | ~2003 | S🟡 U🟡 P🟢 E🟡 R🟡 |
+| tool-loop/engine | Generic tool execution/continuation loop (injection-based decoupling) | 1 | 114 | S🟢 U🟢 P🟢 E🟢 R🟢 |
+| deepseek | DS web session client (auth/PoW/SSE/codec) + official API | 10 | ~2223 | S🟢 U🟢 P🟢 E🟢 R🟢 |
+| interceptor | Transparent page interception + prompt augmentation + tool call parsing/stripping | 7 | ~3442 | S🟡 U🟡 P🟢 E🟡 R🟢 |
+| tool (invocation surface) | Tool description/call modeling, XML parsing, authorization type family | 4 | ~751 | S🟢 U🟢 P🟢 E🟢 R🟢 |
+| pi-agent-core (target to introduce) | External agent loop engine (npm 0.83.0, MIT) | - | 271K dist | S🟡 (multi-purpose monolith, narrow entry needed) |
 
 ## Module Details
 
-### core/inline-agent/（替换主体）
-- **Responsibility**: 自研 agent loop——用续跑 prompt 驱动 DS 网页接口循环（流式请求 → 工具调用解析 → 顺序执行 → 渲染/trace）。
-- **Public API**: `runInlineAgentLoop(payload: InlineAgentStartPayload, deps: {post, executeTool, signal})`；prompt.ts（`buildContinuationPrompt`/`buildNudgePrompt`/`extractTaskCompleteSignal`/`shouldNudge`）；execution-policy.ts（`selectContinuableToolExecutions`）；renderer.ts；markdown.ts；auto-save.ts；trace-codec/trace-store（key `dpp_inline_agent_traces`，TTL 30 天）；types.ts（`AGENT_*` 7 种消息 + 预算常量）。
-- **关键契约**: 与模型后端唯一交互 `submitPromptStreaming(input, {retainAssistantText, onTextChunk, onTokenSpeed}, signal) → ModelTurn{assistantText, responseMessageId, requestMessageId, finished}`；工具调用 = 纯文本流 XML `<invocationName>{JSON}</invocationName>`；会话链安全：`responseMessageId === null && toolCalls.length > 0` 拒绝执行；续跑 prompt 是页面/历史可见 wire 契约（`<original_task>`/`<tool_results>`/`<task_complete>`/占位符 `\u2063\u2064\u2063`）。
-- **Transformation Notes**: loop.ts 与 adapter 函数级直连（`submitPromptStreaming/createClientHeaders/createPowHeaders`），未走 `DeepSeekAutomationClient` 端口——替换时接缝必须显式化。R=3 是本次改造靶心。
-- **S.U.P.E.R**: S🟡（loop+prompt+policy+render+trace 一模块）U🟡（事件靠隐式回调）P🟢（消息形状已类型化）E🟡（content 上下文假设）R🟡（无事件协议契约测试）。
+### core/inline-agent/ (replacement target)
+- **Responsibility**: Self-built agent loop — drives the DS web interface in a loop with continuation prompts (streaming request → tool call parsing → sequential execution → rendering/trace).
+- **Public API**: `runInlineAgentLoop(payload: InlineAgentStartPayload, deps: {post, executeTool, signal})`; prompt.ts (`buildContinuationPrompt`/`buildNudgePrompt`/`extractTaskCompleteSignal`/`shouldNudge`); execution-policy.ts (`selectContinuableToolExecutions`); renderer.ts; markdown.ts; auto-save.ts; trace-codec/trace-store (key `dpp_inline_agent_traces`, TTL 30 days); types.ts (7 `AGENT_*` message types + budget constants).
+- **Key contracts**: The only interaction with the model backend is `submitPromptStreaming(input, {retainAssistantText, onTextChunk, onTokenSpeed}, signal) → ModelTurn{assistantText, responseMessageId, requestMessageId, finished}`; tool calls = plain-text stream XML `<invocationName>{JSON}</invocationName>`; session chain safety: `responseMessageId === null && toolCalls.length > 0` refuses execution; the continuation prompt is a page/history-visible wire contract (`<original_task>`/`<tool_results>`/`<task_complete>`/placeholder `⁣⁤⁣`).
+- **Transformation Notes**: loop.ts is directly coupled to adapter at function level (`submitPromptStreaming/createClientHeaders/createPowHeaders`), not going through the `DeepSeekAutomationClient` port — the seam must be made explicit during replacement. R=3 is the bullseye of this transformation.
+- **S.U.P.E.R**: S🟡 (loop+prompt+policy+render+trace in one module) U🟡 (events rely on implicit callbacks) P🟢 (message shapes already typed) E🟡 (content-context assumptions) R🟡 (no event protocol contract tests).
 
-### core/tool-loop/engine.ts（保留复用）
-- **Responsibility**: 通用工具执行/续跑循环，自动化与 inline agent 共用。
-- **Public API**: `executeToolCallsSequentially(calls, executeTool, {signal})`；`runToolContinuationLoop<TTurn>(input)`；`createToolExecutionRecord`。
-- **关键契约**: 执行器与"谁执行、怎么授权"完全解耦；`ToolLoopExecuteTool = (call) => Promise<ToolExecutionRecord>` 是唯一外部依赖面。
-- **Transformation Notes**: pi 的 AgentTool 执行应映射到该注入面（其背后是 background 授权）。
+### core/tool-loop/engine.ts (kept and reused)
+- **Responsibility**: Generic tool execution/continuation loop, shared by automation and the inline agent.
+- **Public API**: `executeToolCallsSequentially(calls, executeTool, {signal})`; `runToolContinuationLoop<TTurn>(input)`; `createToolExecutionRecord`.
+- **Key contracts**: The executor is fully decoupled from "who executes and how it is authorized"; `ToolLoopExecuteTool = (call) => Promise<ToolExecutionRecord>` is the sole external dependency surface.
+- **Transformation Notes**: pi's AgentTool execution should map to this injection surface (behind which is background authorization).
 
-### core/deepseek/（模型后端真源，复用）
-- **Responsibility**: DS 网页会话客户端 + 官方 API。
-- **Public API**: `automation-client-port.ts` 的 `DeepSeekAutomationClient` 端口（**模型后端接缝的现成定义**）；`active-client.ts`（`createClientHeaders`/`createChatSession`/`createPowHeaders`/`submitPrompt`/`submitPromptStreaming`/`readHistorySnapshot`/`uploadDeepSeekFile`）；`request-codec.ts`（`encodeCompletionRequest`/`normalizeDeepSeekMessageId` u32 严格校验）；`stream-codec.ts`（byte→frame→event→parsed 分层解码、`consumeDeepSeekSseEvents`、`extractResponseTextFromParsed` 4 种 patch 格式、`isStreamFinishedFromParsed`）；`pow.ts`；`official-api.ts`。
-- **关键契约**: 请求体 `{chat_session_id, parent_message_id, model_type, prompt, ref_file_ids, thinking_enabled, search_enabled, ...}`；认证 Bearer + `X-DS-PoW-Response` + `x-client-*`；流事件 `{p,o,v}` JSON patch；无原生 function-calling（工具调用全在文本）；`fetchWithNetworkPolicy` 统一网络策略（deadline/4MiB）。
-- **Transformation Notes**: P=5。StreamFn 适配器应以 `DeepSeekAutomationClient`/`ModelTurn` 为边界，薄封装、不复制协议逻辑。
+### core/deepseek/ (model backend source of truth, reused)
+- **Responsibility**: DS web session client + official API.
+- **Public API**: the `DeepSeekAutomationClient` port in `automation-client-port.ts` (**the ready-made definition of the model backend seam**); `active-client.ts` (`createClientHeaders`/`createChatSession`/`createPowHeaders`/`submitPrompt`/`submitPromptStreaming`/`readHistorySnapshot`/`uploadDeepSeekFile`); `request-codec.ts` (`encodeCompletionRequest`/`normalizeDeepSeekMessageId` strict u32 validation); `stream-codec.ts` (byte→frame→event→parsed layered decoding, `consumeDeepSeekSseEvents`, `extractResponseTextFromParsed` with 4 patch formats, `isStreamFinishedFromParsed`); `pow.ts`; `official-api.ts`.
+- **Key contracts**: Request body `{chat_session_id, parent_message_id, model_type, prompt, ref_file_ids, thinking_enabled, search_enabled, ...}`; auth Bearer + `X-DS-PoW-Response` + `x-client-*`; stream events `{p,o,v}` JSON patches; no native function-calling (tool calls are entirely in text); `fetchWithNetworkPolicy` unifies network policy (deadline/4MiB).
+- **Transformation Notes**: P=5. The StreamFn adapter should use `DeepSeekAutomationClient`/`ModelTurn` as its boundary, a thin wrapper that does not duplicate protocol logic.
 
-### core/interceptor/（页面行为层，保留）
-- **Responsibility**: 页面透明拦截（fetch/XHR/IDB）、prompt 增强、流式工具调用解析、SSE 工具块剥离、历史消毒。
-- **Public API**: `installFetchHook`/`HookState` 回调注册表（onRequestBody/onHeadersCaptured/onToolCall*/onResponseComplete/onRequestTerminal/onMemoriesUsed）；`augmentRequestBody`；`extractToolCalls`/`stripToolCalls`；`createStreamingToolCallParser`；`createStreamingToolTextAccumulator`；`stripToolCallsFromHistory`。
-- **关键契约**: 内部请求带 `X-DPP-Bypass-Hook` 头；`isInlineAgentContinuationRequest` 抑制页面事件（与 inline-agent/prompt.ts 深度耦合）；SSE 帧级 `XmlToolStreamFilter` 剥离工具块。
-- **Transformation Notes**: S=3.4 最低分模块（fetch-hook.ts 1461 行一人多职）；但非本 run 改造目标——**只消费、不修改**其行为契约。
+### core/interceptor/ (page behavior layer, kept)
+- **Responsibility**: Transparent page interception (fetch/XHR/IDB), prompt augmentation, streaming tool call parsing, SSE tool block stripping, history sanitization.
+- **Public API**: `installFetchHook`/`HookState` callback registry (onRequestBody/onHeadersCaptured/onToolCall*/onResponseComplete/onRequestTerminal/onMemoriesUsed); `augmentRequestBody`; `extractToolCalls`/`stripToolCalls`; `createStreamingToolCallParser`; `createStreamingToolTextAccumulator`; `stripToolCallsFromHistory`.
+- **Key contracts**: Internal requests carry the `X-DPP-Bypass-Hook` header; `isInlineAgentContinuationRequest` suppresses page events (deeply coupled with inline-agent/prompt.ts); SSE frame-level `XmlToolStreamFilter` strips tool blocks.
+- **Transformation Notes**: The lowest-scoring module at S=3.4 (fetch-hook.ts, 1461 lines with many responsibilities); but not a transformation target of this run — **consume only, do not modify** its behavior contracts.
 
-### core/tool/（授权边界，保留）
-- **Responsibility**: 工具描述/调用建模、XML/DSML 双协议解析、provider 注册/执行/授权类型族。
-- **Public API**: `createToolInvocationCatalog`/`createToolCallFromInvocation`；`ToolCall`/`ToolDescriptor`/`ToolAuthorizationSubject`/`ToolAuthorizationGrantSummary`/`ToolCapabilityScope`/`ToolGrantExecutionContext`。
-- **关键契约**: wire 协议 `<name>{JSON}</name>` 或 `｜DSML｜`；所有生产执行必须过 runtime 授权路径（grant/trusted 二选一）；`ToolCall.source` 只是路由声明不是授权证据。
-- **Transformation Notes**: 不可违反清单 B1-B4 的锚点。pi loop 只能通过现有 `executeTool(call, grantId)` 端口向下调用。
+### core/tool/ (authorization boundary, kept)
+- **Responsibility**: Tool description/call modeling, XML/DSML dual-protocol parsing, provider registration/execution/authorization type family.
+- **Public API**: `createToolInvocationCatalog`/`createToolCallFromInvocation`; `ToolCall`/`ToolDescriptor`/`ToolAuthorizationSubject`/`ToolAuthorizationGrantSummary`/`ToolCapabilityScope`/`ToolGrantExecutionContext`.
+- **Key contracts**: Wire protocol `<name>{JSON}</name>` or `｜DSML｜`; all production execution must go through the runtime authorization path (either grant or trusted); `ToolCall.source` is only a routing declaration, not authorization evidence.
+- **Transformation Notes**: The anchor for invariants B1-B4. The pi loop may only call downward through the existing `executeTool(call, grantId)` port.
 
-### @earendil-works/pi-agent-core@0.83.0（目标引入，npm 已核实）
-- **事实**: 版本 0.83.0；MIT；exports `.` → dist/index.js（环境无关）、`./node` → dist/node.js（Node 专属，content 不可用）；deps：`@earendil-works/pi-ai ^0.83.0`、`diff 8.0.4`、`ignore 7.0.5`、`typebox 1.3.7`、`yaml 2.9.0`（全部纯 JS）；dist 无 `node:` 内置导入；engines node≥22.19。
-- **关键接缝**: `agentLoop(prompts, context, config, signal, streamFn) → EventStream<AgentEvent, AgentMessage[]>`；`StreamFn = (model, context, options) => AssistantMessageEventStream`（可完全自定义）；hooks（BeforeToolCall/AfterToolCall/PrepareNextTurn/ShouldStopAfterTurn）；compaction/branch-summary；`QueueMode`（sequential/parallel）；`runAgentLoopContinue`（重试）。
-- **Transformation Notes**: `.` 入口 `export *` 全量子模块（含 harness/session/compaction/tools），宽导入会拖入 pi-ai 的 AWS/Anthropic/Google/Mistral SDK 依赖树——必须窄入口导入 + tree-shake 实测。
+### @earendil-works/pi-agent-core@0.83.0 (target to introduce, npm verified)
+- **Facts**: version 0.83.0; MIT; exports `.` → dist/index.js (environment-agnostic), `./node` → dist/node.js (Node-only, unavailable in content); deps: `@earendil-works/pi-ai ^0.83.0`, `diff 8.0.4`, `ignore 7.0.5`, `typebox 1.3.7`, `yaml 2.9.0` (all pure JS); dist has no `node:` built-in imports; engines node≥22.19.
+- **Key seams**: `agentLoop(prompts, context, config, signal, streamFn) → EventStream<AgentEvent, AgentMessage[]>`; `StreamFn = (model, context, options) => AssistantMessageEventStream` (fully customizable); hooks (BeforeToolCall/AfterToolCall/PrepareNextTurn/ShouldStopAfterTurn); compaction/branch-summary; `QueueMode` (sequential/parallel); `runAgentLoopContinue` (retry).
+- **Transformation Notes**: The `.` entry does `export *` of all submodules (including harness/session/compaction/tools); a wide import would drag in pi-ai's AWS/Anthropic/Google/Mistral SDK dependency trees — a narrow-entry import + tree-shake measurement is required.
 
-## 耦合热点清单（本 run 的规划输入）
+## Coupling Hotspot List (planning input for this run)
 
-1. **loop.ts ↔ active-client.ts 函数级耦合（最高优先）**：`runInlineAgentLoop` 直接 import adapter 函数；StreamFn 应把 `DeepSeekAutomationClient`/`ModelTurn` 作为适配器边界。
-2. **续跑 prompt wire 契约（隐式最大契约）**：`<original_task>`/`<tool_results>`/`<task_complete>`/占位符被 fetch-hook（事件抑制）、history-cleanup（消毒）、loop（续跑）三方共享；换引擎后识别/消毒逻辑必须保留或同步升级，否则页面历史泄漏内部 prompt。
-3. **工具调用协议形状**：ToolCall 与 `｜DSML｜` legacy 遍布 interceptor/tool-parser/history-cleanup/授权还原；pi 自带工具调用编码需双向映射，`streaming-tool-call-parser` 的流式增量/去重/超大 body 外部化语义不能丢。
-4. **授权路径必须原样保留**：pi loop 只替换"调用方"；`core/tool/runtime + authorization` 信任边界不能绕过。
-5. **SSE 形状共享**：StreamFn 消费的 SSE 形状必须与 interceptor 的 `XmlToolStreamFilter` 共享唯一真源 `stream-codec.ts`。
-6. **AGENT_* 事件协议**：7 种消息形状是受保护桥记录；pi 的 AgentEvent 需翻译为该协议或升级协议（涉及 MAIN/content 桥契约变更，需注册表同步）。
-7. **预算/节流**：MAX_STEPS/NUDGES/延迟/超时 + `INLINE_AGENT_FULL_TOOL_RESULT_WINDOW=4` 窗口压缩，需映射到 pi 的 step 控制与上下文管理。
-8. **会话链安全校验**：`responseMessageId === null && toolCalls.length > 0` 拒绝执行——防 fork 防线必须由适配层承接。
-9. **执行记录形状**：`ToolExecutionRecord` 被 prompt 渲染/trace codec/auto-save/history 共用——pi 工具结果需归一化到该形状。
+1. **loop.ts ↔ active-client.ts function-level coupling (highest priority)**: `runInlineAgentLoop` imports adapter functions directly; the StreamFn should take `DeepSeekAutomationClient`/`ModelTurn` as the adapter boundary.
+2. **Continuation prompt wire contract (the largest implicit contract)**: `<original_task>`/`<tool_results>`/`<task_complete>`/placeholders are shared by fetch-hook (event suppression), history-cleanup (sanitization), and loop (continuation); after switching engines, the recognition/sanitization logic must be retained or upgraded in sync, otherwise page history leaks internal prompts.
+3. **Tool call protocol shape**: ToolCall and the `｜DSML｜` legacy are everywhere across interceptor/tool-parser/history-cleanup/authorization restoration; pi's own tool-call encoding needs bidirectional mapping, and the streaming incremental/dedup/oversized-body externalization semantics of `streaming-tool-call-parser` must not be lost.
+4. **The authorization path must be preserved as is**: The pi loop replaces only the "caller"; the `core/tool/runtime + authorization` trust boundary cannot be bypassed.
+5. **SSE shape sharing**: The SSE shape consumed by the StreamFn must share the sole source of truth `stream-codec.ts` with the interceptor's `XmlToolStreamFilter`.
+6. **AGENT_* event protocol**: The 7 message shapes are protected bridge records; pi's AgentEvent must be translated into this protocol or the protocol upgraded (involving MAIN/content bridge contract changes, requiring registry sync).
+7. **Budget/throttling**: MAX_STEPS/NUDGES/delay/timeout + the `INLINE_AGENT_FULL_TOOL_RESULT_WINDOW=4` window compression must be mapped to pi's step control and context management.
+8. **Session chain safety check**: `responseMessageId === null && toolCalls.length > 0` refuses execution — the fork-prevention defense must be carried by the adapter layer.
+9. **Execution record shape**: `ToolExecutionRecord` is shared by prompt rendering/trace codec/auto-save/history — pi tool results must be normalized to this shape.

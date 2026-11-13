@@ -4,13 +4,13 @@
 
 | Principle | Status | Key findings | Priority |
 |:--|:--:|:--|:--:|
-| S — Single Purpose | 🟡 | Handler/controller foundations are healthy; Content、interceptor、Skill import and Background roots remain multi-domain hotspots. | High |
+| S — Single Purpose | 🟡 | Handler/controller foundations are healthy; Content, interceptor, Skill import and Background roots remain multi-domain hotspots. | High |
 | U — Unidirectional Flow | 🟢/🟡 | Current TS relative-import graph has zero SCC; `core/types.ts` and duplicated contract descriptions still expand change propagation. | Medium |
-| P — Ports over Implementation | 🟡 | Runtime/persistence/sync are mostly typed; MCP response、platform capability、Shell catalog/version still have multiple or permissive truths. | High |
+| P — Ports over Implementation | 🟡 | Runtime/persistence/sync are mostly typed; MCP response, platform capability, Shell catalog/version still have multiple or permissive truths. | High |
 | E — Environment-Agnostic | 🟡 | Android is gone and three desktop builds are explicit; Chromium-only capabilities and real extension loading are not fully proven. | High |
 | R — Replaceable Parts | 🟡 | Providers/transports/handlers are replaceable; large roots and duplicate import/catalog policies still raise replacement cost. | Medium |
 
-**Overall health**：0 new P0 regressions found；architecture foundation is stable, but compatibility gaps must be closed before another broad monolith split.
+**Overall health**: 0 new P0 regressions found; architecture foundation is stable, but compatibility gaps must be closed before another broad monolith split.
 
 ## Verified Resolved Findings
 

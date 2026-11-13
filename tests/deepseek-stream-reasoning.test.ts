@@ -43,19 +43,19 @@ describe('DeepSeek web stream reasoning extraction', () => {
       'event: ready',
       'data: {"request_message_id":5,"response_message_id":6,"model_type":"default"}',
       '',
-      'data: {"v":{"response":{"message_id":6,"parent_id":5,"model":"","role":"ASSISTANT","thinking_enabled":true,"status":"WIP","fragments":[{"id":2,"type":"THINK","content":"我们","elapsed_secs":null,"references":[],"stage_id":1}],"conversation_mode":"DEFAULT"}}}',
+      'data: {"v":{"response":{"message_id":6,"parent_id":5,"model":"","role":"ASSISTANT","thinking_enabled":true,"status":"WIP","fragments":[{"id":2,"type":"THINK","content":"We","elapsed_secs":null,"references":[],"stage_id":1}],"conversation_mode":"DEFAULT"}}}',
       '',
-      'data: {"p":"response/fragments/-1/content","o":"APPEND","v":"使用"}',
+      'data: {"p":"response/fragments/-1/content","o":"APPEND","v":" use"}',
       '',
-      'data: {"v":"经典的"}',
+      'data: {"v":" the classic"}',
       '',
       'data: {"p":"response/fragments/-1/elapsed_secs","o":"SET","v":1.4}',
       '',
-      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":3,"type":"RESPONSE","content":"设","references":[],"stage_id":1}]}',
+      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":3,"type":"RESPONSE","content":"Let","references":[],"stage_id":1}]}',
       '',
-      'data: {"p":"response/fragments/-1/content","v":"鸡"}',
+      'data: {"p":"response/fragments/-1/content","v":" chickens"}',
       '',
-      'data: {"v":"有23只"}',
+      'data: {"v":" have 23"}',
       '',
       'data: {"p":"response","o":"BATCH","v":[{"p":"quasi_status","v":"FINISHED"}]}',
       '',
@@ -64,10 +64,10 @@ describe('DeepSeek web stream reasoning extraction', () => {
 
     const { summary, reasoningChunks } = consume(sse);
 
-    expect(summary.assistantText).toBe('设鸡有23只');
-    expect(summary.assistantReasoningText).toBe('我们使用经典的');
-    expect(reasoningChunks.map((c) => c.delta)).toEqual(['我们', '使用', '经典的']);
-    expect(reasoningChunks.at(-1)?.full).toBe('我们使用经典的');
+    expect(summary.assistantText).toBe('Let chickens have 23');
+    expect(summary.assistantReasoningText).toBe('We use the classic');
+    expect(reasoningChunks.map((c) => c.delta)).toEqual(['We', ' use', ' the classic']);
+    expect(reasoningChunks.at(-1)?.full).toBe('We use the classic');
     expect(summary.finished).toBe(true);
   });
 
@@ -75,15 +75,15 @@ describe('DeepSeek web stream reasoning extraction', () => {
     const sse = [
       'data: {"p":"response/reasoning_content","o":"APPEND","v":"step one"}',
       '',
-      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":4,"type":"RESPONSE","content":"答","references":[],"stage_id":1}]}',
+      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":4,"type":"RESPONSE","content":"An","references":[],"stage_id":1}]}',
       '',
-      'data: {"v":"案"}',
+      'data: {"v":"swer"}',
       '',
       'data: {"p":"thinking_content","o":"APPEND","v":" tail"}',
     ].join('\n\n');
 
     const { summary } = consume(sse);
-    expect(summary.assistantText).toBe('答案');
+    expect(summary.assistantText).toBe('Answer');
     expect(summary.assistantReasoningText).toBe('step one tail');
   });
 
@@ -151,13 +151,13 @@ describe('DeepSeek web stream reasoning extraction', () => {
         p: 'response/fragments',
         o: 'APPEND',
         v: [
-          { id: 1, type: 'THINK', content: '前段思考', references: [], stage_id: 1 },
-          { id: 2, type: 'RESPONSE', content: '答案开头', references: [], stage_id: 1 },
+          { id: 1, type: 'THINK', content: 'Early thinking', references: [], stage_id: 1 },
+          { id: 2, type: 'RESPONSE', content: 'Answer start', references: [], stage_id: 1 },
         ],
       },
       state,
     );
-    expect(split).toEqual({ text: '答案开头', reasoning: '前段思考' });
+    expect(split).toEqual({ text: 'Answer start', reasoning: 'Early thinking' });
   });
 
   it('consumes every fragment initial content in the first snapshot too', () => {

@@ -9,9 +9,9 @@ import { scenarioCodec } from './codec';
 export const SCENARIO_STORAGE_KEY = 'scenarioConfigs';
 
 const BUILT_IN_SCENARIOS: ScenarioConfig[] = [
-  { id: 'summarize', label: '总结', template: '请用简洁的语言总结以下内容：\n\n{text}', builtIn: true, enabled: true },
-  { id: 'explain', label: '解释', template: '请解释以下内容：\n\n{text}', builtIn: true, enabled: true },
-  { id: 'translate', label: '翻译', template: '请将以下内容翻译成中文：\n\n{text}', builtIn: true, enabled: true },
+  { id: 'summarize', label: 'Summarize', template: 'Please summarize the following concisely:\n\n{text}', builtIn: true, enabled: true },
+  { id: 'explain', label: 'Explain', template: 'Please explain the following:\n\n{text}', builtIn: true, enabled: true },
+  { id: 'translate', label: 'Translate', template: 'Please translate the following into English:\n\n{text}', builtIn: true, enabled: true },
 ];
 
 const scenarioRepository = createVersionedRepository({

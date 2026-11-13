@@ -71,7 +71,7 @@ describe('Settings sync confirmed target', () => {
   it('sends one immutable target-bearing upload command and never uses save-then-action', async () => {
     await renderDataSettings();
     await openUploadConfirmation();
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
 
     const uploadCalls = sendMessage.mock.calls.filter(([message]) => (
@@ -89,8 +89,8 @@ describe('Settings sync confirmed target', () => {
     expect(sendMessage.mock.calls.some(([message]) => (
       (message as { type?: string }).type === 'SAVE_SYNC_CONFIG'
     ))).toBe(false);
-    expect(container.textContent).toContain('上传完成');
-    expect(container.textContent).toContain('01/01');
+    expect(container.textContent).toContain('Upload complete');
+    expect(container.textContent).toContain('Last sync: ');
   });
 
   it('rejects a target whose form changes after the confirmation opens', async () => {
@@ -104,13 +104,13 @@ describe('Settings sync confirmed target', () => {
       setInputValue(remotePath!, 'Target-B');
       remotePath!.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
 
     expect(sendMessage.mock.calls.some(([message]) => (
       (message as { type?: string }).type === 'WEBDAV_UPLOAD_LOCAL'
     ))).toBe(false);
-    expect(container.textContent).toContain('同步设置已变化，请确认当前目标后重试');
+    expect(container.textContent).toContain('Sync settings changed. Review the current target and try again.');
   });
 
   it('keeps provider and credential fields disabled for the complete pending action', async () => {
@@ -126,7 +126,7 @@ describe('Settings sync confirmed target', () => {
     });
     await renderDataSettings();
     await openUploadConfirmation();
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
 
     const syncInputs = Array.from(container.querySelectorAll<HTMLInputElement>('input'));
@@ -166,13 +166,13 @@ describe('Settings sync confirmed target', () => {
     });
     await renderDataSettings();
 
-    await click(buttonByExactText('下载云端'));
-    await confirmDialogAction('下载云端');
+    await click(buttonByExactText('Download remote'));
+    await confirmDialogAction('Download remote');
     await flushPromises();
     expect(container.textContent).toContain('Injected notification failure');
 
     await openUploadConfirmation();
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
 
     const upload = sendMessage.mock.calls.find(([message]) => (
@@ -220,14 +220,14 @@ describe('Settings sync confirmed target', () => {
     await renderDataSettings();
 
     await openUploadConfirmation();
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
     expect(configReads).toBe(2);
     expect(container.textContent).toContain('Sync bookkeeping outcome is unknown');
-    expect(container.textContent).toContain('请勿立即重试');
+    expect(container.textContent).toContain('Do not retry immediately');
 
     await openUploadConfirmation();
-    await confirmDialogAction('上传本地');
+    await confirmDialogAction('Upload local');
     await flushPromises();
 
     const uploadCalls = sendMessage.mock.calls.filter(([message]) => (
@@ -314,9 +314,9 @@ async function renderDataSettings() {
     root.render(React.createElement(SettingsPage));
   });
   await flushPromises();
-  await click(buttonByExactText('数据'));
+  await click(buttonByExactText('Data'));
   await vi.waitFor(() => {
-    expect(findButtonByExactText('上传本地')).toBeTruthy();
+    expect(findButtonByExactText('Upload local')).toBeTruthy();
   });
 }
 
@@ -351,7 +351,7 @@ function requireSettingsProbe(): HTMLOutputElement {
 }
 
 async function openUploadConfirmation() {
-  await click(buttonByExactText('上传本地'));
+  await click(buttonByExactText('Upload local'));
   expect(container.querySelector('[role="dialog"]')).toBeTruthy();
 }
 

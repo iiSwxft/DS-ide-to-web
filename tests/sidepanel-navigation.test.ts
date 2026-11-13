@@ -72,44 +72,44 @@ describe('sidepanel navigation', () => {
   it('keeps memory/saved under Library and preset/automation under Capabilities', async () => {
     await renderApp();
 
-    const topLabels = navButtonLabels('侧栏导航');
-    expect(topLabels).toEqual(['对话', '资料', '项目', '能力', '设置']);
+    const topLabels = navButtonLabels('Sidebar navigation');
+    expect(topLabels).toEqual(['Chat', 'Library', 'Projects', 'Capabilities', 'Settings']);
 
     unmountRoot();
     await renderElement(React.createElement(LibraryPage));
-    expect(navButtonLabels('资料子导航')).toEqual(['记忆', '保存']);
-    await clickNavButton('资料子导航', '保存');
-    await vi.waitFor(() => expect(container.textContent).toContain('保存常用 Prompt'));
+    expect(navButtonLabels('Library navigation')).toEqual(['Memory', 'Saved']);
+    await clickNavButton('Library navigation', 'Saved');
+    await vi.waitFor(() => expect(container.textContent).toContain('Save reusable prompts'));
 
     unmountRoot();
     await renderElement(React.createElement(CapabilitiesPage));
-    expect(navButtonLabels('能力子导航')).toEqual(['Skill', 'MCP', '工具', '浏览器', '预设', '自动化']);
-    await clickNavButton('能力子导航', 'MCP');
-    await vi.waitFor(() => expect(container.textContent).toContain('连接本机或远程 MCP 服务'));
+    expect(navButtonLabels('Capabilities navigation')).toEqual(['Skill', 'MCP', 'Tools', 'Browser', 'Presets', 'Automation']);
+    await clickNavButton('Capabilities navigation', 'MCP');
+    await vi.waitFor(() => expect(container.textContent).toContain('Connect local or remote MCP services'));
   });
 
   it('keeps the voice settings surface reachable from Settings', async () => {
     await renderElement(React.createElement(SettingsPage));
 
     // Settings is split into sub-tabs; voice lives under the Voice tab.
-    const settingsNav = container.querySelector('nav[aria-label="设置子导航"]');
+    const settingsNav = container.querySelector('nav[aria-label="Settings sub-navigation"]');
     expect(settingsNav).toBeTruthy();
-    expect(navButtonLabels('设置子导航')).toEqual([
-      '通用',
+    expect(navButtonLabels('Settings sub-navigation')).toEqual([
+      'General',
       'API',
-      '提示词',
-      '语音',
-      '外观',
-      '用量',
-      '数据',
-      '项目目录',
-      '关于',
+      'Prompt',
+      'Voice',
+      'Appearance',
+      'Usage',
+      'Data',
+      'Project Folders',
+      'About',
     ]);
-    expect(navButtonLabels('设置子导航').indexOf('用量')).toBeLessThan(
-      navButtonLabels('设置子导航').indexOf('数据'),
+    expect(navButtonLabels('Settings sub-navigation').indexOf('Usage')).toBeLessThan(
+      navButtonLabels('Settings sub-navigation').indexOf('Data'),
     );
     const voiceTab = Array.from(settingsNav!.querySelectorAll('button')).find(
-      (button) => (button.textContent ?? '') === '语音',
+      (button) => (button.textContent ?? '') === 'Voice',
     );
     expect(voiceTab).toBeTruthy();
 
@@ -118,9 +118,9 @@ describe('sidepanel navigation', () => {
     });
 
     await vi.waitFor(() => {
-      expect(container.textContent).toContain('语音');
-      expect(container.textContent).toContain('语音输入');
-      expect(container.textContent).toContain('朗读回复');
+      expect(container.textContent).toContain('Voice');
+      expect(container.textContent).toContain('Voice input');
+      expect(container.textContent).toContain('Read responses aloud');
     });
   });
 
@@ -130,15 +130,15 @@ describe('sidepanel navigation', () => {
     await renderElement(React.createElement(SettingsPage));
     await flushPromises();
 
-    expect(navButtonLabels('设置子导航')).toContain('通用');
-    expect(container.textContent).toContain('网页模型模式');
+    expect(navButtonLabels('Settings sub-navigation')).toContain('General');
+    expect(container.textContent).toContain('Web model mode');
   });
 
   it('renders usage statistics from the Settings sub-navigation', async () => {
     await renderElement(React.createElement(SettingsPage));
 
-    const usageTab = Array.from(container.querySelectorAll('nav[aria-label="设置子导航"] button')).find(
-      (button) => (button.textContent ?? '') === '用量',
+    const usageTab = Array.from(container.querySelectorAll('nav[aria-label="Settings sub-navigation"] button')).find(
+      (button) => (button.textContent ?? '') === 'Usage',
     );
     expect(usageTab).toBeTruthy();
 
@@ -148,9 +148,9 @@ describe('sidepanel navigation', () => {
     });
 
     await vi.waitFor(() => {
-      expect(container.textContent).toContain('Tokens 用量');
+      expect(container.textContent).toContain('Tokens used');
       expect(container.textContent).toContain('DeepSeek Vision');
-      expect(container.textContent).toContain('按天 Token 趋势');
+      expect(container.textContent).toContain('Daily token trend');
     });
   });
 

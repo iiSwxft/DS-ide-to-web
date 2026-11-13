@@ -87,4 +87,4 @@ Manual chats use fetch/XHR interception. Automations call DeepSeek APIs from `co
 - WebDAV sync currently syncs memory/skills/presets only; MCP config may contain secrets and should not be synced by default.
 - MCP server credentials should not be exported with normal memory backups.
 - Host permission flow must continue to work under Chrome MV3 and WXT manifest generation.
-- Result rendering should remain visually consistent with the existing "已执行工具" block.
+- Result rendering should remain visually consistent with the existing "Executed tools" block.

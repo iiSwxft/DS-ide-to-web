@@ -152,30 +152,31 @@ describe('inline-agent model prompts', () => {
     // Issue #551 follow-up: deliverables live in the reply body; the answer
     // area shows the complete body, not just the signal summary.
     const text = [
-      '我先整理一下刚才获取的信息。',
+      'Let me organize the information I just retrieved.',
       '',
-      '<task_complete>{"summary":"最终答案：任务已经完成。","artifacts":["demo.html"]}</task_complete>',
+      '<task_complete>{"summary":"Final answer: the task is complete.","artifacts":["demo.html"]}</task_complete>',
     ].join('\n');
 
-    expect(getInlineAgentAnswerText(text)).toBe('我先整理一下刚才获取的信息。');
+    expect(getInlineAgentAnswerText(text)).toBe('Let me organize the information I just retrieved.');
   });
 
   it('falls back to the task_complete summary when the reply body is empty', () => {
-    const text = '<task_complete>{"summary":"最终答案：任务已经完成。"}</task_complete>';
-    expect(getInlineAgentAnswerText(text)).toBe('最终答案：任务已经完成。');
+    const text = '<task_complete>{"summary":"Final answer: the task is complete."}</task_complete>';
+    expect(getInlineAgentAnswerText(text)).toBe('Final answer: the task is complete.');
   });
 
   it('renders the reply body when the task_complete summary is empty', () => {
     const text = [
-      '我先整理一下刚才获取的信息。',
+      'Let me organize the information I just retrieved.',
       '<task_complete>{"summary":""}</task_complete>',
     ].join('\n');
 
-    expect(getInlineAgentAnswerText(text)).toBe('我先整理一下刚才获取的信息。');
+    expect(getInlineAgentAnswerText(text)).toBe('Let me organize the information I just retrieved.');
   });
 
   it('falls back to the full text when no task_complete signal exists', () => {
-    expect(getInlineAgentAnswerText('正常回答内容。')).toBe('正常回答内容。');
+    // NOTE: the leading Chinese comma is intentional input for dangling-punctuation normalization.
+    expect(getInlineAgentAnswerText('Normal answer content.')).toBe('Normal answer content.');
     expect(getInlineAgentAnswerText('，用户想了解港股的走势。')).toBe('用户想了解港股的走势。');
   });
 
@@ -184,31 +185,31 @@ describe('inline-agent model prompts', () => {
     // summary/prefix as finalText while the complete reply (e.g. a generated
     // HTML document) survived solely in the last step. The longer same-origin
     // candidate is the answer, and the step body may be cleared.
-    const prefix = '搜索结果中，我已经收集了足够的数据。';
-    const full = prefix + '```html<html>完整交付物</html>```';
+    const prefix = 'From the search results, I have collected enough data.';
+    const full = prefix + '```html<html>Full deliverable</html>```';
     expect(resolveInlineAgentAnswerText(prefix, full)).toEqual({ answer: full, fromStep: true });
     expect(resolveInlineAgentAnswerText(full, prefix)).toEqual({ answer: full, fromStep: false });
     expect(resolveInlineAgentAnswerText(full, full)).toEqual({ answer: full, fromStep: false });
   });
 
   it('keeps finalText when the candidates are unrelated (budget notice, summary split)', () => {
-    expect(resolveInlineAgentAnswerText('已达到步骤预算，代理已暂停。', '最后一步的工作笔记。'))
-      .toEqual({ answer: '已达到步骤预算，代理已暂停。', fromStep: false });
-    expect(resolveInlineAgentAnswerText('最终答案。', ''))
-      .toEqual({ answer: '最终答案。', fromStep: false });
-    expect(resolveInlineAgentAnswerText('', '最后一步的完整回复。'))
-      .toEqual({ answer: '最后一步的完整回复。', fromStep: true });
+    expect(resolveInlineAgentAnswerText('Step budget reached; the agent has paused.', 'Working notes of the last step.'))
+      .toEqual({ answer: 'Step budget reached; the agent has paused.', fromStep: false });
+    expect(resolveInlineAgentAnswerText('Final answer.', ''))
+      .toEqual({ answer: 'Final answer.', fromStep: false });
+    expect(resolveInlineAgentAnswerText('', 'Complete reply of the last step.'))
+      .toEqual({ answer: 'Complete reply of the last step.', fromStep: true });
   });
 
   it('keeps working notes in process text without the control block', () => {
     const text = [
-      '我先整理一下刚才获取的信息。',
+      'Let me organize the information I just retrieved.',
       '',
-      '<task_complete>{"summary":"最终答案"}</task_complete>',
+      '<task_complete>{"summary":"Final answer"}</task_complete>',
     ].join('\n');
 
-    expect(getInlineAgentProcessText(text)).toBe('我先整理一下刚才获取的信息。');
-    expect(getInlineAgentProcessText('普通过程文本。')).toBe('普通过程文本。');
+    expect(getInlineAgentProcessText(text)).toBe('Let me organize the information I just retrieved.');
+    expect(getInlineAgentProcessText('Ordinary process text.')).toBe('Ordinary process text.');
   });
 
   it('retires the artifact conversion: display text passes markdown through untouched', () => {
@@ -219,7 +220,7 @@ describe('inline-agent model prompts', () => {
     // arrives is stripped by the tool-call stripping layer (tool-parser), so
     // display-text itself never sees or reshapes the protocol.
     const raw = [
-      '我已经生成了文件。',
+      'I have generated the file.',
       '',
       '<artifact_create>{"filename":"demo.html","content":"<h1>Hi</h1>"}</artifact_create>',
     ].join('\n');
@@ -248,20 +249,20 @@ describe('inline-agent model prompts', () => {
     // at 8000 chars (carrying `...[truncated]`), the finalText is the full
     // turn. The resolver must still recognize the same origin so the partial
     // narration is replaced instead of duplicated.
-    expect(resolveInlineAgentAnswerText('完整回答正文。', '完整回答正\n...[truncated]'))
-      .toEqual({ answer: '完整回答正文。', fromStep: false });
+    expect(resolveInlineAgentAnswerText('Complete answer body.', 'Complete answer bo\n...[truncated]'))
+      .toEqual({ answer: 'Complete answer body.', fromStep: false });
 
     // Code-blockified forms (legacy traces): a salvaged truncated block ends
     // with the marker + closing fence; the complete answer has the full
     // content.
-    const answer = '```html\n<h1>Hi</h1>\n<p>完整</p>\n```';
-    const step = '```html\n<h1>Hi</h1>\n<p>完\n...[truncated]\n```';
+    const answer = '```html\n<h1>Hi</h1>\n<p>Complete</p>\n```';
+    const step = '```html\n<h1>Hi</h1>\n<p>Comp\n...[truncated]\n```';
     expect(resolveInlineAgentAnswerText(answer, step))
       .toEqual({ answer, fromStep: false });
   });
 
   it('summarizes tool-call parameters for single-line entries', () => {
-    expect(summarizeInlineAgentToolParams({ query: '天气' })).toBe('天气');
+    expect(summarizeInlineAgentToolParams({ query: 'weather' })).toBe('weather');
     expect(summarizeInlineAgentToolParams({ filename: 'demo.html', content: '<h1>x</h1>' })).toBe('demo.html');
     expect(summarizeInlineAgentToolParams({ url: 'https://example.com' })).toBe('https://example.com');
     expect(summarizeInlineAgentToolParams({})).toBeNull();
@@ -356,7 +357,7 @@ describe('inline-agent model prompts', () => {
     expect(isInlineAgentContinuationPrompt(continuation)).toBe(true);
     expect(isInlineAgentContinuationPrompt(nudge)).toBe(true);
     expect(isInlineAgentContinuationPrompt('<original_task>user text</original_task>')).toBe(false);
-    expect(isInlineAgentContinuationPrompt('普通用户提问：帮我搜索港股行情')).toBe(false);
+    expect(isInlineAgentContinuationPrompt('Ordinary user question: help me search Hong Kong stock quotes')).toBe(false);
   });
 
   it('detects continuation bubbles structurally even when DeepSeek chrome dilutes the keywords', () => {
@@ -364,12 +365,12 @@ describe('inline-agent model prompts', () => {
     // rows) with the continuation prompt, so the strict keyword check misses.
     // The paired tags alone are a strong enough signal for DOM-layer hiding.
     const diluted = [
-      '刚刚',
-      '<original_task>查港股行情</original_task>',
+      'Just now',
+      '<original_task>Check HK stock quotes</original_task>',
       '<tool_results>[{"tool":"web_search","ok":true}]</tool_results>',
     ].join('\n');
     const dilutedNudge = [
-      '<original_task>查港股行情</original_task>',
+      '<original_task>Check HK stock quotes</original_task>',
       '<tool_results_so_far>[{"tool":"web_search","ok":true}]</tool_results_so_far>',
     ].join('\n');
 
@@ -381,63 +382,65 @@ describe('inline-agent model prompts', () => {
     expect(isInlineAgentContinuationPrompt(buildContinuationPrompt('查港股行情', [SUCCESS_EXECUTION], 'zh-CN'))).toBe(true);
 
     // A real user message carrying only one half of the pair is not hidden.
-    expect(isInlineAgentContinuationStructure('<original_task>我的任务</original_task>')).toBe(false);
-    expect(isInlineAgentContinuationStructure('<tool_results>结果</tool_results>')).toBe(false);
-    expect(isInlineAgentContinuationStructure('帮我把这段代码重构一下')).toBe(false);
+    expect(isInlineAgentContinuationStructure('<original_task>My task</original_task>')).toBe(false);
+    expect(isInlineAgentContinuationStructure('<tool_results>Result</tool_results>')).toBe(false);
+    expect(isInlineAgentContinuationStructure('Help me refactor this code')).toBe(false);
   });
 
   it('renders task_complete control blocks as their user-visible summary', () => {
     const text = [
       'before',
-      '<task_complete>{"summary":"任务已经完成。","artifacts":["demo.html"]}</task_complete>',
+      '<task_complete>{"summary":"The task is complete.","artifacts":["demo.html"]}</task_complete>',
       'after',
     ].join('\n');
 
-    expect(replaceTaskCompleteBlocks(text)).toBe('before\n任务已经完成。\nafter');
+    expect(replaceTaskCompleteBlocks(text)).toBe('before\nThe task is complete.\nafter');
   });
 
   it('removes dangling leading punctuation from stripped tool-prefixed final answers', () => {
+    // NOTE: Chinese punctuation (，。；：) is intentional input for the dangling-punctuation normalizer.
     expect(normalizeInlineAgentFinalAnswerText('，用户想了解港股的走势。')).toBe('用户想了解港股的走势。');
     expect(normalizeInlineAgentFinalAnswerText(', final answer is ready.')).toBe('final answer is ready.');
     expect(normalizeInlineAgentFinalAnswerText('。；：结论如下。')).toBe('结论如下。');
   });
 
   it('nudges only when the visible tail is still asking to continue tool work', () => {
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我会调用 web_search 获取最新行情。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], 'I still need to call search next.')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我想下载这份报告。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我打算先核对一下刚才的结果。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], "I'm going to look up the latest price.")).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], 'I need to check the file now.')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], "Let's fetch the second page.")).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], 'I will summarize the findings now.')).toBe(false);
+    // NOTE: the Chinese sentences below are intentional test input for the Chinese-language continuation/promise detector (shouldNudge).
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我会调用 web_search 获取最新行情。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], 'I still need to call search next.')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我想下载这份报告。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我打算先核对一下刚才的结果。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], "I'm going to look up the latest price.")).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], 'I need to check the file now.')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], "Let's fetch the second page.")).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], 'I will summarize the findings now.')).toBe(false);
 
     // Issue (mid-output silent stop): common "让我…" / "我再…" phrasings
     // promised continued tool work but were missed by the detector, so the
     // loop ended on a sentence that read like a normal final answer. These
     // must nudge exactly like the covered phrasings.
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '让我再抓取雪球那篇详尽的24个月梳理文章，获取更完整的月度数据。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '让我先搜索一下最新行情。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我再抓取一次页面确认数据。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '先让我调用 web_fetch 获取详情。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '让我再抓取雪球那篇详尽的24个月梳理文章，获取更完整的月度数据。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '让我先搜索一下最新行情。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我再抓取一次页面确认数据。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '先让我调用 web_fetch 获取详情。')).toBe(true);
     // Statements of what ALREADY happened do not nudge.
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我已经获得了大量数据。')).toBe(false);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '让我来总结一下结论。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我已经获得了大量数据。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '让我来总结一下结论。')).toBe(false);
 
     // Issue (artifact deliverable silently swallowed): turns whose visible
     // tail promises a deliverable WITHOUT 我 ("现在为你创建…") were missed by
     // the detector, so a turn that ended on an empty promise completed
     // silently. These must nudge exactly like the 我-prefixed phrasings.
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '现在为你创建一份包含折线图和增速分析的可视化报告。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '为你创建一个包含汇总分析和交互式折线图的 HTML 页面。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '现在为您生成一份包含汇总分析的 HTML 页面。')).toBe(true);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '这就帮你绘制交互式折线图。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '现在为你创建一份包含折线图和增速分析的可视化报告。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '为你创建一个包含汇总分析和交互式折线图的 HTML 页面。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '现在为您生成一份包含汇总分析的 HTML 页面。')).toBe(true);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '这就帮你绘制交互式折线图。')).toBe(true);
     // Completed-delivery statements and past-tense claims do not nudge.
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '我已经为你创建好了 HTML 页面。')).toBe(false);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '这是我为你创建的报告。')).toBe(false);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '为你创建了文件。')).toBe(false);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '报告如下，已为你生成完毕。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '我已经为你创建好了 HTML 页面。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '这是我为你创建的报告。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '为你创建了文件。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '报告如下，已为你生成完毕。')).toBe(false);
 
     const answerAfterPlanning = [
       '要求查看贵金属走势，之前的搜索已经提供了一些结果。我需要基于这些结果给出一个全面的回答。',
@@ -454,8 +457,8 @@ describe('inline-agent model prompts', () => {
       '总的来看，黄金偏震荡，白银和铂金更受产业需求影响。',
     ].join('\n');
 
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], answerAfterPlanning)).toBe(false);
-    expect(shouldNudge('查行情', [SUCCESS_EXECUTION], '根据搜索结果，恒生指数今日下跌，市场风险偏好偏弱。')).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], answerAfterPlanning)).toBe(false);
+    expect(shouldNudge('Check quotes', [SUCCESS_EXECUTION], '根据搜索结果，恒生指数今日下跌，市场风险偏好偏弱。')).toBe(false);
   });
 
   it('strips retired artifact protocol from display text while keeping fences and other tools', () => {
@@ -466,21 +469,21 @@ describe('inline-agent model prompts', () => {
     // runs on, so nothing is ever silently swallowed.
     const descriptors: ToolDescriptor[] = [...createArtifactToolDescriptors('en')];
     const raw = [
-      '我已经整理好数据。',
+      'I have organized the data.',
       '',
-      '<artifact_create>{"filename":"report.html","content":"<h1>汇总</h1>"}</artifact_create>',
+      '<artifact_create>{"filename":"report.html","content":"<h1>Summary</h1>"}</artifact_create>',
       '',
       '```html',
-      '<h1>最终交付</h1>',
+      '<h1>Final deliverable</h1>',
       '```',
     ].join('\n');
 
     const finalText = getInlineAgentDisplayFinalText(raw, descriptors);
     expect(finalText).toContain('```html');
-    expect(finalText).toContain('<h1>最终交付</h1>');
+    expect(finalText).toContain('<h1>Final deliverable</h1>');
     expect(finalText).not.toContain('artifact_create');
     expect(finalText).not.toContain('"filename"');
-    expect(finalText).toContain('我已经整理好数据。');
+    expect(finalText).toContain('I have organized the data.');
 
     const stepText = getInlineAgentDisplayStepText(raw, descriptors);
     expect(stepText).toContain('```html');
@@ -490,7 +493,7 @@ describe('inline-agent model prompts', () => {
   it('keeps plain fences byte-for-byte in display text (native renderer input)', () => {
     const descriptors: ToolDescriptor[] = [];
     const fences = [
-      '现在为你创建以下可视化报告：',
+      'Now creating the following visual report for you:',
       '',
       '```xychart-beta',
       'line [1, 2, 3]',

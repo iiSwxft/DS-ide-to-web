@@ -210,26 +210,26 @@ function getOfficialSkillDoc(name: string): Promise<OfficialSkillDoc> {
 }
 
 function renderDeepSeekExecutionGuardrails(): string {
-  return `你正在 DeepSeek++ 内使用 Spec-Driven Develop 第三方 skill 系列。Skill 内容已内置，但执行边界由 DeepSeek++ 覆盖。
+  return `You are using the Spec-Driven Develop third-party skill series inside DeepSeek++. The Skill content is built in, but the execution boundary is overridden by DeepSeek++.
 
-## DeepSeek++ 执行边界
+## DeepSeek++ Execution Boundary
 
-- 可用工具：${SHELL_TOOL_NAMES.join('、')}。只有在工具列表中出现 shell_exec / shell_status 时才调用；不要编造命令结果。
-- Shell 工具通过 Chrome Native Messaging 与本机 host (${SHELL_MCP_NATIVE_HOST}) 通信。
-- 所有 shell 操作都通过 shell_exec 执行，例如 <shell_exec>{"command":"gh --version"}</shell_exec>。
-- 不要输出伪 JSON 调用；DeepSeek++ 只执行 <shell_exec>{"command":"..."}</shell_exec> 这种 XML 标签格式。
-- Windows 默认 shell 是 PowerShell：列目录用 Get-ChildItem，不要把 CMD 的 dir /b 或 Unix 的 which/sed/find 直接当 PowerShell 命令。
-- Windows 路径在 JSON 中使用双反斜杠或正斜杠，并在命令字符串里只包一层引号。
-- 不要使用 /home/user/Documents、/mnt/data、~/Documents 这类占位路径。必须使用用户给出的真实路径，或先用 shell_exec 查询当前目录/文件位置。
-- 如果 shell_exec / shell_status 不在可用工具列表中，说明用户未安装 Native Host。此时应告知用户：Spec-Driven Develop 的 GitHub/脚本功能需要 DeepSeek++ Shell MCP，仅靠 skill 文本仍可完成纯规划与分析阶段。
-- 当下方 skill 正文与本节冲突时，以本节 DeepSeek++ 执行边界为准。
+- Available tools: ${SHELL_TOOL_NAMES.join(', ')}. Call shell_exec / shell_status only when they appear in the tool list; do not fabricate command results.
+- Shell tools talk to the local host (${SHELL_MCP_NATIVE_HOST}) through Chrome Native Messaging.
+- All shell operations run through shell_exec, for example <shell_exec>{"command":"gh --version"}</shell_exec>.
+- Do not output pseudo-JSON calls; DeepSeek++ only executes the XML tag format <shell_exec>{"command":"..."}</shell_exec>.
+- The default Windows shell is PowerShell: list directories with Get-ChildItem, and do not treat CMD's dir /b or Unix which/sed/find as PowerShell commands.
+- In JSON, write Windows paths with double backslashes or forward slashes, and wrap the command string in only one layer of quotes.
+- Do not use placeholder paths such as /home/user/Documents, /mnt/data, or ~/Documents. Use the real path the user gave, or first query the current directory/file location with shell_exec.
+- If shell_exec / shell_status is not in the available tool list, the user has not installed the Native Host. In that case tell the user: the GitHub/script features of Spec-Driven Develop need the DeepSeek++ Shell MCP, while the pure planning and analysis phases can still be completed with the skill text alone.
+- When the skill body below conflicts with this section, this DeepSeek++ execution boundary takes precedence.
 
-## 平台差异说明
+## Platform Differences
 
-本 skill 原始正文面向 Claude Code / Codex / OpenCode 等 IDE 编码代理，会引用 \`references/\` 目录和 \`scripts/\` 脚本。在 DeepSeek++ 中，这些文件已被内联到本 skill 指令正文里（见下方 "Bundled Reference" / "Bundled Script" 段落），AI 无需从文件系统读取。
+The original body of this skill targets IDE coding agents such as Claude Code / Codex / OpenCode, and references the \`references/\` directory and \`scripts/\` scripts. In DeepSeek++, those files are inlined into this skill's instruction body (see the "Bundled Reference" / "Bundled Script" sections below), so the AI does not need to read them from the file system.
 
-- 凡正文写"读取 \`references/xxx.md\`"或"用 \`references/templates/xxx.md\` 模板"，应改为读取下方对应内联段落。
-- 凡正文写"运行 \`scripts/review-context.py\`"，应使用下方内联脚本源码，按脚本段落顶部说明写入临时文件后执行。
-- "启动子代理 / sub-agents" 在 DeepSeek++ 中不可用；改为在主对话中顺序执行各子任务，覆盖范围不变。
-- "平台的 native task tracking tool（如 TodoWrite）" 在 DeepSeek++ 中不可用；进度跟踪依赖 docs/progress/MASTER.md。`;
+- Wherever the body says "read \`references/xxx.md\`" or "use the \`references/templates/xxx.md\` template", read the corresponding inlined section below instead.
+- Wherever the body says "run \`scripts/review-context.py\`", use the inlined script source below and, following the note at the top of the script section, write it to a temporary file before running it.
+- "Launch sub-agents" is not available in DeepSeek++; run the subtasks sequentially in the main conversation instead, with the same coverage.
+- "The platform's native task tracking tool (such as TodoWrite)" is not available in DeepSeek++; progress tracking relies on docs/progress/MASTER.md.`;
 }

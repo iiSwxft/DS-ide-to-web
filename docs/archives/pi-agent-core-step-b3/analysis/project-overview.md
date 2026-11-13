@@ -1,55 +1,55 @@
-# Project Overview — pi-agent-core Step B3: pi skills/agents 生态导入
+# Project Overview — pi-agent-core Step B3: Import of the pi skills/agents ecosystem
 
-> **Run**: spec:pi-agent-core-skills ｜ **Mode**: GITHUB_STANDARD ｜ **Base**: origin/main (35ddb86, B2 归档合入)
-> **日期**: 2026-08-05 ｜ **前置**: B2 完成（双后端就位）
+> **Run**: spec:pi-agent-core-skills | **Mode**: GITHUB_STANDARD | **Base**: origin/main (35ddb86, B2 archive merged)
+> **Date**: 2026-08-05 | **Prerequisite**: B2 complete (dual backends in place)
 
-## 目标
+## Goal
 
-复用 pi 的 agents/skills 配置生态：开源 pi 项目有大量社区 skills（SKILL.md 目录 + frontmatter 格式，agentskills.io 规范）。DeepSeek++ 已有完整的本地 Skill 体系（`core/skill/`：registry/codec/parser/local-importer/builtin/auto-activation），B3 = **把 pi 生态的 SKILL.md 技能格式接入 DeepSeek++ 现有 Skill 管线**，使用户可以导入/复用社区技能，同时严格遵守：
+Reuse pi's agents/skills configuration ecosystem: the open-source pi project has a large number of community skills (SKILL.md directory + frontmatter format, agentskills.io spec). DeepSeek++ already has a complete local Skill system (`core/skill/`: registry/codec/parser/local-importer/builtin/auto-activation). B3 = **connect the pi ecosystem's SKILL.md skill format to DeepSeek++'s existing Skill pipeline**, so users can import/reuse community skills, while strictly observing:
 
-- **记忆单一权威（约束 2）**：pi 的 session/memory 一律不落持久化；技能内容只进入 DeepSeek++ 现有 Skill 存储（IndexedDB/local），无新持久化键。
-- **prompt 字节契约（约束 5）**：pi 的 system-prompt 模板/`formatSkillsForSystemPrompt` 产物**不得**直接进入 wire；技能内容经现有 `augmentRequestBody`/`buildContinuationPrompt` 管线注入（字节零变化），`prompt:freeze` 必须零 diff。
+- **Single memory authority (constraint 2)**: pi's session/memory is never persisted; skill content enters only DeepSeek++'s existing Skill storage (IndexedDB/local), with no new persistence keys.
+- **Prompt byte contract (constraint 5)**: pi's system-prompt templates / `formatSkillsForSystemPrompt` output **must not** enter the wire directly; skill content is injected through the existing `augmentRequestBody`/`buildContinuationPrompt` pipeline (bytes unchanged), and `prompt:freeze` must show zero diff.
 
-**非目标**：不引入 pi 的 agents 配置（`~/.pi/agents`）作为运行时真源；不新建第二套技能注册表；不改 pi 锁版。
+**Non-goals**: Do not adopt pi's agents configuration (`~/.pi/agents`) as a runtime source of truth; do not build a second skill registry; do not change the pinned pi version.
 
-## 现状（B1/B2 完成后）
+## Current State (after B1/B2)
 
-- inline agent 双后端：`deepseek-web`（默认）+ `deepseek-api`（官方 API），均经 pi-ai provider 注册。
-- 项目技能体系（`core/skill/`）：`registry.ts`（技能注册表）、`codec.ts`、`parser.ts`（`parseSkillCommand`）、`local-importer.ts`、`local-path-rewriter.ts`、`builtin.ts`、`bundled-loader.ts`、`auto-activation-settings.ts`、`github-importer.ts`、`officecli-library.ts`、`spec-driven-develop-library.ts`。
-- pi 生态格式（`@earendil-works/pi-agent-core/dist/harness/`）：
-  - `Skill { name, description, content, filePath, disableModelInvocation? }`；
-  - `loadSkills(env, dirs)`：递归遍历目录，加载 `SKILL.md` + 根级 `.md`，解析 frontmatter（name/description/disable-model-invocation）；
-  - `formatSkillsForSystemPrompt(skills)` / `formatSkillInvocation(skill)`：生成 agentskills.io 规范 XML 块——**B3 不消费这两个产物**（prompt 模板不进 wire）。
+- Inline agent dual backends: `deepseek-web` (default) + `deepseek-api` (official API), both registered via pi-ai providers.
+- Project skill system (`core/skill/`): `registry.ts` (skill registry), `codec.ts`, `parser.ts` (`parseSkillCommand`), `local-importer.ts`, `local-path-rewriter.ts`, `builtin.ts`, `bundled-loader.ts`, `auto-activation-settings.ts`, `github-importer.ts`, `officecli-library.ts`, `spec-driven-develop-library.ts`.
+- pi ecosystem format (`@earendil-works/pi-agent-core/dist/harness/`):
+  - `Skill { name, description, content, filePath, disableModelInvocation? }`; 
+  - `loadSkills(env, dirs)`: recursively traverses directories, loads `SKILL.md` + root-level `.md`, parses frontmatter (name/description/disable-model-invocation);
+  - `formatSkillsForSystemPrompt(skills)` / `formatSkillInvocation(skill)`: generate agentskills.io-spec XML blocks — **B3 does not consume either output** (prompt templates do not enter the wire).
 
-## B3 设计决策
+## B3 Design Decisions
 
-1. **格式桥接，非运行时依赖**：pi 生态技能 = 文件系统中的 SKILL.md（frontmatter + body）。B3 新增 `core/skill/pi-importer.ts`：解析 SKILL.md → DeepSeek++ 现有技能记录形状（复用 `codec.ts` 的记录模型），经 `local-importer.ts` 既有导入路径落库。**不 import pi-agent-core harness**（避免拖入 FileSystem/Shell ExecutionEnv 依赖面，体积护栏把关）。
-2. **SKILL.md 解析器**：frontmatter（name/description/disable-model-invocation）+ body（content）；复用项目现有 YAML/markdown 解析面（不新引入依赖）；目录递归规则与 pi `loadSkills` 一致（SKILL.md 优先，根级 .md 兜底）。
-3. **prompt 注入复用现有管线**：导入后的技能走既有增强路径（`augmentRequestBody` 的 skills 段）；`prompt:freeze` 零 diff 必跑。
-4. **无新持久化键**：技能落 `core/skill` 现有存储；`tests/pi-storage-boundary.test.ts` 守护不变。
-5. **体积**：pi-importer 不 import pi 包（纯解析器）；护栏 probe 扩展实测。
+1. **Format bridge, not a runtime dependency**: A pi ecosystem skill = a SKILL.md in the file system (frontmatter + body). B3 adds `core/skill/pi-importer.ts`: parse SKILL.md → the existing DeepSeek++ skill record shape (reusing the record model from `codec.ts`), persisted through `local-importer.ts`'s existing import path. **It does not import the pi-agent-core harness** (avoiding the FileSystem/Shell ExecutionEnv dependency surface; guarded by the size guardrails).
+2. **SKILL.md parser**: frontmatter (name/description/disable-model-invocation) + body (content); reuse the project's existing YAML/markdown parsing surface (no new dependencies); directory recursion rules match pi's `loadSkills` (SKILL.md first, root-level .md as fallback).
+3. **Prompt injection reuses the existing pipeline**: Imported skills go through the existing augmentation path (the skills section of `augmentRequestBody`); `prompt:freeze` zero diff must run.
+4. **No new persistence keys**: Skills are stored in the existing `core/skill` storage; `tests/pi-storage-boundary.test.ts` guard unchanged.
+5. **Size**: pi-importer does not import the pi package (pure parser); guardrail probe extension measured.
 
-## 风险承接（B3 增量）
+## Risk Carry-over (B3 increment)
 
-| # | 风险 | 概率 | 影响 | 缓解 |
+| # | Risk | Probability | Impact | Mitigation |
 |:--|:-----|:----:|:----:|:-----|
-| (p1) | 记忆/会话双轨（pi session 落持久化） | 低 | 高 | pi 上下文只作工作内存（既有规则）；技能内容只进现有 Skill 存储；无新持久化键 |
-| (p2) | prompt 字节契约破坏（pi system-prompt 模板进 wire） | 低 | 高 | 禁用 `formatSkillsForSystemPrompt`/`formatSkillInvocation` 产物（grep 断言）；prompt:freeze 零 diff |
-| (p3) | 导入格式兼容性（frontmatter 变体/编码/嵌套） | 中 | 中 | 解析器契约测试（合法/畸形/未知字段——畸形标 current-gap）；复用项目 YAML 面 |
-| (p4) | 体积（import pi harness 拖入依赖） | 中 | 中 | pi-importer 零 pi 依赖（纯解析）；护栏 probe 实测 |
-| (p5) | 社区技能内容安全（指令注入） | 中 | 高 | 技能是用户显式导入的本地内容（与现有本地技能同信任面）；不自动执行、仅注入 prompt；现有授权/消毒路径覆盖 |
+| (p1) | Dual-track memory/session (pi session persisted) | Low | High | pi context is only working memory (existing rule); skill content enters only the existing Skill storage; no new persistence keys |
+| (p2) | Prompt byte contract broken (pi system-prompt templates enter the wire) | Low | High | Disable `formatSkillsForSystemPrompt`/`formatSkillInvocation` output (grep assertion); prompt:freeze zero diff |
+| (p3) | Import format compatibility (frontmatter variants/encoding/nesting) | Medium | Medium | Parser contract tests (valid/malformed/unknown fields — malformed marked current-gap); reuse the project's YAML surface |
+| (p4) | Size (importing the pi harness drags in dependencies) | Medium | Medium | pi-importer has zero pi dependencies (pure parsing); guardrail probe measurement |
+| (p5) | Community skill content safety (instruction injection) | Medium | High | Skills are local content explicitly imported by the user (same trust surface as existing local skills); never auto-executed, only injected into the prompt; covered by existing authorization/sanitization paths |
 
-## 验收方向
+## Acceptance Direction
 
-- `prompt:freeze` 零 diff；golden 10/10；
-- SKILL.md 导入管线定向测试全绿（解析/落库/注入）；
-- `pi-bundle-budget` 全绿（含 pi-importer probe，无 pi harness 泄漏）；
-- 无新持久化键（pi-storage-boundary 保持）；
-- 每项变更独立 Issue 授权（本 run = SKILL.md 生态导入一条）。
+- `prompt:freeze` zero diff; golden 10/10;
+- SKILL.md import pipeline targeted tests all green (parse/persist/inject);
+- `pi-bundle-budget` all green (including the pi-importer probe, no pi harness leak);
+- No new persistence keys (pi-storage-boundary maintained);
+- One independent Issue authorization per change (this run = the single SKILL.md ecosystem import one).
 
 ## References
 
-- `docs/archives/pi-agent-core-step-b1/`、`docs/archives/pi-agent-core-step-b2/`（B1/B2 归档）
-- `docs/archives/pi-agent-core-integration/`（Step A 归档）
-- `AGENTS.md`（pi-agent-core 集成稳定规则）
-- `step-b-handoff.md`（交接文档）
+- `docs/archives/pi-agent-core-step-b1/`, `docs/archives/pi-agent-core-step-b2/` (B1/B2 archives)
+- `docs/archives/pi-agent-core-integration/` (Step A archive)
+- `AGENTS.md` (stable pi-agent-core integration rules)
+- `step-b-handoff.md` (handoff document)

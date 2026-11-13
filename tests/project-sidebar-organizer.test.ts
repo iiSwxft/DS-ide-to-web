@@ -9,27 +9,27 @@ import {
 const NOW = 1_700_000_000_000;
 
 const labels: ProjectSidebarOrganizerLabels = {
-  title: '项目',
-  empty: '还没有项目',
-  expandProject: (name) => `展开项目：${name}`,
-  collapseProject: (name) => `收起项目：${name}`,
-  showMore: '展开显示',
-  showLess: '收起显示',
-  moveCurrentToProject: (name) => `移入当前对话到 ${name}`,
-  removeCurrentFromProject: (name) => `从 ${name} 移出当前对话`,
-  joinProject: '加入项目',
-  joinProjectNamed: (name) => `加入项目：${name}`,
-  moveToProjectNamed: (name) => `移动到项目：${name}`,
-  currentProjectNamed: (name) => `已在项目：${name}`,
-  removeFromProjectNamed: (name) => `移除项目：${name}`,
-  conversationActions: '会话操作',
-  newConversationInProject: (name) => `在 ${name} 下开启新对话`,
-  useNextConversation: (name) => `下一条新会话使用 ${name}`,
-  cancelNextConversation: (name) => `取消下一条新会话使用 ${name}`,
-  pendingNextConversation: '下一条新会话将使用此项目',
-  untitledConversation: '未命名对话',
-  operationFailed: (message) => `项目操作失败：${message}`,
-  age: (timestamp) => `${Math.floor((NOW - timestamp) / 60000)} 分`,
+  title: 'Projects',
+  empty: 'No projects yet',
+  expandProject: (name) => `Expand project: ${name}`,
+  collapseProject: (name) => `Collapse project: ${name}`,
+  showMore: 'Show more',
+  showLess: 'Show less',
+  moveCurrentToProject: (name) => `Move current chat to ${name}`,
+  removeCurrentFromProject: (name) => `Remove current chat from ${name}`,
+  joinProject: 'Add to project',
+  joinProjectNamed: (name) => `Add to project: ${name}`,
+  moveToProjectNamed: (name) => `Move to project: ${name}`,
+  currentProjectNamed: (name) => `Already in project: ${name}`,
+  removeFromProjectNamed: (name) => `Remove from project: ${name}`,
+  conversationActions: 'Conversation actions',
+  newConversationInProject: (name) => `New chat in ${name}`,
+  useNextConversation: (name) => `Use ${name} for next new chat`,
+  cancelNextConversation: (name) => `Cancel using ${name} for next new chat`,
+  pendingNextConversation: 'The next new chat will use this project',
+  untitledConversation: 'Untitled conversation',
+  operationFailed: (message) => `Project action failed: ${message}`,
+  age: (timestamp) => `${Math.floor((NOW - timestamp) / 60000)} min`,
 };
 
 let sendMessage: ReturnType<typeof vi.fn>;
@@ -85,13 +85,13 @@ describe('DeepSeek project sidebar organizer', () => {
       expandedProjectIds: new Set(['project-deepseek']),
     }));
 
-    expect(section?.querySelector('.dpp-project-sidebar__section-title')?.textContent).toBe('项目');
+    expect(section?.querySelector('.dpp-project-sidebar__section-title')?.textContent).toBe('Projects');
     expect(section?.querySelector('.dpp-project-sidebar__project-name')?.textContent).toBe('deepseek-pp');
-    expect(section?.querySelector('[data-dpp-project-conversation-id="session-one"]')?.textContent).toContain('发布 0.7.3 版本');
+    expect(section?.querySelector('[data-dpp-project-conversation-id="session-one"]')?.textContent).toContain('Release version 0.7.3');
     expect(document.querySelector<HTMLElement>('[data-testid="session-one-row"]')?.hidden).toBe(true);
     expect(document.querySelector<HTMLElement>('[data-testid="session-one-row"]')?.style.getPropertyValue('display')).toBe('none');
     expect(document.querySelector<HTMLElement>('[data-testid="session-two-row"]')?.hidden).toBe(false);
-    expect(section?.nextElementSibling?.textContent).toBe('今天');
+    expect(section?.nextElementSibling?.textContent).toBe('Today');
   });
 
   it('keeps injected project links out of history extraction on repeated renders', () => {
@@ -117,7 +117,7 @@ describe('DeepSeek project sidebar organizer', () => {
       conversations: [{
         conversationId: 'session-one',
         projectId: 'project-deepseek',
-        title: '发布 0.7.3 版本',
+        title: 'Release version 0.7.3',
         url: 'https://chat.deepseek.com/a/chat/new',
         addedAt: NOW - 60_000,
         lastSeenAt: NOW - 60_000,
@@ -190,7 +190,7 @@ describe('DeepSeek project sidebar organizer', () => {
     await flushProjectSidebar();
 
     expect(document.getElementById('dpp-project-sidebar')?.textContent)
-      .toContain('项目操作失败：projectSidebarState.projects[0].name must be a non-empty string');
+      .toContain('Project action failed: projectSidebarState.projects[0].name must be a non-empty string');
     controller.stop();
   });
 
@@ -221,7 +221,7 @@ describe('DeepSeek project sidebar organizer', () => {
     await flushProjectSidebar();
 
     expect(document.getElementById('dpp-project-sidebar')?.textContent)
-      .toContain('项目操作失败：projectSidebarUpdate.projects[0].name must be a non-empty string');
+      .toContain('Project action failed: projectSidebarUpdate.projects[0].name must be a non-empty string');
     expect(document.querySelector('.dpp-project-sidebar__project-name')?.textContent)
       .toBe('deepseek-pp');
     controller.stop();
@@ -235,7 +235,7 @@ describe('DeepSeek project sidebar organizer', () => {
     });
     mountHistoryDom();
     window.history.pushState({}, '', '/a/chat/s/session-two');
-    document.title = '检查未提交更改 - DeepSeek';
+    document.title = 'Check uncommitted changes - DeepSeek';
 
     const controller = startDeepSeekProjectSidebarOrganizer(() => labels);
     await flushProjectSidebar();
@@ -249,7 +249,7 @@ describe('DeepSeek project sidebar organizer', () => {
         projectId: 'project-deepseek',
         conversation: {
           conversationId: 'session-two',
-          title: '检查未提交更改',
+          title: 'Check uncommitted changes',
           url: 'http://localhost:3000/a/chat/s/session-two',
         },
       },
@@ -270,15 +270,15 @@ describe('DeepSeek project sidebar organizer', () => {
     document.querySelector<HTMLButtonElement>('[data-testid="session-two-menu"]')?.click();
     document.body.insertAdjacentHTML('beforeend', `
       <div role="menu" data-testid="native-menu">
-        <button>重命名</button>
-        <button>置顶</button>
-        <button>分享</button>
-        <button>删除</button>
+        <button>Rename</button>
+        <button>Pin</button>
+        <button>Share</button>
+        <button>Delete</button>
       </div>
     `);
     await flushProjectSidebar();
 
-    expect(document.querySelector('[data-dpp-project-native-menu="true"]')?.textContent).toContain('加入项目');
+    expect(document.querySelector('[data-dpp-project-native-menu="true"]')?.textContent).toContain('Add to project');
     document.querySelector<HTMLButtonElement>('[data-dpp-project-native-action="join"]')?.click();
     await Promise.resolve();
 
@@ -288,7 +288,7 @@ describe('DeepSeek project sidebar organizer', () => {
         projectId: 'project-deepseek',
         conversation: {
           conversationId: 'session-two',
-          title: '检查未提交更改',
+          title: 'Check uncommitted changes',
           url: 'https://chat.deepseek.com/a/chat/s/session-two',
         },
       },
@@ -309,10 +309,10 @@ describe('DeepSeek project sidebar organizer', () => {
     document.querySelector<HTMLButtonElement>('[data-testid="session-two-menu"]')?.click();
     document.body.insertAdjacentHTML('beforeend', `
       <div role="menu" data-testid="native-menu">
-        <button>重命名</button>
-        <button>置顶</button>
-        <button>分享</button>
-        <button>删除</button>
+        <button>Rename</button>
+        <button>Pin</button>
+        <button>Share</button>
+        <button>Delete</button>
       </div>
     `);
     await flushProjectSidebar();
@@ -354,7 +354,7 @@ describe('DeepSeek project sidebar organizer', () => {
 
     document.querySelector<HTMLButtonElement>('[data-dpp-project-conversation-menu="true"]')?.click();
     await flushProjectSidebar();
-    expect(document.querySelector('.dpp-project-sidebar__conversation-menu')?.textContent).toContain('移除项目：deepseek-pp');
+    expect(document.querySelector('.dpp-project-sidebar__conversation-menu')?.textContent).toContain('Remove from project: deepseek-pp');
 
     document.querySelector<HTMLButtonElement>('[data-dpp-project-remove-conversation="true"]')?.click();
     await Promise.resolve();
@@ -386,7 +386,7 @@ describe('DeepSeek project sidebar organizer', () => {
       menuButton.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
       menuButton.click();
       await flushProjectSidebar();
-      expect(document.querySelector('.dpp-project-sidebar__conversation-menu')?.textContent).toContain('移除项目：deepseek-pp');
+      expect(document.querySelector('.dpp-project-sidebar__conversation-menu')?.textContent).toContain('Remove from project: deepseek-pp');
     } finally {
       document.removeEventListener('click', swallowHostClick, true);
       controller.stop();
@@ -457,10 +457,10 @@ describe('DeepSeek project sidebar organizer', () => {
       expandedProjectIds: new Set(['project-deepseek']),
     }));
 
-    expect(section?.querySelector('.dpp-project-sidebar__pending')?.textContent).toBe('下一条新会话将使用此项目');
+    expect(section?.querySelector('.dpp-project-sidebar__pending')?.textContent).toBe('The next new chat will use this project');
     const toggleButton = section?.querySelector<HTMLButtonElement>('[data-dpp-project-action="toggle-pending"]');
     expect(toggleButton?.dataset.active).toBe('true');
-    expect(toggleButton?.getAttribute('aria-label')).toBe('取消下一条新会话使用 deepseek-pp');
+    expect(toggleButton?.getAttribute('aria-label')).toBe('Cancel using deepseek-pp for next new chat');
   });
 
   it('exposes a one-step action to start a new conversation in a project', () => {
@@ -474,7 +474,7 @@ describe('DeepSeek project sidebar organizer', () => {
     }));
 
     const button = section?.querySelector<HTMLButtonElement>('[data-dpp-project-action="new-project-conversation"]');
-    expect(button?.getAttribute('aria-label')).toBe('在 deepseek-pp 下开启新对话');
+    expect(button?.getAttribute('aria-label')).toBe('New chat in deepseek-pp');
     button?.click();
 
     expect(onNewProjectConversation).toHaveBeenCalledWith('project-deepseek');
@@ -499,7 +499,7 @@ describe('DeepSeek project sidebar organizer', () => {
     }));
 
     expect(section?.querySelector('[data-dpp-project-conversation-id="session-one"]')?.textContent)
-      .toContain('发布 0.7.3 版本');
+      .toContain('Release version 0.7.3');
   });
 
   it('localizes stored untitled project conversation placeholders', () => {
@@ -521,14 +521,14 @@ describe('DeepSeek project sidebar organizer', () => {
     }));
 
     expect(section?.querySelector('[data-dpp-project-conversation-id="session-missing"]')?.textContent)
-      .toContain('未命名对话');
+      .toContain('Untitled conversation');
   });
 
   it('shows a toggle to expand conversations beyond the project limit', () => {
     const conversations = Array.from({ length: 6 }, (_, index) => ({
       conversationId: `session-${index}`,
       projectId: 'project-deepseek',
-      title: `任务 ${index}`,
+      title: `Task ${index}`,
       url: `https://chat.deepseek.com/a/chat/s/session-${index}`,
       addedAt: NOW - index * 1000,
       lastSeenAt: NOW - index * 1000,
@@ -541,7 +541,7 @@ describe('DeepSeek project sidebar organizer', () => {
       expandedProjectIds: new Set(['project-deepseek']),
     }));
     expect(collapsed?.querySelectorAll('.dpp-project-sidebar__conversation-row')).toHaveLength(5);
-    expect(collapsed?.querySelector('[data-dpp-project-show-all]')?.textContent).toBe('展开显示');
+    expect(collapsed?.querySelector('[data-dpp-project-show-all]')?.textContent).toBe('Show more');
 
     const onToggleShowAll = vi.fn();
     const expanded = renderProjectSidebar(document, createRenderOptions({
@@ -551,7 +551,7 @@ describe('DeepSeek project sidebar organizer', () => {
       onToggleShowAll,
     }));
     expect(expanded?.querySelectorAll('.dpp-project-sidebar__conversation-row')).toHaveLength(6);
-    expect(expanded?.querySelector('[data-dpp-project-show-all]')?.textContent).toBe('收起显示');
+    expect(expanded?.querySelector('[data-dpp-project-show-all]')?.textContent).toBe('Show less');
 
     expanded?.querySelector<HTMLButtonElement>('[data-dpp-project-show-all]')?.click();
     expect(onToggleShowAll).toHaveBeenCalledWith('project-deepseek');
@@ -561,10 +561,10 @@ describe('DeepSeek project sidebar organizer', () => {
 function mountHistoryDom() {
   document.body.innerHTML = `
     <nav data-testid="sidebar">
-      <button>开启新对话</button>
-      <div>今天</div>
-      <div data-testid="session-one-row"><a data-testid="session-one-link" href="https://chat.deepseek.com/a/chat/s/session-one">发布 0.7.3 版本</a><button data-testid="session-one-menu">...</button></div>
-      <div data-testid="session-two-row"><a data-testid="session-two-link" href="https://chat.deepseek.com/a/chat/s/session-two">检查未提交更改</a><button data-testid="session-two-menu">...</button></div>
+      <button>New chat</button>
+      <div>Today</div>
+      <div data-testid="session-one-row"><a data-testid="session-one-link" href="https://chat.deepseek.com/a/chat/s/session-one">Release version 0.7.3</a><button data-testid="session-one-menu">...</button></div>
+      <div data-testid="session-two-row"><a data-testid="session-two-link" href="https://chat.deepseek.com/a/chat/s/session-two">Check uncommitted changes</a><button data-testid="session-two-menu">...</button></div>
     </nav>
   `;
 }
@@ -605,7 +605,7 @@ function createProjectState(overrides: Partial<ProjectContextState> = {}): Proje
     conversations: [{
       conversationId: 'session-one',
       projectId: 'project-deepseek',
-      title: '发布 0.7.3 版本',
+      title: 'Release version 0.7.3',
       url: 'https://chat.deepseek.com/a/chat/s/session-one',
       addedAt: NOW - 60_000,
       lastSeenAt: NOW - 60_000,

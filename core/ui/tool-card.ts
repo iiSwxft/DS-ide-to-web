@@ -39,7 +39,7 @@ export function createToolCard(call: ToolCall): HTMLElement {
       <span class="dpp-tc-name"></span>
       <span class="dpp-tc-status">
         <span class="dpp-tc-spinner" aria-hidden="true"></span>
-        <span class="dpp-tc-status-text">执行中</span>
+        <span class="dpp-tc-status-text">Running</span>
       </span>
       <span class="dpp-tc-chevron" aria-hidden="true">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -47,11 +47,11 @@ export function createToolCard(call: ToolCall): HTMLElement {
     </div>
     <div class="dpp-tc-body">
       <div class="dpp-tc-section">
-        <div class="dpp-tc-label">参数</div>
+        <div class="dpp-tc-label">Parameters</div>
         <div class="dpp-tc-payload"></div>
       </div>
       <div class="dpp-tc-section dpp-tc-result-section" data-hidden="true">
-        <div class="dpp-tc-label">结果</div>
+        <div class="dpp-tc-label">Result</div>
         <div class="dpp-tc-result"></div>
       </div>
     </div>
@@ -131,7 +131,7 @@ function renderPayload(target: HTMLElement, payload: Record<string, unknown>) {
   if (entries.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'dpp-tc-payload-empty';
-    empty.textContent = '（无参数）';
+    empty.textContent = '(no parameters)';
     target.appendChild(empty);
     return;
   }

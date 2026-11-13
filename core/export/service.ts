@@ -58,7 +58,7 @@ export async function runConversationExport(input: RunConversationExportInput): 
   const startedAt = now().toISOString();
   const includeRaw = request.mode === 'raw';
 
-  await report(input, 'starting', 'running', 0, 1, '准备导出');
+  await report(input, 'starting', 'running', 0, 1, 'Preparing export');
   assertNotCancelled(input.signal);
 
   const sessionSummaries = await getSessionSummaries(input, request, includeRaw);
@@ -68,7 +68,7 @@ export async function runConversationExport(input: RunConversationExportInput): 
 
   for (const [index, session] of sessionSummaries.entries()) {
     assertNotCancelled(input.signal);
-    await report(input, 'fetching_history', 'running', index + 1, sessionSummaries.length, `读取会话 ${index + 1}/${sessionSummaries.length}`);
+    await report(input, 'fetching_history', 'running', index + 1, sessionSummaries.length, `Reading session ${index + 1}/${sessionSummaries.length}`);
     try {
       const rawHistory = await input.transport.fetchHistory({ session, includeRaw, signal: input.signal });
       assertNotCancelled(input.signal);
@@ -86,7 +86,7 @@ export async function runConversationExport(input: RunConversationExportInput): 
   const metadataById = new Map();
   const attachmentIds = request.includeAttachmentMetadata ? collectAttachmentIds(sessions) : [];
   if (attachmentIds.length > 0) {
-    await report(input, 'fetching_attachments', 'running', 0, attachmentIds.length, '读取附件元数据');
+    await report(input, 'fetching_attachments', 'running', 0, attachmentIds.length, 'Reading attachment metadata');
     try {
       const rawFiles = await input.transport.fetchFiles({ fileIds: attachmentIds, includeRaw, signal: input.signal });
       assertNotCancelled(input.signal);
@@ -95,7 +95,7 @@ export async function runConversationExport(input: RunConversationExportInput): 
         const attachment = normalizeDeepSeekFileMetadata(rawFile, includeRaw);
         if (attachment) metadataById.set(attachment.id, attachment);
       }
-      await report(input, 'fetching_attachments', 'running', attachmentIds.length, attachmentIds.length, '附件元数据读取完成');
+      await report(input, 'fetching_attachments', 'running', attachmentIds.length, attachmentIds.length, 'Attachment metadata loaded');
     } catch (error) {
       rethrowCancellation(error, input.signal);
       failures.push(toFailure(error, {
@@ -149,7 +149,7 @@ export async function runConversationExport(input: RunConversationExportInput): 
   // existing public helper contract.
   const finalExport = applyConversationExportContentScope(modeExport, request.contentScope);
   assertNotCancelled(input.signal);
-  await report(input, 'completed', 'completed', 1, 1, '导出完成');
+  await report(input, 'completed', 'completed', 1, 1, 'Export complete');
   assertNotCancelled(input.signal);
   return validateConversationExport(finalExport);
 }
@@ -160,10 +160,10 @@ async function getSessionSummaries(
   includeRaw: boolean,
 ): Promise<DeepSeekSessionSummary[]> {
   if (request.sessionIds?.length) {
-    await report(input, 'listing_sessions', 'running', 0, request.sessionIds.length, '读取当前会话');
+    await report(input, 'listing_sessions', 'running', 0, request.sessionIds.length, 'Reading current session');
     return request.sessionIds.map((id) => ({
       id,
-      title: '当前对话',
+      title: 'Current conversation',
       pinned: false,
       titleType: null,
       modelType: null,
@@ -173,7 +173,7 @@ async function getSessionSummaries(
     }));
   }
 
-  await report(input, 'listing_sessions', 'running', 0, 1, '读取会话列表');
+  await report(input, 'listing_sessions', 'running', 0, 1, 'Reading session list');
   return input.transport.listSessions({
     pageSize: request.pageSize ?? 50,
     sessionLimit: request.sessionLimit,

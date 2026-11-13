@@ -4,12 +4,12 @@ import { stripRetiredArtifactProtocolBlocks } from '../core/inline-agent/retired
 describe('stripRetiredArtifactProtocolBlocks', () => {
   it('strips a complete artifact_create block including its JSON body', () => {
     const text = [
-      '我已经完成了分析。',
+      'I have finished the analysis.',
       '',
-      '<artifact_create>{"filename":"report.html","content":"<h1>汇总</h1>","language":"html"}</artifact_create>',
+      '<artifact_create>{"filename":"report.html","content":"<h1>Summary</h1>","language":"html"}</artifact_create>',
     ].join('\n');
 
-    expect(stripRetiredArtifactProtocolBlocks(text)).toBe('我已经完成了分析。\n\n');
+    expect(stripRetiredArtifactProtocolBlocks(text)).toBe('I have finished the analysis.\n\n');
   });
 
   it('strips artifact_bundle_create blocks', () => {
@@ -35,9 +35,9 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
   });
 
   it('drops the remainder of an unclosed trailing block (clamped stream)', () => {
-    const text = '正文说明。\n<artifact_create>{"filename":"report.html","content":"<html>被截断';
+    const text = 'Body text.\n<artifact_create>{"filename":"report.html","content":"<html>truncated';
 
-    expect(stripRetiredArtifactProtocolBlocks(text)).toBe('正文说明。\n');
+    expect(stripRetiredArtifactProtocolBlocks(text)).toBe('Body text.\n');
   });
 
   it('never touches fenced code blocks, even with artifact-looking content', () => {
@@ -60,7 +60,7 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
   });
 
   it('never touches plain text without artifact tags (same reference)', () => {
-    const text = '普通的最终答复，没有任何协议块。';
+    const text = 'A plain final answer with no protocol blocks.';
     expect(stripRetiredArtifactProtocolBlocks(text)).toBe(text);
   });
 
@@ -83,11 +83,11 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
     // A model showing the retired syntax inside a ```fence``` is teaching
     // content: the tag and its surroundings pass through byte-for-byte.
     const text = [
-      '这是旧协议的示例：',
+      'Here is an example of the old protocol:',
       '```xml',
       '<artifact_create>{"filename":"a.html","content":"A"}</artifact_create>',
       '```',
-      '以上是示例。',
+      'That was the example.',
     ].join('\n');
 
     expect(stripRetiredArtifactProtocolBlocks(text)).toBe(text);
@@ -96,10 +96,10 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
   it('does not drop the remainder after an unclosed artifact tag inside a fence', () => {
     const text = [
       '```html',
-      '参考旧标签 <artifact_create> 已废弃',
-      '后面还有真实内容',
+      'See the old tag <artifact_create>, now deprecated',
+      'Real content follows',
       '```',
-      '最终答案保留。',
+      'The final answer is kept.',
     ].join('\n');
 
     expect(stripRetiredArtifactProtocolBlocks(text)).toBe(text);
@@ -111,7 +111,7 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
       '<artifact_create>{"filename":"a.html","content":"A"}</artifact_create>',
       '```',
       '<artifact_create>{"filename":"b.html","content":"B"}</artifact_create>',
-      '结尾。',
+      'The end.',
     ].join('\n');
 
     expect(stripRetiredArtifactProtocolBlocks(text)).toBe(
@@ -120,7 +120,7 @@ describe('stripRetiredArtifactProtocolBlocks', () => {
         '<artifact_create>{"filename":"a.html","content":"A"}</artifact_create>',
         '```',
         '',
-        '结尾。',
+        'The end.',
       ].join('\n'),
     );
   });

@@ -46,14 +46,14 @@ describe('Content persistence codecs', () => {
         index: 0,
         status: 'complete',
         text: 'Done',
-        reasoning: '我先分析。',
+        reasoning: 'Let me analyze first.',
         toolExecutions: [structuredClone(CONTRACT_EXECUTION_RECORD)],
         responseMessageId: 11,
         collapsed: true,
       }],
     });
     const [decoded] = decodeInlineAgentTraces([withReasoning]);
-    expect(decoded.steps[0].reasoning).toBe('我先分析。');
+    expect(decoded.steps[0].reasoning).toBe('Let me analyze first.');
 
     expect(() => decodeInlineAgentTraces([createTrace({
       steps: [{

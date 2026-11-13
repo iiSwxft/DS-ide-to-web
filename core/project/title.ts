@@ -1,3 +1,4 @@
+// Chinese literal kept: this is the DeepSeek site's own default chat title suffix, matched as data.
 const DEEPSEEK_DEFAULT_TITLE_SUFFIX = '探索未至之境';
 const DEEPSEEK_DEFAULT_TITLE = new RegExp(`^DeepSeek\\s*[-|]\\s*${DEEPSEEK_DEFAULT_TITLE_SUFFIX}$`, 'i');
 

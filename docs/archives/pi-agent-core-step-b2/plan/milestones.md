@@ -2,10 +2,10 @@
 
 | # | Milestone | Target | Criteria | Status |
 |:--|:----------|:-------|:---------|:-------|
-| 1 | **M-B2 · 官方 API 第二模型后端接入完成** | After P3-B2 合入 | ① golden 10/10（web 路径零变化） ② 官方 API provider 契约测试绿 ③ 双后端选择单一 authority ④ prompt:freeze 零 diff ⑤ 护栏全绿 ⑥ 用户切换语义与聊天一致 ⑦ B3 启动条件记录 | Pending |
+| 1 | **M-B2 · Official API second model backend integration complete** | After P3-B2 merged | ① golden 10/10 (zero change on the web path) ② official API provider contract tests green ③ single authority for dual-backend selection ④ prompt:freeze zero diff ⑤ guardrails all green ⑥ user switching semantics consistent with chat ⑦ B3 start conditions recorded | Pending |
 
-## Step B 后续（记录，不建 Milestone/Issue，逐项独立 run）
+## Step B Follow-ups (recorded, no Milestone/Issue created, each item a separate run)
 
-| # | Roadmap Item | 启动条件 | 备注（风险承接） |
+| # | Roadmap Item | Start condition | Notes (risk carry-over) |
 |:--|:-------------|:---------|:-----------------|
-| B3 | pi skills/agents 生态导入 | B2 完成 | 记忆双轨（pi 自身记忆 vs IndexedDB——必须保持单一权威）、prompt 字节契约（pi 模板不得进入 wire）；每项变更独立 Issue 授权 |
+| B3 | Import of the pi skills/agents ecosystem | B2 complete | Dual-track memory (pi's own memory vs IndexedDB — a single authority must be kept), prompt byte contract (pi templates must not enter the wire); each change needs its own Issue authorization |

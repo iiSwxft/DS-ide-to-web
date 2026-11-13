@@ -334,14 +334,14 @@ function replaceMatchWithSummary(match: string, catalog: ToolInvocationCatalog):
   if (calls.length === 0) return '';
   const lines = calls.map(call => {
     const name = call.name;
-    if (call.parseError) return `• ${getToolInvocationLabel(name, catalog)}：格式错误`;
+    if (call.parseError) return `• ${getToolInvocationLabel(name, catalog)}: malformed`;
     const detail = (call.payload as any).name || (call.payload as any).content || (call.payload as any).id || '';
     return `• ${getToolInvocationLabel(name, catalog)}${detail ? '：' + detail : ''}`;
   });
   const executedCount = calls.filter(call => !call.parseError).length;
   const header = executedCount === calls.length
-    ? `🔧 已调用工具（${calls.length}次）`
-    : `🔧 已调用工具（${executedCount}次，${calls.length - executedCount}次格式错误）`;
+    ? `🔧 Tools called (${calls.length}x)`
+    : `🔧 Tools called (${executedCount}x, ${calls.length - executedCount} malformed)`;
   return '\n\n---\n' + header + '\n' + lines.join('\n') + '\n---';
 }
 

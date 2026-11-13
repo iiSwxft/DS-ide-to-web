@@ -1,5 +1,7 @@
-// 自动激活（隐式打分）开关：不变式 normalize + 拦截层按节奏门控验证。
-// 环境复用 request-augmentation-local.test.ts：无外部依赖、无 mock。
+// Auto-activation (implicit scoring) switches: normalize invariants + interceptor cadence gating.
+// Environment reuses request-augmentation-local.test.ts: no external dependencies, no mocks.
+// NOTE: the Chinese description ('适用场景：...') and the '周报' (weekly report) prompt are intentional test INPUT:
+// the local-skill scorer still matches Chinese scenario labels and CJK 2-grams (core/skill/local-skill-scorer.ts).
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -50,37 +52,37 @@ function baseState(auto: SkillAutoActivationSettings) {
   };
 }
 
-describe('normalizeSkillAutoActivationSettings（联动不变式）', () => {
-  it('默认：首条开、每条关', () => {
+describe('normalizeSkillAutoActivationSettings (linked invariants)', () => {
+  it('default: first message on, every message off', () => {
     expect(DEFAULT_SKILL_AUTO_ACTIVATION_SETTINGS).toEqual({ firstMessage: true, everyMessage: false });
   });
 
-  it('每条消息开 ⇒ 首条必开', () => {
+  it('every message on => first message forced on', () => {
     expect(normalizeSkillAutoActivationSettings({ firstMessage: false, everyMessage: true }))
       .toEqual({ firstMessage: true, everyMessage: true });
   });
 
-  it('首条关 ⇒ 每条必关', () => {
+  it('first message off => every message forced off', () => {
     expect(normalizeSkillAutoActivationSettings({ firstMessage: false, everyMessage: true }))
       .toEqual({ firstMessage: true, everyMessage: true });
     expect(normalizeSkillAutoActivationSettings({ firstMessage: false, everyMessage: false }))
       .toEqual({ firstMessage: false, everyMessage: false });
   });
 
-  it('仅首条开（每条关）保持不变', () => {
+  it('first-only (every off) is left unchanged', () => {
     expect(normalizeSkillAutoActivationSettings({ firstMessage: true, everyMessage: false }))
       .toEqual({ firstMessage: true, everyMessage: false });
   });
 
-  it('脏数据（非布尔 / undefined）回落到默认', () => {
+  it('dirty data (non-boolean / undefined) falls back to defaults', () => {
     expect(normalizeSkillAutoActivationSettings(undefined)).toEqual(DEFAULT_SKILL_AUTO_ACTIVATION_SETTINGS);
     expect(normalizeSkillAutoActivationSettings({ firstMessage: 'yes' as unknown as boolean, everyMessage: 1 as unknown as boolean }))
       .toEqual({ firstMessage: false, everyMessage: false });
   });
 });
 
-describe('augmentRequestBody 自动激活门控', () => {
-  it('两关皆关 → 隐式打分不触发，透传原始输入', () => {
+describe('augmentRequestBody auto-activation gating', () => {
+  it('both off -> implicit scoring does not fire, original input passes through', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: null,
@@ -89,7 +91,7 @@ describe('augmentRequestBody 自动激活门控', () => {
     expect(result!.agentTaskPrompt).toBe('周报');
   });
 
-  it('仅首条开 + 首条消息 → 隐式打分触发，注入索引指令', () => {
+  it('first-only + first message -> implicit scoring fires, index directive injected', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: null,
@@ -98,7 +100,7 @@ describe('augmentRequestBody 自动激活门控', () => {
     expect(result!.agentTaskPrompt).toContain(LOCAL_INDEX_MARKER);
   });
 
-  it('仅首条开 + 非首条消息 → 隐式打分不触发，透传原始输入', () => {
+  it('first-only + later message -> implicit scoring does not fire, original input passes through', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: 'abc',
@@ -107,7 +109,7 @@ describe('augmentRequestBody 自动激活门控', () => {
     expect(result!.agentTaskPrompt).toBe('周报');
   });
 
-  it('每条消息开 + 非首条消息 → 隐式打分触发，注入索引指令', () => {
+  it('every-message on + later message -> implicit scoring fires, index directive injected', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: 'abc',
@@ -116,7 +118,7 @@ describe('augmentRequestBody 自动激活门控', () => {
     expect(result!.agentTaskPrompt).toContain(LOCAL_INDEX_MARKER);
   });
 
-  it('缺省 skillAutoActivation（按 DEFAULT 首条开）+ 首条消息 → 触发', () => {
+  it('missing skillAutoActivation (DEFAULT first-message on) + first message -> fires', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: null,

@@ -57,7 +57,7 @@ describe('inline agent execution policy', () => {
     const memorySaved = makeExecution({
       name: 'memory_save',
       provider: MEMORY_TOOL_PROVIDER,
-      result: { ok: true, summary: '已保存' },
+      result: { ok: true, summary: 'Saved' },
     });
 
     expect(selectContinuableToolExecutions([memorySaved])).toEqual([memorySaved]);

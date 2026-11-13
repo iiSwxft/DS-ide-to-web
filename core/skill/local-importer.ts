@@ -406,6 +406,7 @@ function loadLocalSkill(
   // Otherwise a local Skill's description holds only the frontmatter one-liner, scenarioAdjustment
   // can never extract scenario text, and Chinese queries almost never activate the local Skill
   // (breaking the intended "activate on match" design).
+  // Chinese headings kept: they match scenario sections of Chinese-language SKILL.md files (see local-skill-scorer).
   const applicable = extractScenarioBlock(hostSkill.content, '适用场景', '适用场景|适用|使用场景');
   const notApplicable = extractScenarioBlock(hostSkill.content, '不适用场景', '不适用场景|不适用|禁用场景');
   const scenarioSection = [

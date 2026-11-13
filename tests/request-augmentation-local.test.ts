@@ -1,11 +1,14 @@
-// T3 本地索引 Skill 激活分支集成测试（走已导出的 augmentRequestBody 真实路径）。
-// 覆盖：
-//   1) 隐式分支：用户输入触发本地索引 Skill 隐式打分激活，注入「索引指令 + D4 边界」。
-//   2) 显式 /skillname 命中本地索引 Skill 同样走 composeLocalSkillPrompt（索引指令 + D4 边界）。
-//   3) 索引形态检测：isLocalIndexInstructions 区分「索引导入」与「旧版固化快照」。
-//   4) 隔离保证：旧快照（无标记）/ builtin / github 来源不被隐式打分波及，行为不变。
+// T3 integration test for the local-index Skill activation branch (goes through the exported augmentRequestBody real path).
+// Covers:
+//   1) Implicit branch: user input triggers implicit scoring activation of a local-index Skill, injecting "index instructions + D4 boundary".
+//   2) An explicit /skillname hit on a local-index Skill likewise goes through composeLocalSkillPrompt (index instructions + D4 boundary).
+//   3) Index-shape detection: isLocalIndexInstructions distinguishes "index import" from the "legacy frozen snapshot".
+//   4) Isolation guarantee: legacy snapshots (no marker) / builtin / github sources are not affected by implicit scoring; behavior is unchanged.
 //
-// 环境复用 request-augmentation.test.ts：toolDescriptors: [] / memories: [] / locale: 'en'，无外部依赖、无 mock。
+// Environment reused from request-augmentation.test.ts: toolDescriptors: [] / memories: [] / locale: 'en', no external deps, no mocks.
+//
+// NOTE: the Chinese descriptions/prompts (e.g. '周报' = "weekly report") are deliberate test INPUT: the scorer reuses the
+// Chinese-aware tokenizer from capability-projection (whole CJK sentence as one token, substring match).
 
 import { describe, expect, it } from 'vitest';
 import { isLocalIndexInstructions, LOCAL_INDEX_MARKER } from '../core/skill/local-importer';
@@ -32,7 +35,7 @@ const LOCAL_INDEX_INSTRUCTIONS = [
 const LEGACY_SNAPSHOT_INSTRUCTIONS = [
   '# Local Skill: legacy',
   '',
-  'This is the old固化 snapshot body (no index marker).',
+  'This is the old frozen snapshot body (no index marker).',
 ].join('\n');
 
 function localIndexSkill(): Skill {
@@ -81,30 +84,30 @@ function githubSkill(): Skill {
     instructions: 'GitHub skill body.',
     memoryEnabled: false,
     source: 'github',
-    description: 'GitHub 集成',
+    description: 'GitHub integration',
     remote: { provider: 'github' },
   } as unknown as Skill;
 }
 
-describe('isLocalIndexInstructions（索引形态检测）', () => {
-  it('含索引标记 → true', () => {
+describe('isLocalIndexInstructions (index-shape detection)', () => {
+  it('contains index marker → true', () => {
     expect(isLocalIndexInstructions(LOCAL_INDEX_INSTRUCTIONS)).toBe(true);
   });
 
-  it('旧快照无标记 → false', () => {
+  it('legacy snapshot without marker → false', () => {
     expect(isLocalIndexInstructions(LEGACY_SNAPSHOT_INSTRUCTIONS)).toBe(false);
   });
 
-  it('undefined / 空 → false', () => {
+  it('undefined / empty → false', () => {
     expect(isLocalIndexInstructions(undefined)).toBe(false);
     expect(isLocalIndexInstructions('')).toBe(false);
   });
 });
 
-describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
-  it('隐式分支：用户输入打分命中本地索引 Skill → 注入索引指令 + D4 边界', () => {
-    // 注意：打分器复用 capability-projection 的分词器（中文整句成单 token、子串匹配），
-    // 故查询须为 Skill 描述/场景中的子串（此处用「周报」）。
+describe('augmentRequestBody local-index Skill activation branch', () => {
+  it('implicit branch: user input scores a hit on the local-index Skill → injects index instructions + D4 boundary', () => {
+    // Note: the scorer reuses capability-projection's tokenizer (a whole Chinese sentence becomes one token, substring match),
+    // so the query must be a substring of the Skill description/scenario (here '周报' = "weekly report").
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: null,
@@ -120,18 +123,18 @@ describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
     });
 
     expect(result).not.toBeNull();
-    // agentTaskPrompt 必须是「索引指令 + D4 边界」，而非原始用户输入。
+    // agentTaskPrompt must be "index instructions + D4 boundary", not the raw user input.
     expect(result!.agentTaskPrompt).toContain(LOCAL_INDEX_MARKER);
     expect(result!.agentTaskPrompt).toContain('## Local Execution Boundary');
     expect(result!.agentTaskPrompt).toContain('/skills/demo');
     expect(result!.agentTaskPrompt).not.toBe('周报');
-    // 最终请求体同样包含注入内容。
+    // The final request body also contains the injected content.
     const bodyPrompt = JSON.parse(result!.body).prompt as string;
     expect(bodyPrompt).toContain(LOCAL_INDEX_MARKER);
     expect(bodyPrompt).toContain('## Local Execution Boundary');
   });
 
-  it('显式 /demo 命中本地索引 Skill → 同样注入 D4 边界', () => {
+  it('explicit /demo hit on the local-index Skill → also injects the D4 boundary', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '/demo 写本周周报',
       parent_message_id: null,
@@ -151,7 +154,7 @@ describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
     expect(result!.agentTaskPrompt).toContain(LOCAL_INDEX_MARKER);
   });
 
-  it('旧快照（无索引标记）不被隐式打分激活 → 透传原始输入', () => {
+  it('legacy snapshot (no index marker) is not activated by implicit scoring → raw input passes through', () => {
     const original = '帮我生成本周周报';
     const result = augmentRequestBody(JSON.stringify({
       prompt: original,
@@ -170,7 +173,7 @@ describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
     expect(result!.agentTaskPrompt).toBe(original);
   });
 
-  it('builtin 来源不被隐式打分波及 → 透传原始输入', () => {
+  it('builtin source is not affected by implicit scoring → raw input passes through', () => {
     const original = '帮我生成本周周报';
     const result = augmentRequestBody(JSON.stringify({
       prompt: original,
@@ -189,7 +192,7 @@ describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
     expect(result!.agentTaskPrompt).toBe(original);
   });
 
-  it('github 来源显式命中 → 指令原样透传，不注入 D4 边界', () => {
+  it('github source explicit hit → instructions pass through unchanged, no D4 boundary injected', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '/gh do something',
       parent_message_id: null,
@@ -209,8 +212,8 @@ describe('augmentRequestBody 本地索引 Skill 激活分支', () => {
   });
 });
 
-describe('augmentRequestBody 暴露 activeLocalSkillDir（方案A 闭环源）', () => {
-  it('隐式命中本地索引 Skill → activeLocalSkillDir 等于 skillDir', () => {
+describe('augmentRequestBody exposes activeLocalSkillDir (Plan A closed-loop source)', () => {
+  it('implicit hit on the local-index Skill → activeLocalSkillDir equals skillDir', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '周报',
       parent_message_id: null,
@@ -229,7 +232,7 @@ describe('augmentRequestBody 暴露 activeLocalSkillDir（方案A 闭环源）',
     expect(result!.activeLocalSkillDir).toBe('/skills/demo');
   });
 
-  it('显式 /demo 命中本地索引 Skill → activeLocalSkillDir 等于 skillDir', () => {
+  it('explicit /demo hit on the local-index Skill → activeLocalSkillDir equals skillDir', () => {
     const result = augmentRequestBody(JSON.stringify({
       prompt: '/demo 写本周周报',
       parent_message_id: null,
@@ -247,7 +250,7 @@ describe('augmentRequestBody 暴露 activeLocalSkillDir（方案A 闭环源）',
     expect(result!.activeLocalSkillDir).toBe('/skills/demo');
   });
 
-  it('未激活本地 Skill（builtin / 旧快照）→ activeLocalSkillDir 为 undefined', () => {
+  it('no local Skill activated (builtin / legacy snapshot) → activeLocalSkillDir is undefined', () => {
     const builtin = augmentRequestBody(JSON.stringify({
       prompt: '帮我生成本周周报',
       parent_message_id: null,

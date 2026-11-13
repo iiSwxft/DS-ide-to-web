@@ -73,7 +73,7 @@ describe('McpPage server row collapse', () => {
     await renderMcpPage();
 
     const recentCalls = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.includes('最近调用'),
+      (button) => button.textContent?.includes('Recent calls'),
     );
     expect(recentCalls).toBeTruthy();
     await act(async () => {
@@ -97,7 +97,7 @@ describe('McpPage discovered tool switch states', () => {
     await renderMcpPage();
 
     const row = findToolRow('Multimodal Status');
-    expect(row.textContent).toContain('自动');
+    expect(row.textContent).toContain('Auto');
     expect(toolSwitch(row).getAttribute('aria-pressed')).toBe('true');
   });
 
@@ -109,10 +109,10 @@ describe('McpPage discovered tool switch states', () => {
     await renderMcpPage();
 
     const row = findToolRow('Multimodal Status');
-    expect(row.textContent).toContain('已选择');
-    expect(row.textContent).not.toContain('自动');
+    expect(row.textContent).toContain('Selected');
+    expect(row.textContent).not.toContain('Auto');
     expect(toolSwitch(row).getAttribute('aria-pressed')).toBe('true');
-    expect(container.textContent).toContain('当前注入 0 个工具');
+    expect(container.textContent).toContain('0 tools are currently injected');
   });
 
   it('labels an unselected tool as disabled with the switch off', async () => {
@@ -124,7 +124,7 @@ describe('McpPage discovered tool switch states', () => {
     await renderMcpPage();
 
     const row = findToolRow('Multimodal Status');
-    expect(row.textContent).toContain('禁用');
+    expect(row.textContent).toContain('Disabled');
     expect(toolSwitch(row).getAttribute('aria-pressed')).toBe('false');
   });
 });

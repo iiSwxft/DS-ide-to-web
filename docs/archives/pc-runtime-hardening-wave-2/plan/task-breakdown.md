@@ -2,7 +2,7 @@
 
 ## Delivery Model
 
-本轮使用 7 个 GitHub Issue 作为验收与遥测单元，但不采用一 Issue 一 PR。所有任务进入 `codex/pc-runtime-hardening-wave-2` 集成分支，按独立 owner lane 形成可审查提交，最终由一张 batch PR 合并。Android、移动 WebView、移动构建与移动发布路径不在范围内。
+This round uses 7 GitHub Issues as acceptance and telemetry units, but does not use one Issue per PR. All tasks go into the `codex/pc-runtime-hardening-wave-2` integration branch, form reviewable commits by independent owner lane, and are finally merged through a single batch PR. Android, mobile WebView, mobile builds, and mobile release paths are out of scope.
 
 ## Task Matrix
 

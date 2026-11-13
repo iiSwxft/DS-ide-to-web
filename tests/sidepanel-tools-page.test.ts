@@ -52,13 +52,13 @@ describe('Tools page host permission controls', () => {
 
     await render();
     await flushPromises();
-    await clickButton('授权全部网站');
+    await clickButton('Grant all sites');
 
     expect(request).toHaveBeenCalledWith({ origins: ['http://*/*', 'https://*/*'] });
     expect(sendMessage).not.toHaveBeenCalledWith(expect.objectContaining({
       type: 'REQUEST_HOST_PERMISSION',
     }));
-    expect(container.textContent).toContain('权限被拒绝，请重试或前往 chrome://extensions 手动添加');
+    expect(container.textContent).toContain('Permission denied. Try again or add access manually in chrome://extensions.');
   });
 });
 

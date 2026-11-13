@@ -49,24 +49,24 @@ describe('renderInlineMarkdown', () => {
     // an empty row between every paragraph/list item (the "blank line between
     // every row" rendering bug).
     const html = renderInlineMarkdown([
-      '现在我已经获取了足够的搜索结果。让我从这些结果中提炼出最重要的科技新闻。',
+      'I have now gathered enough search results. Let me distill the most important tech news from them.',
       '',
-      '从搜索结果中，我可以看到当天有几个重大科技新闻：',
+      'From the search results, I can see several major tech stories that day:',
       '',
-      '1. 远景科技集团的乌兰察布星河基地投产。',
+      "1. Envision Group's Ulanqab Galaxy base has gone into production.",
       '',
-      '2. 谷歌AI部门发生重大调整。',
+      "2. Google's AI division undergoes a major reorganization.",
       '',
-      '3. 新华网报道了中国的一些科技进展。',
+      '3. Xinhua reported on some tech progress in China.',
     ].join('\n'));
 
     expect(html).not.toContain('<br><br>');
     // Paragraphs are <p> blocks; blank lines produce no <br> at all.
     expect(html).not.toContain('<br>');
-    expect(html).toContain('</p><p>从搜索结果中，我可以看到当天有几个重大科技新闻：</p>');
+    expect(html).toContain('</p><p>From the search results, I can see several major tech stories that day:</p>');
     // Ordered list rows wrap in one <ol> (native markdown semantics), with no
     // <br> between items.
-    expect(html).toContain('<ol><li>远景科技集团的乌兰察布星河基地投产。</li><li>谷歌AI部门发生重大调整。</li><li>新华网报道了中国的一些科技进展。</li></ol>');
+    expect(html).toContain("<ol><li>Envision Group's Ulanqab Galaxy base has gone into production.</li><li>Google's AI division undergoes a major reorganization.</li><li>Xinhua reported on some tech progress in China.</li></ol>");
   });
 
   it('preserves intentional single line breaks inside fenced code blocks', () => {
@@ -86,17 +86,17 @@ describe('renderInlineMarkdown', () => {
     // \r\n\r\n must be collapsed just like \n\n — the \r characters must not
     // defeat the blank-line collapse and re-introduce blank rows.
     const html = renderInlineMarkdown([
-      '第一行。',
+      'First line.',
       '',
-      '第二行。',
+      'Second line.',
       '',
-      '第三行。',
+      'Third line.',
     ].join('\r\n'));
 
     expect(html).not.toContain('<br><br>');
     expect(html).not.toContain('\r');
     expect(html).not.toContain('<br>');
-    expect(html).toContain('<p>第一行。</p><p>第二行。</p><p>第三行。</p>');
+    expect(html).toContain('<p>First line.</p><p>Second line.</p><p>Third line.</p>');
   });
 
   it('renders agent-mode ATX headings with the correct level', () => {
@@ -104,48 +104,48 @@ describe('renderInlineMarkdown', () => {
     // own markdown renderer renders them as headings, so the inline agent
     // panel must match (Issue: agent panel blank-line rendering).
     const html = renderInlineMarkdown([
-      '五、核心博弈：三大矛盾',
+      'V. Core contest: three major contradictions',
       '',
-      '#### 1. 🟢 云计算超级周期 vs. 🔴 天量资本开支',
-      '谷歌云同比增长82%，积压订单$5,140亿，营业利润率35.6%',
+      '#### 1. 🟢 Cloud computing supercycle vs. 🔴 Massive capex',
+      'Google Cloud grew 82% year over year, backlog $514 billion, operating margin 35.6%',
       '',
-      '但资本开支翻倍至$2,000亿级别，自由现金流转负',
+      'But capex doubled to the $200 billion level and free cash flow turned negative',
       '',
     ].join('\n'));
 
-    expect(html).toContain('<h4>1. 🟢 云计算超级周期 vs. 🔴 天量资本开支</h4>');
+    expect(html).toContain('<h4>1. 🟢 Cloud computing supercycle vs. 🔴 Massive capex</h4>');
     // Block elements are siblings — no <br> stacked on <h4> (that double line
     // break is the "blank line between every row" rendering bug).
-    expect(html).toContain('</p><h4>1. 🟢 云计算超级周期 vs. 🔴 天量资本开支</h4>');
-    expect(html).toContain('</h4><p>谷歌云同比增长82%');
+    expect(html).toContain('</p><h4>1. 🟢 Cloud computing supercycle vs. 🔴 Massive capex</h4>');
+    expect(html).toContain('</h4><p>Google Cloud grew 82%');
     expect(html).not.toContain('#### 1.');
     expect(html).not.toContain('<br>');
   });
 
   it('renders ordered and unordered list items', () => {
     const html = renderInlineMarkdown([
-      '要点：',
+      'Key points:',
       '',
-      '1. 第一点。',
-      '2. 第二点。',
+      '1. First point.',
+      '2. Second point.',
       '',
-      '- 补充一。',
-      '- 补充二。',
+      '- Addition one.',
+      '- Addition two.',
     ].join('\n'));
 
-    expect(html).toContain('<li>第一点。</li>');
-    expect(html).toContain('<li>第二点。</li>');
-    expect(html).toContain('<li>补充一。</li>');
-    expect(html).toContain('<li>补充二。</li>');
-    expect(html).not.toContain('1. 第一点');
-    expect(html).not.toContain('- 补充一');
+    expect(html).toContain('<li>First point.</li>');
+    expect(html).toContain('<li>Second point.</li>');
+    expect(html).toContain('<li>Addition one.</li>');
+    expect(html).toContain('<li>Addition two.</li>');
+    expect(html).not.toContain('1. First point');
+    expect(html).not.toContain('- Addition one');
   });
 
   it('renders blockquote lines', () => {
-    const html = renderInlineMarkdown('> 引用内容。\n\n正文。');
+    const html = renderInlineMarkdown('> Quoted content.\n\nBody.');
 
-    expect(html).toContain('<blockquote>引用内容。</blockquote>');
-    expect(html).toContain('正文。');
+    expect(html).toContain('<blockquote>Quoted content.</blockquote>');
+    expect(html).toContain('Body.');
   });
 
   it('renders 4-backtick fences and keeps 3-backtick runs as content', () => {

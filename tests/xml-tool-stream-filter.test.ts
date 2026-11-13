@@ -83,9 +83,9 @@ describe('XmlToolStreamFilter', () => {
 
   it('collapses blank lines around a stripped tool call instead of stacking \\n\\n\\n\\n', () => {
     // DeepSeek agent-mode output separates tool calls with blank lines on
-    // both sides: `前文\n\n<tool_call>...</tool_call>\n\n后文`. Stripping only
-    // the XML tags must leave a single paragraph break (`前文\n\n后文`), not
-    // `前文\n\n\n\n后文` (the "blank line between every row" rendering bug on
+    // both sides: `Before\n\n<tool_call>...</tool_call>\n\nAfter`. Stripping only
+    // the XML tags must leave a single paragraph break (`Before\n\nAfter`), not
+    // `Before\n\n\n\nAfter` (the "blank line between every row" rendering bug on
     // the DeepSeek page).
     const payload = JSON.stringify({
       filename: 'blank-line.html',
@@ -93,45 +93,45 @@ describe('XmlToolStreamFilter', () => {
       language: 'html',
     });
     const output = runFilter([
-      sseText('现在我已经获取了足够的搜索结果。\n\n'),
+      sseText('I now have enough search results.\n\n'),
       sseText('<artifact_create>'),
       sseText(payload),
       sseText('</artifact_create>\n\n'),
-      sseText('从搜索结果中，我可以看到当天有几个重大科技新闻：\n\n1. 远景科技集团\n\n2. 谷歌AI部门'),
+      sseText('From the search results, I can see several major tech news stories that day:\n\n1. Horizon Tech Group\n\n2. Google AI division'),
     ]);
 
     expect(output).not.toContain('artifact_create');
     expect(output).not.toContain('<p>hi</p>');
     expect(readVisibleText(output)).toBe(
-      '现在我已经获取了足够的搜索结果。\n\n' +
-      '从搜索结果中，我可以看到当天有几个重大科技新闻：\n\n' +
-      '1. 远景科技集团\n\n2. 谷歌AI部门',
+      'I now have enough search results.\n\n' +
+      'From the search results, I can see several major tech news stories that day:\n\n' +
+      '1. Horizon Tech Group\n\n2. Google AI division',
     );
   });
 
   it('collapses blank lines between consecutive stripped tool calls', () => {
     const payload = JSON.stringify({ filename: 'two.html', content: '<p>x</p>', language: 'html' });
     const output = runFilter([
-      sseText('第一段。\n\n<artifact_create>'),
+      sseText('First paragraph.\n\n<artifact_create>'),
       sseText(payload),
       sseText('</artifact_create>\n\n<artifact_create>'),
       sseText(payload),
-      sseText('</artifact_create>\n\n第二段。\n\n第三段。'),
+      sseText('</artifact_create>\n\nSecond paragraph.\n\nThird paragraph.'),
     ]);
 
-    expect(readVisibleText(output)).toBe('第一段。\n\n第二段。\n\n第三段。');
+    expect(readVisibleText(output)).toBe('First paragraph.\n\nSecond paragraph.\n\nThird paragraph.');
     expect(readVisibleText(output)).not.toContain('\n\n\n');
   });
 
   it('keeps a single blank line when only one side of the tool call is blank', () => {
     const payload = JSON.stringify({ filename: 'one-side.html', content: '<p>x</p>', language: 'html' });
     const output = runFilter([
-      sseText('前文。\n\n<artifact_create>'),
+      sseText('Before.\n\n<artifact_create>'),
       sseText(payload),
-      sseText('</artifact_create>后文。'),
+      sseText('</artifact_create>After.'),
     ]);
 
-    expect(readVisibleText(output)).toBe('前文。\n\n后文。');
+    expect(readVisibleText(output)).toBe('Before.\n\nAfter.');
   });
 
   it('collapses excess blank lines already flushed before a tool call opens', () => {
@@ -140,31 +140,31 @@ describe('XmlToolStreamFilter', () => {
     // trailing blank lines must still collapse to a single paragraph break.
     const payload = JSON.stringify({ filename: 'flush.html', content: '<p>x</p>', language: 'html' });
     const output = runFilter([
-      sseText('最后一步的思考。\n\n\n'),
+      sseText('Thoughts on the last step.\n\n\n'),
       sseText('<artifact_create>'),
       sseText(payload),
       sseText('</artifact_create>\n\n'),
-      sseText('最终答案：\n\n1. 第一点。\n\n2. 第二点。'),
+      sseText('Final answer:\n\n1. First point.\n\n2. Second point.'),
     ]);
 
     const visible = readVisibleText(output);
     expect(visible).toBe(
-      '最后一步的思考。\n\n' +
-      '最终答案：\n\n1. 第一点。\n\n2. 第二点。',
+      'Thoughts on the last step.\n\n' +
+      'Final answer:\n\n1. First point.\n\n2. Second point.',
     );
     expect(visible).not.toContain('\n\n\n');
   });
 
   it('collapses excess blank lines in plain text while preserving fenced code blocks', () => {
     const output = runFilter([
-      sseText('第一段。\n\n\n第二段。\n\n\n```\nline one\n\n\nline two\n```\n\n\n结束。'),
+      sseText('First paragraph.\n\n\nSecond paragraph.\n\n\n```\nline one\n\n\nline two\n```\n\n\nThe end.'),
     ]);
 
     const visible = readVisibleText(output);
-    expect(visible).toContain('第一段。\n\n第二段。');
+    expect(visible).toContain('First paragraph.\n\nSecond paragraph.');
     expect(visible).toContain('```\nline one\n\n\nline two\n```');
-    expect(visible).toContain('```\n\n结束。');
-    expect(visible).not.toContain('第二段。\n\n\n```');
+    expect(visible).toContain('```\n\nThe end.');
+    expect(visible).not.toContain('Second paragraph.\n\n\n```');
   });
 
   it('keeps fenced-code blank lines intact when the fence spans SSE frames', () => {
@@ -173,8 +173,8 @@ describe('XmlToolStreamFilter', () => {
     // Frame-local fence tracking collapsed these interior blank lines; the
     // cross-frame fence state must preserve them.
     const output = runFilter([
-      sseText('代码示例：\n```python\ndef a():\n    pass'),
-      sseText('\n\n\ndef b():\n    pass\n```\n结束。'),
+      sseText('Code example:\n```python\ndef a():\n    pass'),
+      sseText('\n\n\ndef b():\n    pass\n```\nThe end.'),
     ]);
 
     const visible = readVisibleText(output);
@@ -197,12 +197,12 @@ describe('XmlToolStreamFilter', () => {
     // collapse: a `\n\n\n` run in a later frame, with no fence open, still
     // collapses to a single paragraph break.
     const output = runFilter([
-      sseText('第一段。'),
-      sseText('\n\n\n第二段。\n\n\n第三段。'),
+      sseText('First paragraph.'),
+      sseText('\n\n\nSecond paragraph.\n\n\nThird paragraph.'),
     ]);
 
     const visible = readVisibleText(output);
-    expect(visible).toBe('第一段。\n\n第二段。\n\n第三段。');
+    expect(visible).toBe('First paragraph.\n\nSecond paragraph.\n\nThird paragraph.');
     expect(visible).not.toContain('\n\n\n');
   });
 
@@ -210,13 +210,13 @@ describe('XmlToolStreamFilter', () => {
     // After the closing fence, a later `\n\n\n` prose run must collapse again.
     const output = runFilter([
       sseText('```\ncode\n\n\ninside\n```'),
-      sseText('\n\n\n后续段落。'),
+      sseText('\n\n\nFollowing paragraph.'),
     ]);
 
     const visible = readVisibleText(output);
     expect(visible).toContain('```\ncode\n\n\ninside\n```');
-    expect(visible).toContain('```\n\n后续段落。');
-    expect(visible).not.toContain('inside\n```\n\n\n后续段落。');
+    expect(visible).toContain('```\n\nFollowing paragraph.');
+    expect(visible).not.toContain('inside\n```\n\n\nFollowing paragraph.');
   });
 });
 

@@ -73,7 +73,7 @@ describe('sync configuration codec and store', () => {
   it('migrates on explicit save, increments one in-key revision, and rejects stale writers', async () => {
     const storage = new MemorySyncConfigStorage(LEGACY_WEBDAV);
     const store = createSyncConfigStore(storage, {
-      conflictMessage: () => '配置已变化',
+      conflictMessage: () => 'Configuration has changed',
     });
     const loaded = (await store.read())!;
     const loadedConfig = requireWebdav(loaded.config);
@@ -97,7 +97,7 @@ describe('sync configuration codec and store', () => {
     }, loaded.revision))).rejects.toMatchObject({
       name: 'SyncConfigConflictError',
       code: 'sync_config_conflict',
-      message: '配置已变化',
+      message: 'Configuration has changed',
       expectedRevision: 0,
       currentRevision: 1,
     });

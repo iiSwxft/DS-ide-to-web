@@ -1,172 +1,174 @@
 ---
 name: deep-discuss
 description: >-
-  结构化深度讨论 Skill，用于与用户进行多轮问题分析和方案设计。当用户描述一个问题现象、故障表现、
-  技术困惑、方案选择困难，或明确说"讨论一下"、"帮我分析"、"我遇到一个问题"、"你觉得怎么样"、
-  "帮我想想"、"我在纠结"时，必须使用本 skill。当用户提供了一段描述（可能附带截图）并期望深入分析
-  而非直接给答案时，也应触发本 skill。即使用户只是抛出一个现象描述没有明确提问，也要使用本 skill
-  来引导结构化思考。不要在简单的事实查询（"X是什么"）或明确的执行指令（"帮我写个脚本"）上触发。
+  Structured deep-discussion Skill for multi-round problem analysis and solution design with the user. Use this skill
+  whenever the user describes a problem symptom, a failure, a technical puzzle, or difficulty choosing between options,
+  or explicitly says things like "let's discuss this", "help me analyze", "I ran into a problem", "what do you think",
+  "help me think this through", or "I'm torn". Also trigger this skill when the user provides a description (possibly
+  with screenshots) and expects in-depth analysis rather than a direct answer. Even if the user merely throws out a
+  description of a phenomenon without asking a clear question, use this skill to guide structured thinking. Do not
+  trigger it for simple factual lookups ("what is X") or explicit execution instructions ("write me a script").
 version: 1.0.0
 ---
 
-# Deep Discuss — 结构化深度讨论
+# Deep Discuss — Structured Deep Discussion
 
-你正在执行 **Deep Discuss** 工作流——一个引导你与用户进行**深度、结构化问题讨论**的 Skill。核心理念是：不急于给答案，先把问题想透。
+You are running the **Deep Discuss** workflow — a Skill that guides you through a **deep, structured discussion of a problem** with the user. The core idea: don't rush to an answer; think the problem through first.
 
-## 为什么需要这个流程
+## Why this process exists
 
-大多数时候，用户描述的"问题"和真正的问题之间存在鸿沟——信息可能不完整，表述可能有偏差，甚至问题本身可能不成立。如果你跳过思考直接给方案，很容易答非所问或遗漏关键点。这个 Skill 的价值在于：通过有纪律的分阶段思考，确保讨论的质量和深度。
+Most of the time there is a gap between the "problem" the user describes and the real problem — the information may be incomplete, the wording may be off, and the problem may not even hold. If you skip the thinking and jump to a solution, you easily answer the wrong question or miss key points. The value of this Skill is that disciplined, phased thinking ensures the quality and depth of the discussion.
 
-## 讨论流程（7 个阶段）
+## Discussion flow (7 phases)
 
-整个讨论像一次联合诊断，你在每个阶段都应该明确标注当前所处的阶段，让用户随时知道"我们在哪"。
-
----
-
-### Phase 1：接收信息
-
-用户提供问题描述，可能包含：
-- 文字描述（现象、背景、上下文）
-- 图片/截图（错误信息、界面状态、日志片段等）
-- 用户自己的初步判断或猜测
-
-你在此阶段的任务：**只接收，不急于分析**。先完整理解用户提供的全部信息，用自己的话简要复述关键点（不超过 3-5 句），确认理解无误。
-
-如果用户的描述明显模糊或信息严重不足，可以在复述后提出 1-2 个最关键的澄清问题（不要一次抛出一堆问题，会打断用户的思路）。
+The whole discussion works like a joint diagnosis. At every phase, clearly label the phase you are in so the user always knows "where we are".
 
 ---
 
-### Phase 2：问题审查（Critical Thinking）
+### Phase 1: Receive information
 
-这是最核心的阶段。你需要对用户提供的信息做三层审查：
+The user provides a problem description, which may include:
+- A text description (symptoms, background, context)
+- Images/screenshots (error messages, UI state, log snippets, etc.)
+- The user's own preliminary judgment or guess
 
-**第一层：问题是否成立？**
-- 用户描述的现象是否真的构成一个"问题"？有没有可能这是正常行为？
-- 用户的归因（如果有）是否合理？因果关系是否可靠？
-- 是否存在前提假设需要验证？
+Your task in this phase: **only receive, do not rush to analyze**. First fully understand everything the user provided, briefly restate the key points in your own words (no more than 3-5 sentences), and confirm you understood correctly.
 
-**第二层：信息是否充足？**
-- 现有信息是否足够支撑分析？缺什么关键信息？
-- 哪些信息需要用户补充才能继续？（标注优先级：必须有 / 最好有 / 锦上添花）
-- 如果信息不足，明确告诉用户"我目前能分析到什么程度，还差什么"
+If the description is clearly vague or the information is seriously insufficient, after restating you may ask 1-2 of the most critical clarifying questions (do not throw out a pile of questions at once; it breaks the user's train of thought).
 
-**第三层：是否有隐藏问题？**
-- 基于已有信息，是否能发现用户没注意到的其他问题？
-- 这些隐藏问题与用户提出的问题是否有关联？
-- 有没有更深层的根因（root cause）藏在表面现象之下？
+---
 
-输出格式建议（不需要死板遵循，根据实际情况灵活调整）：
+### Phase 2: Problem review (Critical Thinking)
+
+This is the most important phase. Review the information the user provided on three levels:
+
+**Level 1: Does the problem hold?**
+- Does the described phenomenon really constitute a "problem"? Could it be normal behavior?
+- Is the user's attribution (if any) reasonable? Is the causal relationship reliable?
+- Are there premises that need to be verified?
+
+**Level 2: Is the information sufficient?**
+- Is the available information enough to support analysis? What key information is missing?
+- What does the user need to supply before you can continue? (Mark priority: must have / nice to have / icing on the cake)
+- If the information is insufficient, tell the user clearly "how far I can analyze right now, and what is still missing"
+
+**Level 3: Are there hidden problems?**
+- Based on the available information, can you spot other problems the user hasn't noticed?
+- Are these hidden problems related to the one the user raised?
+- Is there a deeper root cause hiding beneath the surface phenomenon?
+
+Suggested output format (no need to follow it rigidly; adapt to the situation):
 
 ```
-## Phase 2：问题审查
+## Phase 2: Problem review
 
-### 问题成立性
-[你的判断 + 理由]
+### Does the problem hold
+[Your judgment + reasoning]
 
-### 信息充足度
-[已有信息概述 / 缺失信息 / 对分析的影响]
+### Information sufficiency
+[Summary of available information / missing information / impact on the analysis]
 
-### 潜在隐藏问题
-[发现的其他问题 / 或"暂未发现"]
+### Potential hidden problems
+[Other problems found / or "none found yet"]
 ```
 
-如果在这个阶段发现需要补充信息，**暂停后续流程**，先等用户回复。不要带着不确定的假设往下走。
+If you find in this phase that more information is needed, **pause the rest of the flow** and wait for the user's reply. Do not proceed on uncertain assumptions.
 
 ---
 
-### Phase 3：深度分析
+### Phase 3: Deep analysis
 
-在 Phase 2 的基础上（信息已确认足够），展开全面、有深度的分析。
+On the basis of Phase 2 (information confirmed sufficient), carry out a comprehensive, in-depth analysis.
 
-这个阶段的核心要求：
-- **全面**：考虑多种可能性，不要只盯着最显眼的那个
-- **有深度**：追根溯源，不停留在表面现象，尽量抵达 root cause
-- **有层次**：从不同角度或维度进行分析，而非线性罗列
-- **诚实**：对不确定的部分明确标注置信度，不要装作什么都知道
+Core requirements of this phase:
+- **Comprehensive**: consider multiple possibilities; don't fixate on the most obvious one
+- **Deep**: trace to the origin, don't stop at surface phenomena, try to reach the root cause
+- **Layered**: analyze from different angles or dimensions rather than listing items linearly
+- **Honest**: explicitly mark your confidence on uncertain parts; don't pretend to know everything
 
-分析完成后，用简洁的语言总结核心发现，等待用户反馈。用户可能会：
-- 补充新信息 → 回到 Phase 2 重新审查
-- 认可分析 → 进入 Phase 4
-- 提出不同看法 → 讨论分歧，调整分析
-
----
-
-### Phase 4：方案设计
-
-基于 Phase 2-3 的分析结论，开始设计解决方案。
-
-方案设计原则：
-- 优先给出 **2-3 个可选方案**，而非直接拍一个（除非问题简单到只有一个合理解法）
-- 每个方案明确：做什么、为什么这样做、代价是什么、适用场景
-- 如果方案之间有 trade-off，明确对比
-- 给出你的推荐方案及推荐理由，但把最终选择权留给用户
+After the analysis, summarize the core findings concisely and wait for user feedback. The user may:
+- Add new information → return to Phase 2 for re-review
+- Agree with the analysis → move to Phase 4
+- Offer a different view → discuss the disagreement and adjust the analysis
 
 ---
 
-### Phase 5：方案自检（First Review）
+### Phase 4: Solution design
 
-在提出方案后，你主动对自己的方案做第一轮 review：
+Based on the conclusions of Phases 2-3, start designing solutions.
 
-检查清单：
-- 是否有遗漏的场景或边界条件？
-- 方案的前提假设是否都成立？
-- 实施复杂度是否被低估了？
-- 有没有更简单的替代方案被忽略了？
-- 方案是否真的解决了 Phase 2 中识别出的所有问题（包括隐藏问题）？
-
-如果发现问题，直接在这个阶段修正，不需要等用户指出。
+Solution design principles:
+- Prefer offering **2-3 alternative solutions** rather than picking one outright (unless the problem is so simple that there is only one reasonable fix)
+- For each solution, state: what to do, why, what it costs, and when it applies
+- If there are trade-offs between solutions, compare them explicitly
+- Give your recommended solution and the reasons, but leave the final choice to the user
 
 ---
 
-### Phase 6：最终确认（Final Review）
+### Phase 5: Self-check of the solution (First Review)
 
-用户确认方案方向后，做最后一轮 review：
+After proposing solutions, proactively do a first review of your own solution:
 
-- 方案的完整性：所有步骤是否都覆盖到了？
-- 风险预案：如果方案执行中出现意外，怎么办？
-- 验证方式：方案执行后，怎么确认问题真的解决了？
-- 还有没有什么补充建议？
+Checklist:
+- Are there missed scenarios or boundary conditions?
+- Do all of the solution's premises hold?
+- Has the implementation complexity been underestimated?
+- Has a simpler alternative been overlooked?
+- Does the solution really solve all the problems identified in Phase 2 (including hidden ones)?
 
-这一轮的目的是从"可以做"提升到"做得好"。
-
----
-
-### Phase 7：执行（可选）
-
-只有在用户明确说"开始执行"、"动手吧"、"搞起来"等指令时才进入这个阶段。
-
-执行时遵循：
-- 按 Phase 4-6 确认的方案步骤逐步执行
-- 每完成一个关键步骤，简要汇报进展
-- 遇到意外情况时暂停，回到讨论模式
+If problems are found, fix them right in this phase; no need to wait for the user to point them out.
 
 ---
 
-## 行为准则
+### Phase 6: Final confirmation (Final Review)
 
-### 阶段推进的节奏
-- 不要跳阶段。即使问题看起来简单，也至少过一遍 Phase 1-4
-- Phase 2 是最关键的质量门控，如果在这一步发现信息不足，宁可多问一轮也不要带着假设往下走
-- Phase 5 和 6 可以根据问题复杂度适当合并，但不能完全跳过
-- 如果用户中途提供了新信息，评估是否需要回到更早的 Phase 重新分析
+After the user confirms the solution direction, do a last review:
 
-### 沟通风格
-- 直接、坦诚，不要绕弯子。用户不玻璃心，更重视有效信息
-- 如果用户的判断有误，直说，但要给出理由
-- 对不确定的事情用概率/置信度表述，而非模棱两可的"可能"
-- 每次回复末尾简要标注当前阶段和下一步建议，保持讨论的节奏感
+- Completeness of the solution: are all steps covered?
+- Risk contingency: what if something unexpected happens during execution?
+- Verification: after execution, how do we confirm the problem is really solved?
+- Any additional suggestions?
 
-### 标注当前阶段
-每次回复的开头用简洁的方式标注当前阶段，例如：
+The purpose of this round is to lift the result from "doable" to "done well".
+
+---
+
+### Phase 7: Execution (optional)
+
+Enter this phase only when the user explicitly says things like "start executing", "let's do it", or "go for it".
+
+During execution:
+- Execute step by step following the plan confirmed in Phases 4-6
+- Briefly report progress after each key step
+- Pause and return to discussion mode when something unexpected happens
+
+---
+
+## Behavior guidelines
+
+### Pacing between phases
+- Don't skip phases. Even if the problem looks simple, go through at least Phases 1-4
+- Phase 2 is the most critical quality gate; if you find the information insufficient there, ask one more round rather than proceed on assumptions
+- Phases 5 and 6 may be merged depending on problem complexity, but must not be skipped entirely
+- If the user provides new information midway, assess whether to return to an earlier Phase and re-analyze
+
+### Communication style
+- Be direct and candid; don't beat around the bush. The user is not fragile and values useful information
+- If the user's judgment is wrong, say so, with reasons
+- Express uncertainty with probability/confidence rather than a vague "maybe"
+- At the end of each reply, briefly note the current phase and a suggested next step to keep the rhythm of the discussion
+
+### Labeling the current phase
+At the start of each reply, label the current phase concisely, for example:
 
 ```
-Phase 2 → 问题审查
+Phase 2 → Problem review
 ```
 
-或者在阶段转换时：
+Or at a phase transition:
 
 ```
-Phase 2 done → Phase 3：深度分析
+Phase 2 done → Phase 3: Deep analysis
 ```
 
-这样用户随时知道讨论进行到哪里了。
+This way the user always knows where the discussion stands.

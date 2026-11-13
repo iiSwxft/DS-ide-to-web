@@ -373,7 +373,7 @@ describe('local Skill importer', () => {
       'description: BOM-safe import',
       '---',
       '',
-      '# 参考材料写作',
+      '# Reference Material Writing',
       '',
       'body',
     ].join('\n');
@@ -417,7 +417,8 @@ describe('local Skill importer', () => {
 
   it('falls back to a hash slug when only a non-ASCII name is available (issue #296)', async () => {
     // No `name:` field, Chinese H1 title, Chinese directory — every source
-    // slug is non-ASCII. The importer must not throw; it derives a stable
+    // slug is non-ASCII (the Chinese strings below are intentional test input
+    // for non-ASCII name handling). The importer must not throw; it derives a stable
     // `skill-<hash>` slug so the user can rename it later.
     const content = ['---', 'description: 中文 only', '---', '', '# 参考材料写作', '', 'body'].join('\n');
     vi.mocked(executeMcpToolCall).mockResolvedValueOnce({
@@ -460,7 +461,7 @@ describe('local Skill importer', () => {
 
   describe('relocateLocalSkillSource', () => {
     it('relocates a local Skill source to a renamed folder while preserving the source id', async () => {
-      // 先正常导入，使 source 落盘（provider=local，id 由 rootPath 推导）。
+      // Import normally first so the source is persisted (provider=local, id derived from rootPath).
       const imported = await importLocalSkillSource({
         rootPath: '/Users/me/.codex/skills/demo',
         selectedPaths: ['SKILL.md'],
@@ -469,7 +470,7 @@ describe('local Skill importer', () => {
       const originalId = imported.source.id;
       expect(originalId).toBe('local:/Users/me/.codex/skills/demo');
 
-      // 用户重新选择了改名后的文件夹。
+      // The user re-selects the renamed folder.
       vi.mocked(executeMcpToolCall).mockResolvedValueOnce(
         createLocalSkillToolResultAt('/Users/me/.codex/skills/demo-renamed'),
       );
@@ -478,7 +479,7 @@ describe('local Skill importer', () => {
       expect(relocated.ok).toBe(true);
       if (!relocated.ok) throw new Error(relocated.error);
 
-      // 关键不变量：原地更新、保留原 source.id，激活引用 / 禁用状态 / 用户设置不断裂。
+      // Key invariant: update in place and keep the original source.id so activation references / disabled state / user settings stay intact.
       expect(relocated.source.id).toBe(originalId);
       expect(relocated.source.rootPath).toBe('/Users/me/.codex/skills/demo-renamed');
       expect(relocated.source.displayName).toBe('demo-renamed');
@@ -509,7 +510,7 @@ describe('local Skill importer', () => {
       });
       expectImportSuccess(imported);
 
-      // 新文件夹里只有 nested/SKILL.md，没有原来选中的 SKILL.md。
+      // The new folder only has nested/SKILL.md, not the originally selected SKILL.md.
       vi.mocked(executeMcpToolCall).mockResolvedValueOnce(createNestedLocalSkillToolResult());
 
       await expect(
@@ -526,7 +527,7 @@ describe('local Skill importer', () => {
       });
       expectImportSuccess(imported);
 
-      // 原文件夹被挪动：preview 返回空 skills → loadLocalSkillSource 抛 "No SKILL.md was found"。
+      // Original folder was moved: preview returns empty skills -> loadLocalSkillSource throws "No SKILL.md was found".
       vi.mocked(executeMcpToolCall).mockResolvedValueOnce({
         ok: true,
         summary: 'MCP tool executed',
@@ -543,7 +544,7 @@ describe('local Skill importer', () => {
         },
       });
 
-      // 关键：不抛异常，返回 ok:false，使 UI 进入 !response.ok 分支触发 relocate。
+      // Key: do not throw; return ok:false so the UI enters the !response.ok branch and triggers relocate.
       await expect(updateLocalSkillSource(imported.source.id)).resolves.toMatchObject({
         ok: false,
         error: expect.stringContaining('No SKILL.md was found'),

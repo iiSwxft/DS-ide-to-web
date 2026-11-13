@@ -654,6 +654,7 @@ function sanitizeInlineAgentContinuationMessage(msg: any) {
 
 function isInternalManagedAgentContent(content: string): boolean {
   if (content.includes(DPP_MANAGED_AGENT_PROMPT_MARKER)) return true;
+  // Chinese marker kept: matches legacy managed-runner prompts already stored in chat history.
   if (content.includes('DeepSeek++ 托管 Agent Runner') && content.includes('<tool_results>')) return true;
   if (isInlineAgentContinuationPrompt(content)) return true;
   return content.includes('Tool call format reminder:') &&

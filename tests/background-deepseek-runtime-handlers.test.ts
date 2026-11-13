@@ -258,10 +258,10 @@ describe('interactive chat coordinator', () => {
     vi.mocked(dependencies.submitWebPrompt).mockImplementationOnce(
       (_input, callbacks) => {
         captured = callbacks;
-        callbacks.onReasoningChunk?.('我', '我');
-        callbacks.onReasoningChunk?.('先分析', '我先分析');
-        callbacks.onTextChunk?.('答案', '答案');
-        return Promise.resolve(modelTurn('答案', 101));
+        callbacks.onReasoningChunk?.('I', 'I');
+        callbacks.onReasoningChunk?.(' analyze first', 'I analyze first');
+        callbacks.onTextChunk?.('Answer', 'Answer');
+        return Promise.resolve(modelTurn('Answer', 101));
       },
     );
     const service = createChatRuntimeService(dependencies);
@@ -272,18 +272,18 @@ describe('interactive chat coordinator', () => {
     expect(captured?.onReasoningChunk).toBeDefined();
     expect(dependencies.broadcastChunk).toHaveBeenNthCalledWith(1, {
       text: '',
-      reasoningText: '我',
+      reasoningText: 'I',
       done: false,
       phase: 'reasoning',
     }, 17);
     expect(dependencies.broadcastChunk).toHaveBeenNthCalledWith(2, {
       text: '',
-      reasoningText: '先分析',
+      reasoningText: ' analyze first',
       done: false,
       phase: 'reasoning',
     }, 17);
     expect(dependencies.broadcastChunk).toHaveBeenNthCalledWith(3, {
-      text: '答案',
+      text: 'Answer',
       done: false,
       phase: 'answer',
     }, 17);

@@ -60,7 +60,7 @@ describe('runtime externalized tool payloads', () => {
     const callId = 'call-artifact-1';
     const payloadText = JSON.stringify({
       filename: 'reports/long.md',
-      content: '# Report\n' + '内容段落\n'.repeat(20000),
+      content: '# Report\n' + 'Content paragraph\n'.repeat(20000),
       mimeType: 'text/markdown',
     });
 

@@ -126,6 +126,7 @@ describe('active DeepSeek protocol codecs', () => {
     ]);
   });
 
+  // '你好' is intentional multi-byte UTF-8 test input: every byte split point must decode identically.
   it('decodes every UTF-8 split point with stable ids, usage, and FINISHED state', () => {
     const wire = [
       'event: ready\ndata: {"requestMessageId":"10","response_message_id":11,"model_type":"vision"}',

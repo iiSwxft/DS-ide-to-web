@@ -85,8 +85,8 @@ describe('i18n translation', () => {
     const resolved = resolveMessage('fr-FR', 'app.tabs.chat');
 
     expect(resolved).toEqual({
-      value: '对话',
-      locale: 'zh-CN',
+      value: 'Chat',
+      locale: 'en',
       fallback: true,
     });
   });
@@ -147,10 +147,10 @@ describe('i18n locale preference resolution', () => {
     });
   });
 
-  it('falls back to zh-CN when auto has no supported browser language', () => {
+  it('falls back to the default locale (en) when auto has no supported browser language', () => {
     expect(resolveLocalePreference('auto', ['fr-FR', 'ja-JP'])).toMatchObject({
       preference: 'auto',
-      locale: 'zh-CN',
+      locale: 'en',
       fallback: true,
     });
   });

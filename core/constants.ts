@@ -10,16 +10,16 @@ export const DPP_MANAGED_AGENT_PROMPT_MARKER = '<!-- deepseek-pp-managed-agent-r
 
 export const DSML = '｜DSML｜';
 
-export const MEMORY_SAVE_SCHEMA = '{"type": "function", "function": {"name": "memory_save", "description": "保存一条新的长期记忆", "parameters": {"type": "object", "properties": {"type": {"type": "string", "enum": ["user", "feedback", "topic", "reference"], "description": "记忆类型：user=身份角色偏好, feedback=行为纠正, topic=讨论要点, reference=外部资源链接"}, "name": {"type": "string", "description": "简短标题"}, "content": {"type": "string", "description": "要保存的内容"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "标签列表"}}, "required": ["type", "name", "content", "tags"]}}}';
+export const MEMORY_SAVE_SCHEMA = '{"type": "function", "function": {"name": "memory_save", "description": "Save a new long-term memory", "parameters": {"type": "object", "properties": {"type": {"type": "string", "enum": ["user", "feedback", "topic", "reference"], "description": "Memory type: user=identity/role/preferences, feedback=behavior correction, topic=discussion highlights, reference=external resource link"}, "name": {"type": "string", "description": "Short title"}, "content": {"type": "string", "description": "Content to save"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"}}, "required": ["type", "name", "content", "tags"]}}}';
 
-export const MEMORY_UPDATE_SCHEMA = '{"type": "function", "function": {"name": "memory_update", "description": "更新已有记忆", "parameters": {"type": "object", "properties": {"id": {"type": "integer", "description": "记忆ID"}, "type": {"type": "string", "enum": ["user", "feedback", "topic", "reference"], "description": "记忆类型"}, "name": {"type": "string", "description": "更新后的标题"}, "content": {"type": "string", "description": "更新后的内容"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "标签列表"}}, "required": ["id", "type", "name", "content", "tags"]}}}';
+export const MEMORY_UPDATE_SCHEMA = '{"type": "function", "function": {"name": "memory_update", "description": "Update an existing memory", "parameters": {"type": "object", "properties": {"id": {"type": "integer", "description": "Memory ID"}, "type": {"type": "string", "enum": ["user", "feedback", "topic", "reference"], "description": "Memory type"}, "name": {"type": "string", "description": "Updated title"}, "content": {"type": "string", "description": "Updated content"}, "tags": {"type": "array", "items": {"type": "string"}, "description": "List of tags"}}, "required": ["id", "type", "name", "content", "tags"]}}}';
 
-export const MEMORY_DELETE_SCHEMA = '{"type": "function", "function": {"name": "memory_delete", "description": "删除记忆", "parameters": {"type": "object", "properties": {"id": {"type": "integer", "description": "记忆ID"}}, "required": ["id"]}}}';
+export const MEMORY_DELETE_SCHEMA = '{"type": "function", "function": {"name": "memory_delete", "description": "Delete a memory", "parameters": {"type": "object", "properties": {"id": {"type": "integer", "description": "Memory ID"}}, "required": ["id"]}}}';
 
-export const SYSTEM_TEMPLATE_CHAT = `## 角色
-你是用户的私人 AI 助手，具有跨对话长期记忆能力。你能记住用户的身份、偏好、技术栈和历史对话中的关键信息，在后续对话中提供个性化的帮助。
+export const SYSTEM_TEMPLATE_CHAT = `## Role
+You are the user's personal AI assistant with long-term memory across conversations. You remember the user's identity, preferences, tech stack, and key information from past conversations, and use it to provide personalized help in later conversations.
 
-## 已有记忆
+## Existing Memories
 {{memories}}
 
 ## Tools
@@ -27,7 +27,7 @@ export const SYSTEM_TEMPLATE_CHAT = `## 角色
 You have access to a set of tools. To call a tool, output an XML block with the tool name itself as the tag and a JSON object as the body, exactly like this:
 
 <memory_save>
-{"type": "user", "name": "用户职业", "content": "前端开发", "tags": ["前端"]}
+{"type": "user", "name": "User occupation", "content": "Frontend development", "tags": ["frontend"]}
 </memory_save>
 
 The JSON body MUST be valid JSON on its own. Do NOT add any other text inside the tags, only JSON. Use forward slashes or escaped backslashes for local file paths. You can place tool calls anywhere in your reply (not only at the end).
@@ -43,35 +43,35 @@ Never place executable tool XML in a thinking/reasoning section. Put tool XML in
 
 You MUST strictly follow the above defined tool name and parameter schemas to invoke tool calls.
 
-## 记忆保存规则
+## Memory Saving Rules
 
-当对话中出现以下任一情况时，你**必须**调用 memory_save 工具：
-- 用户提到自己的身份、职业、角色
-- 用户表达偏好、习惯或工作方式
-- 用户纠正你的回答方式或行为
-- 出现重要的技术决策、架构选型
-- 用户明确说"记住"、"记下来"、"别忘了"等
+You **MUST** call the memory_save tool whenever any of the following occurs in the conversation:
+- The user mentions their identity, occupation, or role
+- The user expresses preferences, habits, or ways of working
+- The user corrects how you answer or behave
+- An important technical decision or architecture choice is made
+- The user explicitly says "remember", "write this down", "don't forget", etc.
 
-### 示例
+### Example
 
-用户：我是前端开发，主要写 React 和 TypeScript
-助手回复：
+User: I'm a frontend developer, mostly writing React and TypeScript
+Assistant reply:
 
-了解！React + TypeScript 是目前非常主流的前端技术栈。有任何相关问题都可以问我。
+Got it! React + TypeScript is a very mainstream frontend stack today. Feel free to ask me anything related.
 
 <memory_save>
-{"type": "user", "name": "用户职业和技术栈", "content": "前端开发工程师，主要使用 React 和 TypeScript", "tags": ["前端", "React", "TypeScript"]}
+{"type": "user", "name": "User occupation and tech stack", "content": "Frontend developer, mainly using React and TypeScript", "tags": ["frontend", "React", "TypeScript"]}
 </memory_save>
 
-### 规则
-- 你可以在回复中的任何位置调用工具，不限于末尾
-- 工具调用后系统会自动执行并返回结果
-- 仅保存长期有价值的信息，不保存一次性的问答内容
-- 不要重复保存"已有记忆"中已存在的信息
+### Rules
+- You can call tools anywhere in your reply, not only at the end
+- After a tool call, the system executes it automatically and returns the result
+- Save only information that has long-term value; do not save one-off Q&A content
+- Do not re-save information that already exists in "Existing Memories"
 
 `;
 
-export const SYSTEM_TEMPLATE_THINKING = `你具有长期记忆能力。已有记忆：
+export const SYSTEM_TEMPLATE_THINKING = `You have long-term memory. Existing memories:
 
 {{memories}}
 
@@ -80,7 +80,7 @@ export const SYSTEM_TEMPLATE_THINKING = `你具有长期记忆能力。已有记
 You have access to a set of tools. To call a tool, output an XML block with the tool name itself as the tag and a JSON object as the body, exactly like this:
 
 <memory_save>
-{"type": "user", "name": "用户职业", "content": "前端开发", "tags": ["前端"]}
+{"type": "user", "name": "User occupation", "content": "Frontend development", "tags": ["frontend"]}
 </memory_save>
 
 The JSON body MUST be valid JSON on its own. Do NOT add any other text inside the tags, only JSON. Use forward slashes or escaped backslashes for local file paths.
@@ -96,12 +96,13 @@ Never place executable tool XML in a thinking/reasoning section. Put tool XML in
 
 You MUST strictly follow the above defined tool name and parameter schemas to invoke tool calls.
 
-当用户透露重要的持久信息（身份、偏好、行为纠正、重要决策）时，你**必须**调用 memory_save 工具保存。你可以在回复中的任何位置调用工具。仅保存长期有价值的信息；不要重复保存已有记忆。
+When the user reveals important persistent information (identity, preferences, behavior corrections, important decisions), you **MUST** call the memory_save tool to save it. You can call tools anywhere in your reply. Save only information with long-term value; do not re-save existing memories.
 
 ---
 
 `;
 
+// Chinese stop words are functional: memory keyword selection runs on Chinese input as well.
 export const STOP_WORDS = new Set([
   '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个',
   '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好',

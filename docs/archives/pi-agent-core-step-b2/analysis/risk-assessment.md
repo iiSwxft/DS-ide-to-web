@@ -1,43 +1,43 @@
-# Risk Assessment — pi-agent-core Step B2: 官方 API 第二模型后端
+# Risk Assessment — pi-agent-core Step B2: Official API Second Model Backend
 
-## S.U.P.E.R Architecture Health（B2 视角）
+## S.U.P.E.R Architecture Health (B2 perspective)
 
-| Principle | Status | Findings（B2 变更面） | Priority |
+| Principle | Status | Findings (B2 change surface) | Priority |
 |:----------|:-------|:---------------------|:---------|
-| **S** Single Purpose | 🟢 | 新增 provider 模块单一职责：注册面 + 委托，不复刻协议 | 低 |
-| **U** Unidirectional Flow | 🟢 | provider 只向下调 official-api/network-policy；不反向持有授权/页面状态 | 低 |
-| **P** Ports over Implementation | 🟢 | 复用 `DeepSeekAutomationClient` 端口形状与 stream-fn-port 契约模块 | 低 |
-| **E** Environment-Agnostic | 🟡 | 官方 API 客户端进入 content bundle 的体积需实测（风险 n5） | 中 |
-| **R** Replaceable Parts | 🟢 | golden 契约守护 web 路径；官方 API 是旁路新增 | 低 |
+| **S** Single Purpose | 🟢 | The new provider module has a single responsibility: registration surface + delegation, no protocol duplication | Low |
+| **U** Unidirectional Flow | 🟢 | The provider only calls downward into official-api/network-policy; it does not hold authorization/page state in reverse | Low |
+| **P** Ports over Implementation | 🟢 | Reuses the `DeepSeekAutomationClient` port shape and the stream-fn-port contract module | Low |
+| **E** Environment-Agnostic | 🟡 | The size of the official API client entering the content bundle needs measurement (risk n5) | Medium |
+| **R** Replaceable Parts | 🟢 | Golden contract guards the web path; the official API is a side-path addition | Low |
 
-## Risk Matrix（B2 增量）
+## Risk Matrix (B2 increment)
 
-| # | 风险项 | 概率 | 影响 | 缓解方向 |
+| # | Risk | Probability | Impact | Mitigation direction |
 |:--|:-------|:----:|:----:|:---------|
-| (n1) | 消息映射错误（pi Context → OfficialDeepSeekMessage[]，reasoning_content/thinking） | 中 | 高 | 逐字段映射契约测试；沿用现有官方 API 流 mock；`createOfficialDeepSeekRequestBody` 已有测试 |
-| (n2) | 无 parentMessageId 的链完整性（fail-closed 语义变化） | 中 | 高 | 官方 API 模式链权威 = pi Context；工具执行前验证 Context 含有效 assistant 消息；专用 fail-closed 测试 |
-| (n3) | 用户切换语义不明确 | 中 | 中 | 与聊天一致（apiKey 有无自动切换）；无新 UI；行为文档化入 Issue |
-| (n4) | prompt 字节契约破坏 | 低 | 高 | 序列化复用 buildContinuationPrompt/buildNudgePrompt 产物；prompt:freeze 零 diff 必跑 |
-| (n5) | bundle 增量 | 中 | 中 | 薄封装无 SDK（不 import openai 包）；provider probe 实测校准；无 node:/SDK 泄漏门 |
-| (n6) | 授权 provider 身份扩展 | 中 | 高 | tool-bridge callSource（requestId/chatSessionId）不变；官方 API 模式仍绑定页面会话；tool-authorization 回归 |
-| (n7) | 双后端回归（web 路径被官方 API 分支污染） | 中 | 高 | golden 10/10 必跑；web 默认路径零变化；后端选择单一 authority（payload 字段或 apiKey 检查） |
+| (n1) | Message mapping errors (pi Context → OfficialDeepSeekMessage[], reasoning_content/thinking) | Medium | High | Field-by-field mapping contract tests; reuse the existing official API stream mock; `createOfficialDeepSeekRequestBody` already has tests |
+| (n2) | Chain integrity without parentMessageId (fail-closed semantics change) | Medium | High | In official API mode the chain authority = pi Context; validate that Context contains a valid assistant message before tool execution; dedicated fail-closed tests |
+| (n3) | Unclear user-switching semantics | Medium | Medium | Consistent with chat (automatic switching based on whether an apiKey exists); no new UI; behavior documented in the Issue |
+| (n4) | Prompt byte contract broken | Low | High | Serialization reuses buildContinuationPrompt/buildNudgePrompt output; prompt:freeze zero diff must run |
+| (n5) | Bundle increment | Medium | Medium | Thin wrapper with no SDK (does not import the openai package); calibrate with a provider probe measurement; no node:/SDK leak gate |
+| (n6) | Authorization provider identity extension | Medium | High | tool-bridge callSource (requestId/chatSessionId) unchanged; official API mode remains bound to the page session; tool-authorization regression |
+| (n7) | Dual-backend regression (web path polluted by the official API branch) | Medium | High | golden 10/10 must run; zero change on the default web path; single authority for backend selection (payload field or apiKey check) |
 
-## 不可违反清单（B2 映射）
+## Invariants Checklist (B2 mapping)
 
-- **A（inline-agent 语义）**：AGENT_* 事件协议逐字节不变（golden 10/10）；abort/预算/截断语义不动。
-- **B（工具授权红线）**：所有工具执行仍过 background grant；callSource 绑定 requestId/chatSessionId；无第二条执行路径。
-- **C（prompt 字节契约）**：prompt:freeze 零 diff；序列化函数不变（产物复用）。
-- **D（SSE/route 契约）**：官方 API 契约冻结（`submitOfficialDeepSeekStreaming` 是唯一入口，不复制）；网页协议仍只走 active-client/stream-codec。
-- **E（fixtures 同步）**：无跨 runtime 契约变更（AGENT_* 载荷不变）→ 无 fixtures diff；如有意外 diff 立即停查。
-- **F（验证顺序）**：定向测试 → compile → prompt:freeze → build:all → verify:* → 窄冒烟 → ci:quality。
+- **A (inline-agent semantics)**: AGENT_* event protocol unchanged byte for byte (golden 10/10); abort/budget/truncation semantics untouched.
+- **B (tool authorization red line)**: all tool execution still goes through the background grant; callSource is bound to requestId/chatSessionId; no second execution path.
+- **C (prompt byte contract)**: prompt:freeze zero diff; serialization functions unchanged (output reused).
+- **D (SSE/route contract)**: the official API contract is frozen (`submitOfficialDeepSeekStreaming` is the sole entry point, not duplicated); the web protocol still goes only through active-client/stream-codec.
+- **E (fixtures sync)**: no cross-runtime contract change (AGENT_* payloads unchanged) → no fixtures diff; stop and investigate immediately on any unexpected diff.
+- **F (verification order)**: targeted tests → compile → prompt:freeze → build:all → verify:* → narrow smoke → ci:quality.
 
-## 测试面挂载
+## Test Surface Mounting
 
-| 测试面 | 代表文件 | B2 用途 |
+| Test surface | Representative file | B2 purpose |
 |:-------|:---------|:--------|
-| 官方 API provider（新增） | `tests/deepseek-api-provider.test.ts` | 注册形状 + 消息映射 + reasoning 透传 + stream 委托 + auth（apiKey） |
-| 消息映射（新增） | 同上或 `tests/pi-official-api-mapping.test.ts` | pi Context ↔ OfficialDeepSeekMessage 逐字段 |
-| 事件协议 golden | `tests/inline-agent-event-protocol-golden.test.ts` | web 默认路径 10/10 回归 |
-| 官方 API 既有面 | `tests/deepseek-official-api.test.ts`(143) | 底层契约不动（只消费） |
-| 工具授权 | `tests/pi-tool-bridge-authorization.test.ts` | 官方 API 模式工具执行仍过 grant |
-| 体积护栏 | `scripts/pi-bundle-budget.mjs` | deepseek-api provider probe 增量校准 |
+| Official API provider (new) | `tests/deepseek-api-provider.test.ts` | Registration shape + message mapping + reasoning pass-through + stream delegation + auth (apiKey) |
+| Message mapping (new) | Same as above or `tests/pi-official-api-mapping.test.ts` | pi Context ↔ OfficialDeepSeekMessage field by field |
+| Event protocol golden | `tests/inline-agent-event-protocol-golden.test.ts` | Default web path 10/10 regression |
+| Existing official API surface | `tests/deepseek-official-api.test.ts`(143) | Underlying contract untouched (consume only) |
+| Tool authorization | `tests/pi-tool-bridge-authorization.test.ts` | Tool execution in official API mode still goes through the grant |
+| Size guardrails | `scripts/pi-bundle-budget.mjs` | deepseek-api provider probe increment calibration |

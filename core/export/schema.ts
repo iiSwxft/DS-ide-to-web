@@ -33,7 +33,7 @@ export function normalizeConversationExportRequest(input: unknown): Conversation
   const includeFileBodies = value.includeFileBodies === true;
   if (includeFileBodies) {
     throw new ConversationExportValidationError(
-      '文件正文导出尚未启用：官方文件下载端点、签名 URL、CORS 和大文件行为还没有完成验证。',
+      'File body export is not enabled yet: the official file download endpoint, signed URLs, CORS, and large-file behavior have not been verified.',
     );
   }
 

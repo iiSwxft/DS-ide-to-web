@@ -1,11 +1,11 @@
-# pi-agent-core 集成 Step B1 — Progress Tracker
+# pi-agent-core Integration Step B1 — Progress Tracker
 
-> **Task**: 将 deepseek-web 模型后端注册为 pi-ai 正式 provider（`createProvider` + `Provider<'deepseek-web'>`），脱离自定义 StreamFn 独有路径；Step B 第一项（B1 → B2 → B3）。
+> **Task**: Register the deepseek-web model backend as a formal pi-ai provider (`createProvider` + `Provider<'deepseek-web'>`), moving away from the custom-StreamFn-only path; first item of Step B (B1 → B2 → B3).
 > **Started**: 2026-08-05
-> **Mode**: GITHUB_STANDARD（Labels + Milestones + Issues + PRs，无 Project board）
+> **Mode**: GITHUB_STANDARD (Labels + Milestones + Issues + PRs, no Project board)
 > **Repository**: `zhu1090093659/deepseek-pp`
 > **Branch / Worktree**: `spec/pi-agent-core-provider` @ `/Users/zcl/code/deepseek-pp-worktrees/pi-agent-core-step-b`
-> **Base**: origin/main (c283e49 — Step A 归档 #521 合入)
+> **Base**: origin/main (c283e49 — Step A archive #521 merged)
 
 ## References
 
@@ -13,13 +13,13 @@
 - [Risk Assessment](../analysis/risk-assessment.md)
 - [Task Breakdown](../plan/task-breakdown.md)
 - [Milestones](../plan/milestones.md)
-- 交接：`step-b-handoff.md`；Step A 归档：`docs/archives/pi-agent-core-integration/`
+- Handoff: `step-b-handoff.md`; Step A archive: `docs/archives/pi-agent-core-integration/`
 
 ## Milestones
 
 | # | Milestone | Target | Criteria | Status |
 |:--|:----------|:-------|:---------|:-------|
-| 1 | M-B1 deepseek-web 正式 provider 注册完成 | After P3-B1 | 护栏全绿 + golden 10/10 + 既有路径不变 + 契约测试 + freeze 零 diff + B2 启动条件 | Pending |
+| 1 | M-B1 deepseek-web formal provider registration complete | After P3-B1 | Guardrails all green + golden 10/10 + existing path unchanged + contract tests + freeze zero diff + B2 start conditions | Pending |
 
 ## Issue Mapping
 
@@ -27,15 +27,15 @@
 |:-----|:------|:---------------|:---|:-------|
 | B1-T1..T2 | [#522](https://github.com/zhu1090093659/deepseek-pp/issues/522) | P1-B1 | [#523](https://github.com/zhu1090093659/deepseek-pp/pull/523) | **Merged** |
 | B1-T3..T4 | [#522](https://github.com/zhu1090093659/deepseek-pp/issues/522) | P2-B1 | [#524](https://github.com/zhu1090093659/deepseek-pp/pull/524) | **Merged** |
-| B1-T5..T7 | [#522](https://github.com/zhu1090093659/deepseek-pp/issues/522) | P3-B1 | [#525](https://github.com/zhu1090093659/deepseek-pp/pull/525) | PR 评审中 |
+| B1-T5..T7 | [#522](https://github.com/zhu1090093659/deepseek-pp/issues/522) | P3-B1 | [#525](https://github.com/zhu1090093659/deepseek-pp/pull/525) | PR in review |
 
 ## Delivery Batches
 
 | Batch | Tasks | Integration Branch | Validation | Depends On | Status |
 |:------|:------|:--------------------|:-----------|:-----------|:-------|
-| P1-B1 | B1-T1..T2 | `batch/b1-p1-provider-contract` | 定向测试 + compile（生产零改动） | — | **Merged (#523)** |
-| P2-B1 | B1-T3..T4 | `batch/b1-p2-provider-impl` | 定向测试 + compile + build:chrome + 护栏 | P1-B1 | **Merged (#524)** |
-| P3-B1 | B1-T5..T7 | `batch/b1-p3-loop-wiring` | 完整验证链 + golden + ci:quality | P2-B1 | PR #525 评审中 |
+| P1-B1 | B1-T1..T2 | `batch/b1-p1-provider-contract` | Targeted tests + compile (zero production changes) | — | **Merged (#523)** |
+| P2-B1 | B1-T3..T4 | `batch/b1-p2-provider-impl` | Targeted tests + compile + build:chrome + guardrails | P1-B1 | **Merged (#524)** |
+| P3-B1 | B1-T5..T7 | `batch/b1-p3-loop-wiring` | Full verification chain + golden + ci:quality | P2-B1 | PR #525 in review |
 
 ## Quick Status Commands
 
@@ -45,17 +45,17 @@ gh issue list --repo zhu1090093659/deepseek-pp --label spec:pi-agent-core-provid
 
 ## Current Status
 
-**Active Phase**: Phase 3（P3-B1 接线完成，PR #525 评审中）
-**Active Task**: B1-T7（ci:quality 收尾 + Issue 关闭）
-**Blockers**: 无
+**Active Phase**: Phase 3 (P3-B1 wiring complete, PR #525 in review)
+**Active Task**: B1-T7 (ci:quality wrap-up + Issue closure)
+**Blockers**: None
 
 ## Governance Status
 
-**Shared instruction surface**: `AGENTS.md`（唯一项目级真源）
-**主工作区纪律**: 主工作区（`/Users/zcl/code/deepseek-pp`）只读参照；本 run 所有 git 操作只在 worktree 内进行。
+**Shared instruction surface**: `AGENTS.md` (sole project-level source of truth)
+**Main workspace discipline**: The main workspace (`/Users/zcl/code/deepseek-pp`) is a read-only reference; all git operations in this run happen only inside the worktree.
 
 ## Session Log
 
 | Date | Session | Summary |
 |:--|:--|:--|
-| 2026-08-05 | Planning | 读交接文档 + Step A 归档（MASTER/milestones/risk/task-breakdown）；pi-ai 0.83.0 provider 体系事实核查（models.js createProvider、types.d.ts Api/ProviderStreams、auth/types、lazy.js）；创建 worktree `spec/pi-agent-core-provider`；写 analysis/plan/progress 文档。 |
+| 2026-08-05 | Planning | Read the handoff document + Step A archive (MASTER/milestones/risk/task-breakdown); fact-checked the pi-ai 0.83.0 provider system (models.js createProvider, types.d.ts Api/ProviderStreams, auth/types, lazy.js); created worktree `spec/pi-agent-core-provider`; wrote analysis/plan/progress docs. |

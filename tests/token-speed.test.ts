@@ -12,6 +12,7 @@ import {
   parseSSEData,
 } from '../core/deepseek/stream-codec';
 
+// NOTE: the Chinese strings in this file are deliberate test INPUT: CJK text is estimated with a different token-unit weight than Latin text.
 describe('estimateTokenUnits', () => {
   it('estimates ASCII text at ~0.3 token per character', () => {
     expect(estimateTokenUnits('abcd')).toBeCloseTo(1.2, 5);

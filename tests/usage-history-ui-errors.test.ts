@@ -39,7 +39,7 @@ describe('Usage UI persistence errors', () => {
 
     usageResponse = { ok: false, error: 'usage storage version is unsupported' };
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     expect(lastSevenDays).toBeTruthy();
     await act(async () => {
@@ -51,7 +51,7 @@ describe('Usage UI persistence errors', () => {
     expect(container.textContent).not.toContain('321');
 
     const lastThirtyDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 30 天',
+      (button) => button.textContent === 'Last 30 days',
     );
     expect(lastThirtyDays).toBeTruthy();
     await act(async () => {
@@ -71,7 +71,7 @@ describe('Usage UI persistence errors', () => {
 
     usageResponse = sevenDays.promise;
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     await act(async () => {
       lastSevenDays!.click();
@@ -93,7 +93,7 @@ describe('Usage UI persistence errors', () => {
     usageResponse = { turnCount: 1, totalTokens: 999 };
     await renderUsagePage();
 
-    expect(container.textContent).toContain('使用统计加载失败');
+    expect(container.textContent).toContain('Failed to load usage statistics');
     expect(container.textContent).not.toContain('999');
   });
 
@@ -114,7 +114,7 @@ describe('Usage UI persistence errors', () => {
     await settle();
 
     expect(container.textContent).toContain('usage clear was rejected');
-    expect(container.textContent).not.toContain('使用统计已清除');
+    expect(container.textContent).not.toContain('Usage statistics cleared');
     expect(container.textContent).toContain('321');
   });
 
@@ -123,7 +123,7 @@ describe('Usage UI persistence errors', () => {
 
     usageResponse = makeUsageSummary(7, 700);
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     await act(async () => {
       lastSevenDays!.click();
@@ -133,7 +133,7 @@ describe('Usage UI persistence errors', () => {
     const staleThirtyDays = deferred<unknown>();
     usageResponse = staleThirtyDays.promise;
     const lastThirtyDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 30 天',
+      (button) => button.textContent === 'Last 30 days',
     );
     await act(async () => {
       lastThirtyDays!.click();
@@ -152,7 +152,7 @@ describe('Usage UI persistence errors', () => {
     });
     await settle();
 
-    expect(container.textContent).toContain('使用统计已清除');
+    expect(container.textContent).toContain('Usage statistics cleared');
     expect(container.textContent).toContain('post-clear reload failed');
     expect(container.textContent).not.toContain('321');
 
@@ -179,7 +179,7 @@ describe('Usage UI persistence errors', () => {
 
     usageResponse = makeUsageSummary(7, 700);
     const lastSevenDays = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === '最近 7 天',
+      (button) => button.textContent === 'Last 7 days',
     );
     await act(async () => {
       lastSevenDays!.click();
@@ -193,7 +193,7 @@ describe('Usage UI persistence errors', () => {
     });
     await settle();
 
-    expect(container.textContent).toContain('使用统计已清除');
+    expect(container.textContent).toContain('Usage statistics cleared');
     expect(container.textContent).toContain('701');
     expect(container.textContent).not.toContain('321');
   });

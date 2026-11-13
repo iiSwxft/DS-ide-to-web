@@ -306,7 +306,7 @@ describe('tool authorization context', () => {
     const localized = makeDescriptor({
       inputSchema: {
         type: 'object',
-        properties: { value: { type: 'string', description: '本地化描述' } },
+        properties: { value: { type: 'string', description: 'Localized description' } },
       },
     });
 
@@ -341,14 +341,14 @@ describe('tool authorization context', () => {
         dependencies: {
           mode: {
             type: 'object',
-            description: '本地化依赖说明',
-            properties: { value: { type: 'string', description: '本地化字段说明' } },
+            description: 'Localized dependency description',
+            properties: { value: { type: 'string', description: 'Localized field description' } },
           },
           enabled: ['mode'],
         },
         additionalItems: {
           type: 'string',
-          description: '本地化元组说明',
+          description: 'Localized tuple description',
         },
       } as ToolDescriptor['inputSchema'],
     });
@@ -862,10 +862,10 @@ interface StoredAuthorizationTestState {
   }>;
 }
 
-// 评审 #2：grant 绑定并校验本地 Skill 目录；执行期 cwd 仅从 grant 派生，
-// 页面/模型携带的 localSkillDir 被忽略。
-describe('local skill dir 绑定到 grant（评审 #2）', () => {
-  it('createToolAuthorization 写入 localSkillDir，getGrantLocalSkillDir 可读回', async () => {
+// Review #2: the grant binds and validates the local Skill directory; the runtime cwd is derived only from the grant,
+// and any localSkillDir carried by the page/model is ignored.
+describe('local skill dir bound to grant (review #2)', () => {
+  it('createToolAuthorization stores localSkillDir and getGrantLocalSkillDir reads it back', async () => {
     const descriptor = makeDescriptor();
     const grant = await createToolAuthorization({
       requestId: 'request-1',
@@ -880,7 +880,7 @@ describe('local skill dir 绑定到 grant（评审 #2）', () => {
     expect(readBack).toBe('/skills/demo');
   });
 
-  it('未传 localSkillDir 时 getGrantLocalSkillDir 返回 undefined', async () => {
+  it('getGrantLocalSkillDir returns undefined when localSkillDir is not passed', async () => {
     const descriptor = makeDescriptor();
     const grant = await createGrant([descriptor]);
 
@@ -888,7 +888,7 @@ describe('local skill dir 绑定到 grant（评审 #2）', () => {
     expect(readBack).toBeUndefined();
   });
 
-  it('localSkillDir 经持久化往返后仍可被读回（isStoredGrant 白名单接受该字段）', async () => {
+  it('localSkillDir can still be read back after a persistence round trip (isStoredGrant allowlist accepts the field)', async () => {
     const descriptor = makeDescriptor();
     const grant = await createToolAuthorization({
       requestId: 'request-1',
@@ -899,7 +899,7 @@ describe('local skill dir 绑定到 grant（评审 #2）', () => {
       localSkillDir: '/skills/persisted',
     });
 
-    // 模拟存储往返：从 sessionStorage 重新读取并校验不破坏
+    // Simulate a storage round trip: re-read from sessionStorage and verify nothing breaks
     const stored = sessionStorage[TOOL_AUTHORIZATION_STORAGE_KEY] as { grants: Record<string, unknown> };
     expect(stored.grants[grant.id]).toHaveProperty('localSkillDir', '/skills/persisted');
 

@@ -68,21 +68,21 @@ describe('builtin skill localization', () => {
     expect(memory.instructions).toContain('"description":"Update an existing memory"');
   });
 
-  it('keeps Chinese builtin skills as the default resource', () => {
+  it('uses the default builtin skill resource (English) for zh-CN, which has no separate text override', () => {
     const skills = getLocalizedBuiltinSkills('zh-CN');
     const shell = findSkill(skills, 'shell');
     const memory = findSkill(skills, 'memory');
 
-    expect(shell.description).toContain('本地命令行助手');
-    expect(shell.instructions).toContain('你正在通过 DeepSeek++ Shell MCP 执行本地命令');
-    expect(memory.instructions).toContain('"description":"更新已有记忆"');
+    expect(shell.description).toContain('Local command-line assistant');
+    expect(shell.instructions).toContain('You are executing local shell commands');
+    expect(memory.instructions).toContain('"description":"Update an existing memory"');
   });
 
   it('does not mutate the canonical default builtin skill objects', () => {
     const canonicalShell = findSkill(BUILTIN_SKILLS, 'shell');
     const englishShell = findSkill(getLocalizedBuiltinSkills('en'), 'shell');
 
-    expect(canonicalShell.description).toContain('本地命令行助手');
+    expect(canonicalShell.description).toContain('Local command-line assistant');
     expect(englishShell.description).toContain('Local command-line assistant');
   });
 
@@ -222,7 +222,7 @@ describe('builtin skill localization', () => {
       expect(skill.instructions).toContain('Bundled Reference: references/super-philosophy.md');
       expect(skill.instructions).toContain('Bundled Reference: references/templates/plan.md');
       expect(skill.instructions).toContain('S.U.P.E.R');
-      expect(skill.instructions).toContain('DeepSeek++ 执行边界');
+      expect(skill.instructions).toContain('DeepSeek++ Execution Boundary');
     });
 
     it('inlines review-context.py script into review-spd instructions', async () => {

@@ -34,6 +34,7 @@ const MIN_LEAD_GAP = 50;
 // still wins activation (e.g. a two-char word that is itself a Skill name should still activate).
 // Note: specific scenario words (e.g. "weekly report", "report generation") must NOT be listed here, or they
 // would wrongly suppress genuinely applicable hits.
+// Chinese generic terms kept: functional stop-list for scoring Chinese user queries.
 const GENERIC_TWO_CHAR_TERMS = new Set<string>([
   '财务', '新闻', '报告', '报表', '分析', '数据', '文件', '信息', '内容', '总结', '查询', '搜索', '处理', '管理', '生成', '编写', '检查', '说明',
 ]);

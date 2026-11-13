@@ -223,9 +223,9 @@ describe('createStreamingToolCallParser', () => {
     }
   });
 
-  // 方案A：当某个 local skill 处于激活态时，解析出的命令型工具调用必须贴上该 skill 的
-  // skillDir，最终在 background runtime 落实 cwd 硬强制（见 local-skill-cwd.ts）。
-  describe('local skill cwd enforcement (方案A)', () => {
+  // Plan A: when a local skill is active, parsed command-type tool calls must be stamped with that skill's
+  // skillDir, so the background runtime finally enforces the cwd (see local-skill-cwd.ts).
+  describe('local skill cwd enforcement (Plan A)', () => {
     const shellExecDescriptor: ToolDescriptor = {
       id: 'shell_exec',
       provider: { kind: 'local', id: 'local-shell', displayName: 'Local Shell', transport: 'in_process' },
@@ -270,10 +270,10 @@ describe('createStreamingToolCallParser', () => {
   });
 });
 
-// 并发/重叠请求隔离回归（评审 #1：禁止全局可变状态导致 cwd 串扰）。
-// 两个重叠请求各自携带不同的 activeLocalSkillDir，必须以请求级隔离——
-// 先发请求拿到的 cwd 不得被后发请求覆盖，亦不得读到 undefined。
-describe('createStreamingToolCallParser 请求级 cwd 隔离（评审 #1）', () => {
+// Concurrent/overlapping request isolation regression (review #1: global mutable state must not cause cwd crosstalk).
+// Two overlapping requests each carry a different activeLocalSkillDir and must be isolated per request:
+// the cwd obtained by the earlier request must not be overwritten by the later one, nor read as undefined.
+describe('createStreamingToolCallParser per-request cwd isolation (review #1)', () => {
   const makeShellDescriptor = (dir: string): ToolDescriptor => ({
     id: 'shell_exec',
     provider: { kind: 'local', id: 'local-shell', displayName: 'Local Shell', transport: 'in_process' },
@@ -285,22 +285,22 @@ describe('createStreamingToolCallParser 请求级 cwd 隔离（评审 #1）', ()
     execution: { mode: 'auto', enabled: true, risk: 'medium' },
   });
 
-  it('两个重叠请求各自 stamp 各自的 skillDir，互不串扰', () => {
-    // 模拟先发请求 A（skillDir=/skills/a）与后发请求 B（skillDir=/skills/b）
+  it('two overlapping requests each stamp their own skillDir without crosstalk', () => {
+    // Simulate earlier request A (skillDir=/skills/a) and later request B (skillDir=/skills/b)
     const parserA = createStreamingToolCallParser([makeShellDescriptor('/skills/a')], { activeLocalSkillDir: '/skills/a' });
     const parserB = createStreamingToolCallParser([makeShellDescriptor('/skills/b')], { activeLocalSkillDir: '/skills/b' });
 
-    // 不依赖全局：分别解析各自的 tool call
+    // No global dependency: parse each request's tool call separately
     const resA = parserA.append('<shell_exec>{"command":"ls"}</shell_exec>');
     const resB = parserB.append('<shell_exec>{"command":"ls"}</shell_exec>');
 
     expect(resA.completed[0]).toMatchObject({ invocationName: 'shell_exec', localSkillDir: '/skills/a' });
     expect(resB.completed[0]).toMatchObject({ invocationName: 'shell_exec', localSkillDir: '/skills/b' });
-    // 关键不变量：A 绝不被 B 覆盖
+    // Key invariant: A is never overwritten by B
     expect(resA.completed[0].localSkillDir).not.toBe('/skills/b');
   });
 
-  it('legacy fallback：无激活 Skill 的请求 cwd 为 undefined，且不污染其它请求', () => {
+  it('legacy fallback: a request with no active Skill has an undefined cwd and does not pollute other requests', () => {
     const parserLegacy = createStreamingToolCallParser([makeShellDescriptor('')], { activeLocalSkillDir: undefined });
     const parserActive = createStreamingToolCallParser([makeShellDescriptor('/skills/a')], { activeLocalSkillDir: '/skills/a' });
 

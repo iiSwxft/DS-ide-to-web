@@ -83,7 +83,7 @@ describe('shell native host local_file_* tools', () => {
     const root = mkdtempSync(join(tmpdir(), 'deepseek-pp-local-file-'));
     tempRoots.push(root);
     const filePath = join(root, 'nested/report.txt');
-    const content = `标题：生态治理\n${'段落-中文-特殊字符-{}[]<>&"\n'.repeat(4000)}`;
+    const content = `Title: Ecosystem governance\n${'paragraph-text-special-chars-{}[]<>&"\n'.repeat(4000)}`;
 
     const writeResponse = await callNativeHost('local_file_write', {
       path: filePath,

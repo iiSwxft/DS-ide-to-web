@@ -56,7 +56,7 @@ describe('sync generation publication', () => {
 
   it('publishes complete data before the manifest and current pointer', async () => {
     const backend = new MemoryStorageBackend();
-    const files = sourceFiles('新一代 🚀');
+    const files = sourceFiles('Next generation 🚀');
     const manifest = await upload(backend, files, GENERATION_ID);
     const dataKeys = SYNC_GENERATION_FILE_KEYS.map((key) => getSyncGenerationFileKey(GENERATION_ID, key));
     const manifestKey = getSyncGenerationManifestKey(GENERATION_ID);

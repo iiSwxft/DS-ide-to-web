@@ -111,7 +111,7 @@ export async function importGitHubSkillSource(
   options: { expectedSkillPaths?: readonly string[] } = {},
 ): Promise<GitHubSkillImportResult> {
   if (request.selectedPaths.length === 0) {
-    throw new Error('至少选择一个 Skill 后再导入');
+    throw new Error('Select at least one Skill before importing');
   }
 
   const loaded = await loadGitHubSkillSource(request.url, new Set(request.selectedPaths));
@@ -119,10 +119,10 @@ export async function importGitHubSkillSource(
   const importedPaths = new Set(selected.map((skill) => skill.item.path));
   const missingPaths = request.selectedPaths.filter((path) => !importedPaths.has(path));
   if (missingPaths.length > 0) {
-    throw new Error(`选中的 Skill 路径在 GitHub 源中不存在: ${missingPaths.join(', ')}`);
+    throw new Error(`Selected Skill paths do not exist in the GitHub source: ${missingPaths.join(', ')}`);
   }
   if (selected.length === 0) {
-    throw new Error('选中的 Skill 路径在 GitHub 源中不存在');
+    throw new Error('Selected Skill path does not exist in the GitHub source');
   }
 
   const now = Date.now();
@@ -165,7 +165,7 @@ export async function importGitHubSkillSource(
 
 export async function checkGitHubSkillSourceUpdates(sourceId: string): Promise<GitHubSkillUpdatePreview> {
   const source = await getGitHubSkillSourceById(sourceId);
-  if (!source) throw new Error('找不到 GitHub Skill 源');
+  if (!source) throw new Error('GitHub Skill source not found');
 
   const loaded = await loadGitHubSkillSource(source.url);
   const latestPaths = new Set(loaded.preview.skills.map((skill) => skill.path));
@@ -198,13 +198,13 @@ export async function updateGitHubSkillSource(
   deps: LocalStateMutationRunner,
 ): Promise<GitHubSkillImportResult> {
   const source = await getGitHubSkillSourceById(sourceId);
-  if (!source) throw new Error('找不到 GitHub Skill 源');
+  if (!source) throw new Error('GitHub Skill source not found');
 
   const loaded = await loadGitHubSkillSource(source.url);
   const latestPaths = new Set(loaded.preview.skills.map((skill) => skill.path));
   const selectedPaths = source.skillPaths.filter((path) => latestPaths.has(path));
   if (selectedPaths.length === 0) {
-    throw new Error('上游已不包含这个源当前导入的 Skill，已停止更新以避免清空本地内容');
+    throw new Error('The upstream no longer contains the Skills currently imported from this source; update stopped to avoid wiping local content');
   }
   return importGitHubSkillSource(
     { url: source.url, selectedPaths },
@@ -226,13 +226,13 @@ async function loadGitHubSkillSource(url: string, selectedPaths?: Set<string>): 
   const warnings: string[] = [];
 
   if (tree.truncated) {
-    warnings.push('GitHub 返回的仓库树已截断，可能遗漏部分 Skill 文件');
+    warnings.push('The repository tree returned by GitHub was truncated; some Skill files may be missing');
   }
   if (skillPaths.length === 0) {
-    throw new Error('没有在这个 GitHub 链接下找到 SKILL.md');
+    throw new Error('No SKILL.md found under this GitHub link');
   }
   if (skillPaths.length > MAX_SKILLS_PER_SOURCE) {
-    warnings.push(`找到 ${skillPaths.length} 个 Skill，仅预览前 ${MAX_SKILLS_PER_SOURCE} 个`);
+    warnings.push(`Found ${skillPaths.length} Skills, previewing only the first ${MAX_SKILLS_PER_SOURCE}`);
   }
 
   const limitedPaths = skillPaths.slice(0, MAX_SKILLS_PER_SOURCE);
@@ -298,7 +298,7 @@ async function loadGitHubSkill(
   const warnings: string[] = [];
   const content = await fetchGitHubContent(owner, repo, ref, skillPath);
   if (content.length > MAX_SKILL_BYTES) {
-    throw new Error(`${skillPath} 过大，已停止导入 (${content.length} bytes)`);
+    throw new Error(`${skillPath} is too large, import stopped (${content.length} bytes)`);
   }
 
   const parsed = parseSkillDoc(content, skillPath);
@@ -409,7 +409,7 @@ async function createExistingSkillContext(sourceId: string): Promise<ExistingSki
 
 function parseGitHubUrl(input: string): ParsedGitHubUrl {
   const trimmed = input.trim();
-  if (!trimmed) throw new Error('GitHub 链接不能为空');
+  if (!trimmed) throw new Error('GitHub link cannot be empty');
 
   const shorthand = trimmed.match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\.git)?$/);
   if (shorthand) {
@@ -426,12 +426,12 @@ function parseGitHubUrl(input: string): ParsedGitHubUrl {
   try {
     url = new URL(trimmed);
   } catch {
-    throw new Error('请输入 GitHub 仓库、目录或 SKILL.md 链接');
+    throw new Error('Enter a GitHub repository, directory, or SKILL.md link');
   }
 
   if (url.hostname === 'raw.githubusercontent.com') {
     const [owner, repo, ...refPathParts] = url.pathname.split('/').filter(Boolean);
-    if (!owner || !repo || refPathParts.length < 2) throw new Error('raw GitHub 链接缺少仓库或路径');
+    if (!owner || !repo || refPathParts.length < 2) throw new Error('Raw GitHub link is missing the repository or path');
     const [ref, ...pathParts] = refPathParts;
     const path = pathParts.join('/');
     return {
@@ -446,15 +446,15 @@ function parseGitHubUrl(input: string): ParsedGitHubUrl {
   }
 
   if (url.hostname !== 'github.com') {
-    throw new Error('目前只支持 github.com 或 raw.githubusercontent.com 链接');
+    throw new Error('Only github.com or raw.githubusercontent.com links are supported');
   }
 
   const [owner, rawRepo, action, ...rest] = url.pathname.split('/').filter(Boolean);
-  if (!owner || !rawRepo) throw new Error('GitHub 链接缺少 owner/repo');
+  if (!owner || !rawRepo) throw new Error('GitHub link is missing owner/repo');
   const repo = stripGitSuffix(rawRepo);
 
   if (action === 'tree' || action === 'blob') {
-    if (rest.length === 0) throw new Error('GitHub tree/blob 链接缺少分支');
+    if (rest.length === 0) throw new Error('GitHub tree/blob link is missing the branch');
     return {
       owner,
       repo,
@@ -488,7 +488,7 @@ async function resolveSourceLocation(
     if (commit) return { ...candidate, commit };
   }
 
-  throw new Error('GitHub 链接中的分支、标签或提交不存在');
+  throw new Error('The branch, tag, or commit in the GitHub link does not exist');
 }
 
 function createSourceLocationCandidates(
@@ -542,9 +542,9 @@ function dedupeSourceLocationCandidates(
 function findSkillPaths(tree: GitHubTreeResponse, rootPath: string, mode: ParsedGitHubUrl['mode']): string[] {
   const normalizedRoot = trimSlashes(rootPath);
   if (mode === 'blob') {
-    if (!normalizedRoot.endsWith('SKILL.md')) throw new Error('单文件导入只支持 SKILL.md');
+    if (!normalizedRoot.endsWith('SKILL.md')) throw new Error('Single-file import supports SKILL.md only');
     const exists = tree.tree.some((entry) => entry.type === 'blob' && entry.path === normalizedRoot);
-    if (!exists) throw new Error(`GitHub 源中不存在 ${normalizedRoot}`);
+    if (!exists) throw new Error(`Not found in the GitHub source: ${normalizedRoot}`);
     return [normalizedRoot];
   }
 
@@ -586,7 +586,7 @@ async function fetchResourceBundle(
     }
     if (size > MAX_RESOURCE_FILE_BYTES) {
       omitted.push({ path: candidate.path, bytes: size });
-      warnings.push(`${candidate.path} 超过单文件资源上限，未合并`);
+      warnings.push(`${candidate.path} exceeds the single-file resource limit and was not merged`);
       continue;
     }
     if (totalBytes + size > MAX_RESOURCE_BYTES_PER_SKILL) {
@@ -600,7 +600,7 @@ async function fetchResourceBundle(
   }
 
   if (omitted.length > 0) {
-    warnings.push(`有 ${omitted.length} 个同目录资源未合并，可在上游仓库中查看`);
+    warnings.push(`${omitted.length} resources in the same directory were not merged; see the upstream repository`);
   }
 
   return { included, omitted, warnings };
@@ -638,7 +638,7 @@ function buildImportedInstructions(input: {
   const resourceDocs = resources.included.length === 0 ? '' : [
     '## Bundled Supporting Files',
     '',
-    '这些文件来自同一个上游 Skill 目录，用于补齐原始 SKILL.md 中引用的 agents、references、templates 或 examples。',
+    'These files come from the same upstream Skill directory and fill in the agents, references, templates, or examples referenced by the original SKILL.md.',
     '',
     ...resources.included.map((resource) => [
       `### ${resource.path}`,
@@ -650,7 +650,7 @@ function buildImportedInstructions(input: {
   const omitted = resources.omitted.length === 0 ? '' : [
     '## Omitted Supporting Files',
     '',
-    '以下文件因为数量或大小限制没有合并进 prompt；需要时请参考上游仓库。',
+    'The following files were not merged into the prompt because of count or size limits; refer to the upstream repository if needed.',
     '',
     ...resources.omitted.map((file) => `- ${file.path} (${file.bytes} bytes)`),
   ].join('\n');
@@ -732,7 +732,7 @@ async function fetchPackageInfo(owner: string, repo: string, ref: string): Promi
     try {
       parsed = JSON.parse(raw) as { version?: unknown; description?: unknown };
     } catch {
-      throw new Error(`${path} 不是有效 JSON，已停止导入`);
+      throw new Error(`${path} is not valid JSON, import stopped`);
     }
     return {
       version: typeof parsed.version === 'string' ? parsed.version : undefined,
@@ -804,15 +804,15 @@ async function fetchGitHubJson<T>(path: string): Promise<T> {
       if ((response.status === 403 || response.status === 429) && /rate limit/i.test(detail)) {
         throw new Error('GitHub API rate limit exceeded while reading repository metadata. Wait for the GitHub rate-limit window to reset, then retry.');
       }
-      throw new Error(`GitHub 请求失败 (HTTP ${response.status})${detail ? `: ${detail.slice(0, 180)}` : ''}`);
+      throw new Error(`GitHub request failed (HTTP ${response.status})${detail ? `: ${detail.slice(0, 180)}` : ''}`);
     }
     return await response.json() as T;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('GitHub 请求超时');
+      throw new Error('GitHub request timed out');
     }
     if (error instanceof TypeError) {
-      throw new Error('无法访问 GitHub API，请先授予 GitHub 访问权限并确认网络可用');
+      throw new Error('Unable to reach the GitHub API; grant GitHub access first and make sure the network is available');
     }
     throw error;
   } finally {
@@ -888,7 +888,7 @@ function parentDirectory(path: string): string {
 
 function normalizeSkillName(name: string): string {
   const normalized = name.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  if (!normalized) throw new Error('GitHub Skill 缺少有效名称');
+  if (!normalized) throw new Error('GitHub Skill is missing a valid name');
   return normalized;
 }
 
@@ -899,5 +899,5 @@ function createUniqueSkillName(preferred: string, occupiedNames: Set<string>): s
     const candidate = `${normalized}-${suffix}`;
     if (!occupiedNames.has(candidate)) return candidate;
   }
-  throw new Error(`无法为远程 Skill 生成唯一名称: ${preferred}`);
+  throw new Error(`Unable to generate a unique name for the remote Skill: ${preferred}`);
 }

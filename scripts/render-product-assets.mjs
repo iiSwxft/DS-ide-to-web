@@ -20,121 +20,121 @@ const outputs = [
   ['docs/chrome-web-store/assets/screenshot-inline-tools-1280x800.png', storeScreenshotSvg()],
   ['assets/screenshot-inline-tools.png', inlineToolsSvg()],
   ['assets/screenshot-sidepanel-memory.png', sidepanelSvg({
-    activeTab: '资料',
-    activeSubTab: '记忆',
-    title: '记忆',
-    meta: '共 4 条记忆',
-    description: '长期影响 DeepSeek++ 回复的用户偏好、反馈、话题背景和参考资料。',
-    filters: ['全部', '用户', '反馈', '话题', '参考'],
+    activeTab: 'Library',
+    activeSubTab: 'Memory',
+    title: 'Memory',
+    meta: '4 memories',
+    description: 'User preferences, feedback, topic background, and references that shape DeepSeek++ replies over time.',
+    filters: ['All', 'User', 'Feedback', 'Topic', 'Reference'],
     cards: [
-      ['用户', '文档风格偏好', '公开 README 只写用户可感知的功能价值，不暴露内部 API、协议和实现细节。', ['README', '公开文案'], true],
-      ['反馈', '修复严重问题时少问多做', '当 bug 被定性为严重 blocker 时，先沿根因完整追踪、修复、验证，再汇报结果。', ['协作', '质量'], true],
-      ['话题', 'DeepSeek++ 产品主线', '运行在 DeepSeek 网页侧边栏里的工作台，集中管理记忆、项目、Skill、MCP 和自动化。', ['产品', '发布'], false],
-      ['参考', 'Chrome Web Store 发布检查', '商店图、权限说明、隐私政策、zip 资产和更新说明必须同步检查。', ['store', 'release'], false],
+      ['User', 'Documentation style preference', 'Public README covers only user-visible value and never exposes internal APIs, protocols, or implementation details.', ['README', 'public copy'], true],
+      ['Feedback', 'Ask less, act more on severe fixes', 'When a bug is classed as a severe blocker, trace the root cause, fix, and verify first, then report the result.', ['Collaboration', 'Quality'], true],
+      ['Topic', 'DeepSeek++ product direction', 'A workbench in the DeepSeek web sidebar that manages memory, projects, Skills, MCP, and automation.', ['Product', 'Release'], false],
+      ['Reference', 'Chrome Web Store release check', 'Store images, permission notes, privacy policy, zip assets, and release notes must be checked together.', ['store', 'release'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-saved.png', sidepanelSvg({
-    activeTab: '资料',
-    activeSubTab: '保存',
-    title: '保存',
-    meta: '共 3 条保存项',
-    description: '收藏常用提示词、参考链接和对话片段，下一次聊天可直接插入。',
-    filters: ['片段', '书签', 'Markdown', 'JSON'],
+    activeTab: 'Library',
+    activeSubTab: 'Saved',
+    title: 'Saved',
+    meta: '3 saved items',
+    description: 'Save frequent prompts, reference links, and conversation snippets to insert straight into the next chat.',
+    filters: ['Snippet', 'Bookmark', 'Markdown', 'JSON'],
     cards: [
-      ['片段', '发布说明骨架', '这次版本的主线是：把 DeepSeek 网页从单次聊天扩展成带记忆、项目、工具和自动化的工作台。', ['release', 'README'], false],
-      ['书签', 'Chrome Web Store 提交流程', 'docs/chrome-web-store/submission.md', ['store', 'checklist'], false],
-      ['片段', '宏观日报提示词', '先列事实源和最新日期，再判断风险灯号增强、维持、缓解或失效，最后输出纪律影响。', ['prompt', 'macro'], false],
+      ['Snippet', 'Release notes outline', 'The theme of this release: extend DeepSeek web from one-off chat into a workbench with memory, projects, tools, and automation.', ['release', 'README'], false],
+      ['Bookmark', 'Chrome Web Store submission process', 'docs/chrome-web-store/submission.md', ['store', 'checklist'], false],
+      ['Snippet', 'Macro daily brief prompt', 'List fact sources and latest dates first, then judge whether the risk signal strengthens, holds, eases, or fails, and finish with the discipline impact.', ['prompt', 'macro'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-projects.png', sidepanelSvg({
-    activeTab: '项目',
-    title: '项目',
-    meta: '2 个项目 · 2 个会话',
-    description: '把会话、项目指令和项目内记忆绑定在一起，让 DeepSeek++ 在同一任务线上持续理解上下文。',
-    filters: ['投资研究', 'DeepSeek++ 发布'],
+    activeTab: 'Projects',
+    title: 'Projects',
+    meta: '2 projects · 2 sessions',
+    description: 'Bind conversations, project instructions, and project memory together so DeepSeek++ keeps context on the same task line.',
+    filters: ['Investment Research', 'DeepSeek++ Release'],
     cards: [
-      ['项目', '投资研究', '长期跟踪组合、交易纪律和宏观假设。先确认事实来源，再把结论收束到仓位、风险和下一步动作。', ['1 个会话', '1 条项目记忆'], true],
-      ['会话', '黄仁勋五层金字塔结构', '已绑定到「投资研究」，下一次新对话可继续复用项目指令。', ['2 小时前'], false],
-      ['项目', 'DeepSeek++ 发布', 'README、商店文案、发布验证与用户反馈。公开文案只讲用户可感知能力。', ['release', 'docs'], false],
+      ['Project', 'Investment Research', 'Track portfolio, trading discipline, and macro assumptions over time. Confirm fact sources first, then narrow conclusions to positions, risk, and next actions.', ['1 session', '1 project memory'], true],
+      ['Session', 'Jensen Huang five-layer pyramid structure', 'Bound to "Investment Research"; the next new chat can keep reusing the project instructions.', ['2 hours ago'], false],
+      ['Project', 'DeepSeek++ Release', 'README, store copy, release verification, and user feedback. Public copy only covers user-visible capabilities.', ['release', 'docs'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-skill.png', sidepanelSvg({
-    activeTab: '能力',
-    activeSubTab: '技能',
-    title: '技能',
-    meta: '16 个 Skill · 15 个启用',
-    description: '为固定工作流保存可复用的指令模板，也可以从 GitHub 导入团队共享 Skill。',
-    filters: ['内置', '官方', '自定义', 'GitHub'],
+    activeTab: 'Capabilities',
+    activeSubTab: 'Skills',
+    title: 'Skills',
+    meta: '16 Skills · 15 enabled',
+    description: 'Save reusable instruction templates for fixed workflows, or import team-shared Skills from GitHub.',
+    filters: ['Built-in', 'Official', 'Custom', 'GitHub'],
     cards: [
-      ['内置', 'memory-manager', '提炼稳定偏好、项目背景和长期参考资料，自动写入记忆。', ['启用', '内置'], true],
-      ['官方', 'officecli', '创建、分析和修改 Office 文档，适合报告、表格和演示材料。', ['文档', '工具'], false],
-      ['自定义', 'release-copy', '先提炼 release thesis，再按用户可感知能力组织发布文案。', ['README', 'store'], false],
-      ['GitHub', 'store-listing', '核对商店截图、短描述、权限说明、隐私政策和更新说明。', ['Chrome Web Store'], false],
+      ['Built-in', 'memory-manager', 'Distill stable preferences, project background, and long-term references and write them to memory automatically.', ['Enabled', 'Built-in'], true],
+      ['Official', 'officecli', 'Create, analyze, and edit Office documents, ideal for reports, spreadsheets, and presentations.', ['Docs', 'Tools'], false],
+      ['Custom', 'release-copy', 'Distill the release thesis first, then organize release copy around user-visible capabilities.', ['README', 'store'], false],
+      ['GitHub', 'store-listing', 'Check store screenshots, short description, permission notes, privacy policy, and release notes.', ['Chrome Web Store'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-mcp.png', sidepanelSvg({
-    activeTab: '能力',
+    activeTab: 'Capabilities',
     activeSubTab: 'MCP',
     title: 'MCP',
-    meta: '2 个服务 · 5 个工具',
-    description: '连接本地 Shell Host、HTTP/SSE 或 Native MCP 服务，把外部工具纳入 DeepSeek 对话。',
-    filters: ['全部', '已启用', 'Shell Host', 'HTTP'],
+    meta: '2 servers · 5 tools',
+    description: 'Connect the local Shell Host, HTTP/SSE, or Native MCP servers to bring external tools into DeepSeek chats.',
+    filters: ['All', 'Enabled', 'Shell Host', 'HTTP'],
     cards: [
-      ['Native', 'DeepSeek++ Shell Host', 'ready · 3 个工具 · 42 ms。Shell、Python 与状态检查已可用。', ['auto', '本地'], true],
-      ['HTTP', 'Market Data MCP', 'ready · 2 个工具 · 118 ms。仅允许 quote_snapshot 和 macro_calendar。', ['confirm', 'allowlist'], false],
-      ['历史', 'python_exec', 'Python completed in 0.8s · rows=128, anomalies=3, saved=report.csv', ['9 分钟前'], false],
+      ['Native', 'DeepSeek++ Shell Host', 'ready · 3 tools · 42 ms. Shell, Python, and status checks are available.', ['auto', 'Local'], true],
+      ['HTTP', 'Market Data MCP', 'ready · 2 tools · 118 ms. Only quote_snapshot and macro_calendar are allowed.', ['confirm', 'allowlist'], false],
+      ['History', 'python_exec', 'Python completed in 0.8s · rows=128, anomalies=3, saved=report.csv', ['9 minutes ago'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-tools.png', sidepanelSvg({
-    activeTab: '能力',
-    activeSubTab: '工具',
-    title: '工具',
-    meta: 'Web + Python + 运行历史',
-    description: '管理内置 Web 工具、Python 执行能力和最近工具调用记录。',
-    filters: ['Web Search', 'Web Fetch', 'Python', '诊断'],
+    activeTab: 'Capabilities',
+    activeSubTab: 'Tools',
+    title: 'Tools',
+    meta: 'Web + Python + run history',
+    description: 'Manage built-in Web tools, Python execution, and recent tool call history.',
+    filters: ['Web Search', 'Web Fetch', 'Python', 'Diagnostics'],
     cards: [
-      ['内置', 'web_search', '在聊天中搜索网页并返回可引用摘要。', ['已启用'], true],
-      ['内置', 'web_fetch', '读取指定网页内容，适合补充事实源和上下文。', ['已启用'], false],
-      ['MCP', 'Python 执行', 'Shell Host 已发现 python_exec，可在对话中运行短 Python 片段。', ['ready', 'local'], false],
-      ['历史', 'web_search', '搜索完成 · 已把 5 条结果整理为聊天摘要。', ['24 分钟前'], false],
+      ['Built-in', 'web_search', 'Search the web in chat and return citable summaries.', ['Enabled'], true],
+      ['Built-in', 'web_fetch', 'Read the content of a given page, useful for adding fact sources and context.', ['Enabled'], false],
+      ['MCP', 'Python Execution', 'Shell Host discovered python_exec; run short Python snippets in chat.', ['ready', 'local'], false],
+      ['History', 'web_search', 'Search complete · 5 results organized into a chat summary.', ['24 minutes ago'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-browser.png', sidepanelSvg({
-    activeTab: '能力',
-    activeSubTab: '浏览器',
-    title: '浏览器控制',
-    meta: '已启用 · 目标标签 12',
-    description: '把当前浏览器标签页暴露给模型，让它读取页面结构、点击、输入和执行快照动作。',
-    filters: ['目标', '快照', '动作', '安全'],
+    activeTab: 'Capabilities',
+    activeSubTab: 'Browser',
+    title: 'Browser Control',
+    meta: 'Enabled · target tab 12',
+    description: 'Expose the current browser tab to the model so it can read page structure, click, type, and take snapshot actions.',
+    filters: ['Target', 'Snapshot', 'Action', 'Safety'],
     cards: [
-      ['状态', '控制已启用', '目标标签：DeepSeek - 探索未至之境。每次动作后附带页面快照。', ['enabled', 'tab 12'], true],
-      ['快照', '节点与文本预算', '最多 400 个节点，文本上限 24,000 bytes，便于在上下文内保持可读。', ['snapshot'], false],
-      ['动作', '可用浏览器工具', 'navigate、click、fill、key、wait_for、snapshot 等动作可按需暴露。', ['browser tools'], false],
+      ['Status', 'Control enabled', 'Target tab: DeepSeek - Explore the Unknown. A page snapshot is attached after each action.', ['enabled', 'tab 12'], true],
+      ['Snapshot', 'Node and text budget', 'Up to 400 nodes and 24,000 bytes of text, keeping it readable within context.', ['snapshot'], false],
+      ['Action', 'Available browser tools', 'Actions such as navigate, click, fill, key, wait_for, and snapshot can be exposed on demand.', ['browser tools'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-automation.png', sidepanelSvg({
-    activeTab: '能力',
-    activeSubTab: '自动化',
-    title: '自动化',
-    meta: '2 个任务 · 1 个启用',
-    description: '把固定提示词安排为手动或定时任务，自动打开 DeepSeek 会话并保留运行历史。',
-    filters: ['全部', '启用', '暂停', '定时'],
+    activeTab: 'Capabilities',
+    activeSubTab: 'Automation',
+    title: 'Automation',
+    meta: '2 tasks · 1 enabled',
+    description: 'Schedule fixed prompts as manual or timed tasks that open DeepSeek chats automatically and keep run history.',
+    filters: ['All', 'Enabled', 'Paused', 'Scheduled'],
     cards: [
-      ['定时', '盘前市场简报', '工作日 08:30 运行。读取美股、美元、长债与宏观事件，输出风险灯号和纪律影响。', ['active', 'Asia/Shanghai'], true],
-      ['运行', '最近一次运行成功', '风险灯号维持中性偏谨慎。会话已回写到 DeepSeek 历史。', ['3 小时前'], false],
-      ['手动', '每周项目复盘', '总结本周项目上下文、关键结论和下周需要跟进的问题。', ['paused'], false],
+      ['Scheduled', 'Pre-market briefing', 'Runs weekdays at 08:30. Reads US stocks, the dollar, long bonds, and macro events, then outputs the risk signal and discipline impact.', ['active', 'Asia/Shanghai'], true],
+      ['Run', 'Last run succeeded', 'Risk signal holds neutral-to-cautious. The chat was written back to DeepSeek history.', ['3 hours ago'], false],
+      ['Manual', 'Weekly project review', "Summarize this week's project context, key conclusions, and questions to follow up next week.", ['paused'], false],
     ],
   })],
   ['assets/screenshot-sidepanel-settings.png', sidepanelSvg({
-    activeTab: '设置',
-    title: '设置',
+    activeTab: 'Settings',
+    title: 'Settings',
     meta: 'v0.7.4',
-    description: '配置同步、语言、专家模式、背景、小鲸鱼宠物、官方 API 聊天和提示词注入策略。',
-    filters: ['同步', '语言', '外观', '模型'],
+    description: 'Configure sync, language, expert mode, background, the little whale pet, official API chat, and prompt injection strategy.',
+    filters: ['Sync', 'Language', 'Appearance', 'Model'],
     cards: [
-      ['模式', '专家模式', '启用后 DeepSeek++ 默认使用更强的上下文和工具配置。', ['enabled'], true],
-      ['同步', 'WebDAV 同步', '可把记忆、Skill、项目、保存项和预设同步到自己的 WebDAV 目录。', ['DeepSeekPP'], false],
-      ['外观', '小鲸鱼宠物', '可调整位置、尺寸、透明度和动画，让增强功能有清晰状态反馈。', ['pet', 'theme'], false],
+      ['Mode', 'Expert mode', 'When enabled, DeepSeek++ uses stronger context and tool configuration by default.', ['enabled'], true],
+      ['Sync', 'WebDAV sync', 'Sync memory, Skills, projects, saved items, and presets to your own WebDAV folder.', ['DeepSeekPP'], false],
+      ['Appearance', 'Little whale pet', 'Adjust position, size, opacity, and animation for clear status feedback on enhanced features.', ['pet', 'theme'], false],
     ],
   })],
   ['assets/screenshot-skill-popup.png', skillPopupSvg()],
@@ -168,10 +168,10 @@ function promoSvg() {
     <g transform="translate(34 32)">
       ${brandMark(0, 0, 38)}
       <text x="50" y="27" class="brand">DeepSeek++</text>
-      <text x="0" y="92" class="promoTitle">让 DeepSeek</text>
-      <text x="0" y="134" class="promoTitle">记住上下文</text>
-      <text x="0" y="176" class="promoTitle">并连接真实工具</text>
-      <text x="0" y="218" class="bodyStrong">记忆 · 项目 · Skill · MCP · 自动化</text>
+      <text x="0" y="92" class="promoTitle">Let DeepSeek</text>
+      <text x="0" y="134" class="promoTitle">remember context</text>
+      <text x="0" y="176" class="promoTitle">and use real tools</text>
+      <text x="0" y="218" class="bodyStrong">Memory · Projects · Skills · MCP · Automation</text>
     </g>
   `);
 }
@@ -184,20 +184,21 @@ function storeScreenshotSvg() {
     <g transform="translate(72 72)">
       ${brandMark(0, 0, 46)}
       <text x="60" y="33" class="brandLarge">DeepSeek++</text>
-      <text x="0" y="130" class="storeTitle">把 DeepSeek 变成</text>
-      <text x="0" y="188" class="storeTitle">会记忆、会用工具</text>
-      <text x="0" y="246" class="storeTitle">的工作台</text>
-      <text x="0" y="306" class="storeBody">侧边栏统一管理长期记忆、项目上下文、Skill、MCP 工具和自动化任务。</text>
-      <text x="0" y="342" class="storeBody">聊天时直接调取，结果留在同一条 DeepSeek 会话里。</text>
-      ${chip(0, 392, '长期记忆', 18)}
-      ${chip(122, 392, '项目上下文', 18)}
-      ${chip(274, 392, 'MCP 工具', 18)}
-      ${chip(410, 392, '自动化', 18)}
+      <text x="0" y="130" class="storeTitle">Turn DeepSeek into</text>
+      <text x="0" y="188" class="storeTitle">a workbench that</text>
+      <text x="0" y="246" class="storeTitle">remembers and acts.</text>
+      <text x="0" y="306" class="storeBody">One sidebar manages memory, projects, Skills,</text>
+      <text x="0" y="340" class="storeBody">MCP tools, and automation. Call them from chat;</text>
+      <text x="0" y="374" class="storeBody">results stay in the same DeepSeek conversation.</text>
+      ${chip(0, 404, 'Memory', 18)}
+      ${chip(100, 404, 'Projects', 18)}
+      ${chip(200, 404, 'MCP tools', 18)}
+      ${chip(335, 404, 'Automation', 18)}
     </g>
     <g transform="translate(640 44)">
-      ${miniSidepanel(0, 0, '记忆', ['文档风格偏好', '修复严重问题时少问多做', 'DeepSeek++ 产品主线', 'Chrome Web Store 发布检查'], '#4f6fff', 430, 710)}
+      ${miniSidepanel(0, 0, 'Memory', ['Documentation style preference', 'Ask less, act more on severe fixes', 'DeepSeek++ product direction', 'Chrome Web Store release check'], '#4f6fff', 430, 710)}
       ${miniSidepanel(300, 58, 'MCP', ['DeepSeek++ Shell Host', 'Market Data MCP', 'python_exec'], '#16a34a', 330, 520)}
-      ${miniSidepanel(250, 430, '自动化', ['盘前市场简报', '最近一次运行成功', '每周项目复盘'], '#7c3aed', 360, 300)}
+      ${miniSidepanel(250, 430, 'Automation', ['Pre-market briefing', 'Last run succeeded', 'Weekly project review'], '#7c3aed', 360, 300)}
     </g>
   `);
 }
@@ -211,26 +212,26 @@ function skillPopupSvg() {
     ${defs()}
     <rect width="1440" height="900" fill="#f7f9ff"/>
     <g transform="translate(76 72)">
-      <text x="0" y="0" class="pageKicker">DeepSeek 对话输入框</text>
+      <text x="0" y="0" class="pageKicker">DeepSeek chat input</text>
       <rect x="0" y="36" width="980" height="178" rx="24" fill="#ffffff" stroke="#dce4f5"/>
       <text x="34" y="96" class="inputGhost">/release</text>
       <rect x="34" y="132" width="124" height="36" rx="18" fill="#edf4ff" stroke="#bfd2ff"/>
-      <text x="62" y="156" class="blueSmall">深度思考</text>
+      <text x="62" y="156" class="blueSmall">DeepThink</text>
       <rect x="176" y="132" width="126" height="36" rx="18" fill="#edf4ff" stroke="#bfd2ff"/>
-      <text x="204" y="156" class="blueSmall">智能搜索</text>
+      <text x="204" y="156" class="blueSmall">Search</text>
       <circle cx="922" cy="148" r="28" fill="#84a2ff"/>
       <text x="913" y="158" class="sendIcon">↑</text>
     </g>
     <g transform="translate(156 286)">
       <rect width="880" height="468" rx="24" fill="#ffffff" stroke="#dce4f5" filter="url(#shadow)"/>
-      <text x="30" y="52" class="popupTitle">Skill 自动补全</text>
-      <text x="30" y="84" class="popupHint">输入 / 后选择常用工作流，DeepSeek++ 会把模板和上下文注入当前对话。</text>
-      ${popupRow(30, 122, 'release-copy', '把版本变化改写成面向用户的发布文案', ['README', 'store'], true)}
-      ${popupRow(30, 218, 'store-listing', '检查 Chrome Web Store 上架材料是否完整', ['Chrome Web Store'], false)}
-      ${popupRow(30, 314, 'memory-manager', '提炼稳定偏好、项目背景和长期参考资料', ['内置', '记忆'], false)}
+      <text x="30" y="52" class="popupTitle">Skill autocomplete</text>
+      <text x="30" y="84" class="popupHint">Type / to pick a common workflow; DeepSeek++ injects the template and context into the current chat.</text>
+      ${popupRow(30, 122, 'release-copy', 'Rewrite release changes as user-facing release copy', ['README', 'store'], true)}
+      ${popupRow(30, 218, 'store-listing', 'Check that Chrome Web Store listing materials are complete', ['Chrome Web Store'], false)}
+      ${popupRow(30, 314, 'memory-manager', 'Distill stable preferences and project background', ['Built-in', 'Memory'], false)}
     </g>
     <g transform="translate(1110 106)">
-      ${miniSidepanel(0, 0, '技能', ['memory-manager', 'officecli', 'release-copy', 'store-listing'], '#4f6fff', 280, 640)}
+      ${miniSidepanel(0, 0, 'Skills', ['memory-manager', 'officecli', 'release-copy', 'store-listing'], '#4f6fff', 280, 640)}
     </g>
   `);
 }
@@ -244,10 +245,10 @@ function sidepanelSvg({
   filters,
   cards,
 }) {
-  const subTabs = activeTab === '资料'
-    ? ['记忆', '保存']
-    : activeTab === '能力'
-      ? ['技能', 'MCP', '工具', '浏览器', '预设', '自动化']
+  const subTabs = activeTab === 'Library'
+    ? ['Memory', 'Saved']
+    : activeTab === 'Capabilities'
+      ? ['Skills', 'MCP', 'Tools', 'Browser', 'Presets', 'Automation']
       : [];
   return svg(760, 1600, `
     ${defs()}
@@ -261,7 +262,7 @@ function sidepanelSvg({
     <g transform="translate(40 ${subTabs.length ? 262 : 220})">
       <text x="0" y="0" class="pageTitle">${esc(title)}</text>
       <text x="0" y="38" class="pageMeta">${esc(meta)}</text>
-      ${wrapText(description, 0, 82, 36, 28, 'pageDesc')}
+      ${wrapText(description, 0, 82, 68, 28, 'pageDesc')}
       ${filterRow(0, 152, filters)}
       ${cards.map((card, index) => cardSvg(0, 216 + index * 220, ...card)).join('')}
     </g>
@@ -269,7 +270,7 @@ function sidepanelSvg({
 }
 
 function topNav(active) {
-  const tabs = ['资料', '项目', '能力', '设置'];
+  const tabs = ['Library', 'Projects', 'Capabilities', 'Settings'];
   return `<g transform="translate(0 92)">
     <rect width="760" height="78" fill="#ffffff"/>
     ${tabs.map((tab, index) => {
@@ -292,7 +293,7 @@ function subNav(tabs, active) {
       const isActive = tab === active;
       return `
         <text x="${x}" y="32" class="${isActive ? 'subActive' : 'sub'}">${tab}</text>
-        ${isActive ? `<rect x="${x - 6}" y="46" width="${Math.max(42, tab.length * 24)}" height="4" rx="2" fill="#4f6fff"/>` : ''}
+        ${isActive ? `<rect x="${x - 6}" y="46" width="${Math.max(42, tab.length * 11)}" height="4" rx="2" fill="#4f6fff"/>` : ''}
       `;
     }).join('')}
   </g>`;
@@ -302,7 +303,7 @@ function filterRow(x, y, labels) {
   let cursor = x;
   return `<g transform="translate(${x} ${y})">
     ${labels.map((label, index) => {
-      const width = Math.max(76, label.length * 28 + 30);
+      const width = Math.max(76, label.length * 11 + 36);
       const markup = `<rect x="${cursor}" y="0" width="${width}" height="46" rx="23" fill="${index === 0 ? '#edf4ff' : '#ffffff'}" stroke="${index === 0 ? '#bfd2ff' : '#dce4f5'}"/>
         <text x="${cursor + 18}" y="31" class="${index === 0 ? 'filterActive' : 'filter'}">${esc(label)}</text>`;
       cursor += width + 12;
@@ -313,7 +314,7 @@ function filterRow(x, y, labels) {
 
 function cardSvg(x, y, type, title, body, tags, pinned = false) {
   const colors = typeColors(type);
-  const badgeWidth = Math.max(68, type.length * 24 + 28);
+  const badgeWidth = Math.max(68, type.length * 11 + 28);
   const titleX = 28 + badgeWidth + 24;
   return `<g transform="translate(${x} ${y})">
     <rect width="680" height="190" rx="22" fill="#ffffff" stroke="#dce4f5" filter="url(#softShadow)"/>
@@ -321,13 +322,13 @@ function cardSvg(x, y, type, title, body, tags, pinned = false) {
     <text x="43" y="54" class="badge" fill="${colors.text}">${esc(type)}</text>
     <text x="${titleX}" y="55" class="cardTitle">${esc(title)}</text>
     ${pinned ? '<text x="610" y="55" class="star">★</text>' : ''}
-    ${wrapText(body, 28, 96, 28, 29, 'cardBody')}
+    ${wrapText(body, 28, 96, 56, 29, 'cardBody')}
     ${tags.map((tag, index) => tagPill(28 + index * 130, 150, tag)).join('')}
   </g>`;
 }
 
 function tagPill(x, y, tag) {
-  const width = Math.max(68, tag.length * 18 + 30);
+  const width = Math.max(68, tag.length * 9 + 30);
   return `<rect x="${x}" y="${y}" width="${width}" height="30" rx="8" fill="#f3f6fb"/>
     <text x="${x + 15}" y="${y + 21}" class="tag">${esc(tag)}</text>`;
 }
@@ -366,7 +367,7 @@ function brandMark(x, y, size) {
 }
 
 function chip(x, y, text, fontSize = 15) {
-  const width = Math.max(88, text.length * fontSize + 34);
+  const width = Math.max(88, text.length * fontSize * 0.55 + 34);
   return `<rect x="${x}" y="${y}" width="${width}" height="38" rx="19" fill="#ffffff" stroke="#bfd2ff"/>
     <text x="${x + 17}" y="${y + 25}" class="chip">${esc(text)}</text>`;
 }
@@ -374,11 +375,11 @@ function chip(x, y, text, fontSize = 15) {
 function wrapText(text, x, y, maxChars, lineHeight, className) {
   const lines = [];
   let current = '';
-  for (const char of text) {
-    const next = current + char;
-    if (next.length > maxChars) {
+  for (const word of text.split(' ')) {
+    const next = current ? current + ' ' + word : word;
+    if (next.length > maxChars && current) {
       lines.push(current);
-      current = char;
+      current = word;
     } else {
       current = next;
     }
@@ -390,9 +391,9 @@ function wrapText(text, x, y, maxChars, lineHeight, className) {
 }
 
 function typeColors(type) {
-  if (['反馈', 'HTTP', '官方', '运行'].includes(type)) return { bg: '#fff7ed', border: '#fed7aa', text: '#ea580c' };
-  if (['话题', '项目', 'MCP', '定时'].includes(type)) return { bg: '#f5f3ff', border: '#ddd6fe', text: '#7c3aed' };
-  if (['参考', 'Native', '内置', '状态'].includes(type)) return { bg: '#ecfdf5', border: '#bbf7d0', text: '#16a34a' };
+  if (['Feedback', 'HTTP', 'Official', 'Run'].includes(type)) return { bg: '#fff7ed', border: '#fed7aa', text: '#ea580c' };
+  if (['Topic', 'Project', 'MCP', 'Scheduled'].includes(type)) return { bg: '#f5f3ff', border: '#ddd6fe', text: '#7c3aed' };
+  if (['Reference', 'Native', 'Built-in', 'Status'].includes(type)) return { bg: '#ecfdf5', border: '#bbf7d0', text: '#16a34a' };
   return { bg: '#edf4ff', border: '#bfd2ff', text: '#2563eb' };
 }
 

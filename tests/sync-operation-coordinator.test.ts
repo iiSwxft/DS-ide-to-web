@@ -147,11 +147,11 @@ describe('sync operation coordinator', () => {
     const authorize = vi.fn(async () => 'unexpected-token');
     const coordinator = createCoordinator(storage, {
       authorize,
-      authorizationNotRequiredMessage: () => '当前同步方式不需要授权',
+      authorizationNotRequiredMessage: () => 'The current sync method does not require authorization',
     });
 
     await expect(coordinator.authorize(createSyncCommandTarget(webdav('A'), null)))
-      .rejects.toThrow('当前同步方式不需要授权');
+      .rejects.toThrow('The current sync method does not require authorization');
     expect(authorize).not.toHaveBeenCalled();
     expect(storage.present).toBe(false);
   });

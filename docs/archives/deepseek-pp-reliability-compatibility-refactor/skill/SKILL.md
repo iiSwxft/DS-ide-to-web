@@ -4,8 +4,8 @@ description: >-
   Automates pre-development workflow for large-scale complex tasks. Use when the user
   mentions "rewrite", "migrate", "overhaul", "refactor entire project", "transform",
   "rebuild in [language]", "spec-driven", or describes any large-scale project transformation
-  that requires planning before coding. Also triggers on Chinese keywords: "改造", "重写",
-  "迁移", "重构", "大规模", "规范驱动". Performs full project analysis, task decomposition,
+  that requires planning before coding. Also triggers on keywords: "overhaul", "rewrite",
+  "migrate", "refactor", "large-scale", "spec-driven". Performs full project analysis, task decomposition,
   documentation generation, project-level instruction and native memory surface resolution,
   progress tracking setup, and then executes the plan within the same session.
 version: 1.13.1

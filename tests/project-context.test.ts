@@ -83,6 +83,7 @@ describe('session-based project context', () => {
   it('refreshes stale project conversation titles without letting default DeepSeek titles overwrite real titles', async () => {
     const project = await createProjectContext({ name: 'Alpha' });
 
+    // The Chinese default-title suffix below is deliberate test input for the default-title detection logic.
     await addConversationToProject(project.id, {
       conversationId: 'session-1',
       title: 'DeepSeek-探索未至之境',
@@ -94,11 +95,11 @@ describe('session-based project context', () => {
 
     await refreshProjectConversation({
       conversationId: 'session-1',
-      title: '真实项目标题',
+      title: 'Real project title',
       url: 'https://chat.deepseek.com/a/chat/s/session-1',
     });
     await expect(getProjectContextState()).resolves.toMatchObject({
-      conversations: [expect.objectContaining({ title: '真实项目标题' })],
+      conversations: [expect.objectContaining({ title: 'Real project title' })],
     });
 
     await refreshProjectConversation({
@@ -107,7 +108,7 @@ describe('session-based project context', () => {
       url: 'https://chat.deepseek.com/a/chat/s/session-1',
     });
     await expect(getProjectContextState()).resolves.toMatchObject({
-      conversations: [expect.objectContaining({ title: '真实项目标题' })],
+      conversations: [expect.objectContaining({ title: 'Real project title' })],
     });
   });
 

@@ -47,7 +47,7 @@ describe('Automation UI persistence errors', () => {
     await renderAutomationPage();
 
     expect(container.textContent).toContain('initial automation load failed');
-    expect(container.textContent).not.toContain('暂无自动化');
+    expect(container.textContent).not.toContain('No automations');
   });
 
   it('shows a strict storage failure and keeps the last confirmed list', async () => {

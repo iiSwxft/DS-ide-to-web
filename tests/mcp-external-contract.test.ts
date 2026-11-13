@@ -327,7 +327,7 @@ describe('MCP and Native external contract', () => {
     );
     expect(structured).toMatchObject({
       ok: true,
-      summary: 'MCP 工具已执行',
+      summary: 'MCP tool executed',
       detail: '{\n  "answer": 42\n}',
       output: { answer: 42 },
       truncated: false,
@@ -344,6 +344,7 @@ describe('MCP and Native external contract', () => {
       error: { code: 'mcp_tool_result_error', message: 'host failed', retryable: false },
     });
 
+    // CJK + emoji input is deliberate: it exercises UTF-8 byte-boundary truncation (3-byte CJK, 4-byte emoji).
     const truncated = await callMcpTool(
       mcpServer(),
       resultTransport({ structuredContent: '中文🙂' }),

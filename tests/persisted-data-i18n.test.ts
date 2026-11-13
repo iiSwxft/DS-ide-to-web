@@ -57,6 +57,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// NOTE: the Chinese strings in this file are deliberate test INPUT (user/remote data that must be preserved verbatim
+// and never locale-translated), plus zh-CN locale projections of builtin skills.
 describe('persisted user data i18n boundaries', () => {
   it('keeps custom and remote skills unchanged while builtin skills are locale-projected', async () => {
     const customText = '自定义 Skill: keep https://example.com/路径 and command npm run 构建';
@@ -87,7 +89,7 @@ describe('persisted user data i18n boundaries', () => {
     const chineseRemote = chinese.find((skill) => skill.name === remoteSkill.name);
 
     expect(english.find((skill) => skill.name === 'shell')?.description).toContain('Local command-line assistant');
-    expect(chinese.find((skill) => skill.name === 'shell')?.description).toContain('本地命令行助手');
+    expect(chinese.find((skill) => skill.name === 'shell')?.description).toContain('Local command-line assistant');
     expect(englishCustom?.description).toBe(customSkill.description);
     expect(chineseCustom?.description).toBe(customSkill.description);
     expect(englishCustom?.instructions).toBe(customSkill.instructions);

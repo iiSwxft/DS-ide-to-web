@@ -59,10 +59,10 @@ describe('sidepanel interactions', () => {
     stubChrome(sendMessage);
 
     await renderElement(React.createElement(SavedPage));
-    await enterText('标题', 'Review prompt');
-    await enterText('Prompt 片段、笔记或可复用文本', 'Summarize this thread.');
-    await enterText('标签（逗号分隔）', 'prompt');
-    await clickButton('保存');
+    await enterText('Title', 'Review prompt');
+    await enterText('Prompt snippet, note, or reusable text', 'Summarize this thread.');
+    await enterText('Tags, comma-separated', 'prompt');
+    await clickButton('Save item');
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'SAVE_SAVED_ITEM',
@@ -73,7 +73,7 @@ describe('sidepanel interactions', () => {
         tags: ['prompt'],
       },
     });
-    expect(inputByPlaceholder('标题').value).toBe('');
+    expect(inputByPlaceholder('Title').value).toBe('');
   });
 
   it('requests insertion into the active DeepSeek chat when a saved item is clicked', async () => {
@@ -97,13 +97,13 @@ describe('sidepanel interactions', () => {
 
     await renderElement(React.createElement(SavedPage));
     await flushPromises();
-    await clickButton('插入到对话');
+    await clickButton('Insert into chat');
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'INSERT_SAVED_PROMPT_INTO_CHAT',
       payload: { text: 'Summarize this thread.' },
     });
-    expect(container.textContent).toContain('已插入当前 DeepSeek 对话');
+    expect(container.textContent).toContain('Inserted into the current DeepSeek chat');
   });
 
   it('shows insertion failures from the active DeepSeek chat route', async () => {
@@ -121,7 +121,7 @@ describe('sidepanel interactions', () => {
         }];
       }
       if (message.type === 'INSERT_SAVED_PROMPT_INTO_CHAT') {
-        return { ok: false, error: '请先在 chat.deepseek.com 登录，或刷新 DeepSeek 页面后重试。' };
+        return { ok: false, error: 'Sign in at chat.deepseek.com first, or refresh the DeepSeek page and try again.' };
       }
       return null;
     });
@@ -129,9 +129,9 @@ describe('sidepanel interactions', () => {
 
     await renderElement(React.createElement(SavedPage));
     await flushPromises();
-    await clickButton('插入到对话');
+    await clickButton('Insert into chat');
 
-    expect(container.textContent).toContain('插入到对话失败：请先在 chat.deepseek.com 登录，或刷新 DeepSeek 页面后重试。');
+    expect(container.textContent).toContain('Could not insert into chat: Sign in at chat.deepseek.com first, or refresh the DeepSeek page and try again.');
   });
 
   it('shows saved-item repository failures instead of rendering a fake empty state', async () => {
@@ -147,8 +147,8 @@ describe('sidepanel interactions', () => {
     await flushPromises();
 
     expect(container.textContent)
-      .toContain('保存项操作失败：savedItems.schemaVersion is not supported');
-    expect(container.textContent).not.toContain('暂无保存项');
+      .toContain('Saved item action failed: savedItems.schemaVersion is not supported');
+    expect(container.textContent).not.toContain('No saved items');
   });
 
   it('retains the last valid saved item when an update payload is corrupt', async () => {
@@ -178,7 +178,7 @@ describe('sidepanel interactions', () => {
 
     expect(container.textContent).toContain('Keep confirmed item');
     expect(container.textContent).toContain('savedItemsUpdate[0]');
-    expect(container.textContent).not.toContain('暂无保存项');
+    expect(container.textContent).not.toContain('No saved items');
   });
 
   it('does not let an older saved-item read replace a newer update event', async () => {
@@ -248,11 +248,11 @@ describe('sidepanel interactions', () => {
 
     await renderElement(React.createElement(SavedPage));
     await flushPromises();
-    await clickButtonByLabel('删除');
-    await clickButton('删除');
+    await clickButtonByLabel('Delete');
+    await clickButton('Delete');
     await flushPromises();
 
-    expect(container.textContent).toContain('保存项操作失败：delete blocked');
+    expect(container.textContent).toContain('Saved item action failed: delete blocked');
     expect(container.textContent).toContain('Keep me');
   });
 
@@ -267,7 +267,7 @@ describe('sidepanel interactions', () => {
     await flushPromises();
 
     expect(container.textContent)
-      .toContain('场景操作失败：scenarios.schemaVersion is not supported');
+      .toContain('Scenario action failed: scenarios.schemaVersion is not supported');
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'SCENARIOS_UPDATED',
       payload: { operation: 'get' },
@@ -312,8 +312,8 @@ describe('sidepanel interactions', () => {
       },
     });
     expect(container.textContent)
-      .toContain('场景已保存，但后台右键菜单刷新失败：menu offline');
-    expect(container.textContent).not.toContain('场景操作失败：menu offline');
+      .toContain('Scenario saved, but the background context menu could not refresh: menu offline');
+    expect(container.textContent).not.toContain('Scenario action failed: menu offline');
   });
 
   it('persists prompt control select changes instead of reverting to defaults', async () => {
@@ -361,7 +361,7 @@ describe('sidepanel interactions', () => {
       memoryToggle?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    expect(container.textContent).toContain('保存提示词设置失败：tabs permission unavailable');
+    expect(container.textContent).toContain('Failed to save prompt settings: tabs permission unavailable');
     expect((memoryToggle as HTMLButtonElement).getAttribute('style')).toContain('var(--ds-blue)');
   });
 
@@ -406,11 +406,11 @@ describe('sidepanel interactions', () => {
       onCancel: vi.fn(),
     }));
     await enterText('/Users/me/.codex/skills/my-skill', '/Users/me/.codex/skills/demo');
-    await clickButton('预览');
+    await clickButton('Preview');
     await flushPromises();
 
-    expect(container.textContent).toContain('按需读取 13');
-    expect(container.textContent).toContain('文件没有被删除');
+    expect(container.textContent).toContain('13 on demand');
+    expect(container.textContent).toContain('They were not deleted');
     expect(container.textContent).not.toContain(legacyWarning);
   });
 
@@ -485,21 +485,21 @@ describe('sidepanel interactions', () => {
       onCancel: vi.fn(),
     }));
     await enterText('/Users/me/.codex/skills/my-skill', '/Users/me/.codex/skills/demo');
-    await clickButton('预览');
+    await clickButton('Preview');
     await flushPromises();
 
     const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
     expect(checkboxes).toHaveLength(2);
     expect(checkboxes[0]).toMatchObject({ checked: false, disabled: true });
     expect(checkboxes[1]).toMatchObject({ checked: true, disabled: false });
-    expect(container.textContent).toContain('按需读取器不可用');
-    expect(container.textContent).toContain('当前无法按需读取');
-    expect(container.textContent).toContain('请将 Shell Local 执行模式设为“自动”');
+    expect(container.textContent).toContain('On-demand reader unavailable');
+    expect(container.textContent).toContain('on-demand reads are currently unavailable');
+    expect(container.textContent).toContain('Set Shell Local execution mode to Auto');
     expect(container.textContent).not.toContain('Shell MCP on-demand file reading is not available to chat.');
-    expect(container.textContent).toContain('未内嵌 1');
-    expect(container.textContent).not.toContain('按需读取 1');
+    expect(container.textContent).toContain('1 not bundled');
+    expect(container.textContent).not.toContain('1 on demand');
 
-    await clickButton('导入选中 Skill');
+    await clickButton('Import selected Skills');
     await flushPromises();
 
     expect(sendMessage).toHaveBeenCalledWith({
@@ -567,13 +567,13 @@ describe('sidepanel interactions', () => {
       onCancel: vi.fn(),
     }));
     await enterText('/Users/me/.codex/skills/my-skill', '/Users/me/.codex/skills/demo');
-    await clickButton('预览');
+    await clickButton('Preview');
     await flushPromises();
-    await clickButton('导入选中 Skill');
+    await clickButton('Import selected Skills');
     await flushPromises();
 
-    expect(container.textContent).toContain('按需读取器不可用');
-    expect(container.textContent).toContain('请将 Shell Local 执行模式设为“自动”');
+    expect(container.textContent).toContain('On-demand reader unavailable');
+    expect(container.textContent).toContain('Set Shell Local execution mode to Auto');
     expect(container.textContent).not.toContain('Shell MCP on-demand file reading is not available to chat.');
     expect(onImported).not.toHaveBeenCalled();
   });
@@ -591,12 +591,12 @@ describe('sidepanel interactions', () => {
 
     await renderElement(React.createElement(ChatPage));
     await flushPromises();
-    expect(buttonByText('默认').className).toContain('ds-chat-segment-active');
+    expect(buttonByText('Default').className).toContain('ds-chat-segment-active');
 
-    await clickButton('识图');
+    await clickButton('Vision');
 
     expect(sendMessage).toHaveBeenCalledWith({ type: 'SET_MODEL_TYPE', payload: 'vision' });
-    expect(buttonByText('识图').className).toContain('ds-chat-segment-active');
+    expect(buttonByText('Vision').className).toContain('ds-chat-segment-active');
   });
 
   it('scrolls to the updated message height after the lazy rich renderer commits', async () => {
@@ -689,10 +689,10 @@ describe('sidepanel interactions', () => {
         sizeBytes: 3,
       },
     });
-    expect(container.textContent).toContain('已添加');
+    expect(container.textContent).toContain('Attached');
 
-    await enterText('给 DeepSeek++ 发送消息', '描述这张图片');
-    await clickButtonByLabel('发送');
+    await enterText('Message DeepSeek++', '描述这张图片');
+    await clickButtonByLabel('Send');
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'CHAT_SUBMIT_PROMPT',
@@ -730,13 +730,13 @@ describe('sidepanel interactions', () => {
     Object.defineProperty(fileInput, 'files', { value: [image], configurable: true });
     await act(async () => fileInput.dispatchEvent(new Event('change', { bubbles: true })));
     await flushPromises();
-    expect(container.textContent).toContain('已添加');
+    expect(container.textContent).toContain('Attached');
 
-    await clickButtonByLabel('新建会话');
-    expect(container.textContent).toContain('已添加');
+    await clickButtonByLabel('New session');
+    expect(container.textContent).toContain('Attached');
     resolveReset({ ok: true });
     await flushPromises();
-    expect(container.textContent).not.toContain('已添加');
+    expect(container.textContent).not.toContain('Attached');
   });
 });
 
@@ -784,7 +784,7 @@ describe('trusted-directory @ file references', () => {
     await renderElement(React.createElement(ChatPage));
     await flushPromises();
 
-    const textarea = inputByPlaceholder('给 DeepSeek++ 发送消息') as HTMLTextAreaElement;
+    const textarea = inputByPlaceholder('Message DeepSeek++') as HTMLTextAreaElement;
     await act(async () => {
       setTextControlValue(textarea, '看下 @');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -797,7 +797,7 @@ describe('trusted-directory @ file references', () => {
     const textRow = rows.find((row) => row.textContent?.includes('README.md'));
     expect(imageRow).toBeTruthy();
     expect(textRow?.disabled).toBe(true);
-    expect(textRow?.title).toBe('文本文件引用将在后续版本支持');
+    expect(textRow?.title).toBe('Text file references come in a later version');
 
     await act(async () => {
       imageRow?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -813,10 +813,10 @@ describe('trusted-directory @ file references', () => {
         sizeBytes: 3,
       },
     });
-    expect(container.textContent).toContain('已添加');
+    expect(container.textContent).toContain('Attached');
 
-    await enterText('给 DeepSeek++ 发送消息', '描述这张图片');
-    await clickButtonByLabel('发送');
+    await enterText('Message DeepSeek++', '描述这张图片');
+    await clickButtonByLabel('Send');
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'CHAT_SUBMIT_PROMPT',
@@ -840,7 +840,7 @@ describe('trusted-directory @ file references', () => {
     await renderElement(React.createElement(ChatPage));
     await flushPromises();
 
-    const textarea = inputByPlaceholder('给 DeepSeek++ 发送消息') as HTMLTextAreaElement;
+    const textarea = inputByPlaceholder('Message DeepSeek++') as HTMLTextAreaElement;
     await act(async () => {
       setTextControlValue(textarea, '看下 @');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -864,7 +864,7 @@ describe('trusted-directory @ file references', () => {
         sizeBytes: 3,
       },
     });
-    expect(container.textContent).toContain('已添加');
+    expect(container.textContent).toContain('Attached');
   });
 
   it('filters rows by the @ query and disables non-image rows', async () => {
@@ -874,7 +874,7 @@ describe('trusted-directory @ file references', () => {
     await renderElement(React.createElement(ChatPage));
     await flushPromises();
 
-    const textarea = inputByPlaceholder('给 DeepSeek++ 发送消息') as HTMLTextAreaElement;
+    const textarea = inputByPlaceholder('Message DeepSeek++') as HTMLTextAreaElement;
     await act(async () => {
       setTextControlValue(textarea, '看下 @read');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -891,13 +891,13 @@ describe('trusted-directory @ file references', () => {
     await renderElement(React.createElement(ChatPage));
     await flushPromises();
 
-    const textarea = inputByPlaceholder('给 DeepSeek++ 发送消息') as HTMLTextAreaElement;
+    const textarea = inputByPlaceholder('Message DeepSeek++') as HTMLTextAreaElement;
     await act(async () => {
       setTextControlValue(textarea, '参考 @src');
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
 
-    expect(container.textContent).toContain('尚未授权项目目录');
+    expect(container.textContent).toContain('No authorized project folder');
     await act(async () => {
       textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     });
@@ -937,7 +937,7 @@ describe('trusted-directory settings subpage', () => {
 
     await renderElement(React.createElement(ProjectFilesSubPage));
     await flushPromises();
-    expect(container.textContent).toContain('选择目录');
+    expect(container.textContent).toContain('Choose folder');
 
     const picker = container.querySelector('input[type="file"]') as HTMLInputElement;
     const image = withRelativePath(new File(['abc'], 'shot.png', { type: 'image/png' }), 'proj/shot.png');
@@ -950,10 +950,10 @@ describe('trusted-directory settings subpage', () => {
     await flushPromises();
 
     expect(container.textContent).toContain('proj');
-    expect(container.textContent).toContain('已授权');
-    expect(container.textContent).toContain('2 个文件');
-    expect(container.textContent).toContain('图片 1 个');
-    expect(container.textContent).toContain('文本 1 个');
+    expect(container.textContent).toContain('Authorized');
+    expect(container.textContent).toContain('2 files');
+    expect(container.textContent).toContain('1 images available for @ references');
+    expect(container.textContent).toContain('1 text files');
     expect(storageValues[TRUSTED_DIRECTORY_STORAGE_KEY]).toMatchObject({
       rootName: 'proj',
       fileCount: 2,

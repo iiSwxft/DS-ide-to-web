@@ -31,7 +31,7 @@ export function normalizeDeepSeekSessionSummary(raw: unknown, index: number, inc
 
   return {
     id,
-    title: firstString(value.title, value.name) ?? '未命名对话',
+    title: firstString(value.title, value.name) ?? 'Untitled conversation',
     pinned: Boolean(value.pinned),
     titleType: firstString(value.title_type, value.titleType),
     modelType: firstString(value.model_type, value.modelType),

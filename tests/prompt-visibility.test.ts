@@ -22,8 +22,8 @@ describe('prompt visibility cleanup', () => {
   });
 
   it('preserves a marked slash command exactly', () => {
-    expect(sanitizeInternalPromptText(markVisibleUserPrompt('/shell 查看项目目录')))
-      .toBe('/shell 查看项目目录');
+    expect(sanitizeInternalPromptText(markVisibleUserPrompt('/shell view project directory')))
+      .toBe('/shell view project directory');
   });
 
   it('does not trust visible prompt metadata quoted inside ordinary user text', () => {
@@ -37,7 +37,7 @@ describe('prompt visibility cleanup', () => {
   });
 
   it('reads encoded visible prompt metadata without exposing the model prompt', () => {
-    const visiblePrompt = '/shell 查看 100% --> 项目目录';
+    const visiblePrompt = '/shell view 100% --> project directory';
     const storedPrompt = [
       markVisibleUserPromptMetadata(visiblePrompt),
       markVisibleUserPrompt('Private Skill instructions.'),

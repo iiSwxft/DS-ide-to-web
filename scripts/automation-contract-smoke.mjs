@@ -103,6 +103,7 @@ assertContains('packages/shell-host/native/process-provider.mjs', 'windowsVersio
 assertContains('packages/shell-host/lib/officecli-installer.mjs', 'OFFICECLI_REQUIRED_HELP_PATTERNS');
 assertContains('.github/workflows/release.yml', 'npm publish --workspace packages/shell-host --access public');
 assertContains('.github/workflows/release.yml', 'NPM_TOKEN secret is required');
+// Guards against the legacy Chinese "Agent task" phrase leaking into the README.
 assertNotContains('README.md', ['Agent', '任务'].join(' '));
 assertNotContains('README.md', ['screenshot-sidepanel', 'agent.svg'].join('-'));
 

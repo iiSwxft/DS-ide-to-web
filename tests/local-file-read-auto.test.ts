@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-// @ts-expect-error 宿主 file-provider.mjs 为纯 JS 实现，无类型声明文件
+// @ts-expect-error the host file-provider.mjs is a pure JS implementation with no type declaration file
 import { readTextFileWindow } from '../packages/shell-host/native/file-provider.mjs';
 import { callLocalFileReadAuto, callMcpTool } from '../core/mcp/client';
 import type { McpServerConfig, McpProtocolTransport, McpCallToolResult } from '../core/mcp/types';
@@ -15,7 +15,7 @@ function makeTempFile(content: string | Uint8Array): string {
   return p;
 }
 
-// Shell Native Host 身份（displayName 命中 SHELL_MCP_SERVER_NAME），auto 续读仅对其生效。
+// Shell Native Host identity (displayName matches SHELL_MCP_SERVER_NAME); auto continuation reads only apply to it.
 function makeServer(overrides: Partial<McpServerConfig> = {}): McpServerConfig {
   return {
     id: 's', displayName: 'Shell Local', enabled: true,
@@ -30,7 +30,7 @@ function makeServer(overrides: Partial<McpServerConfig> = {}): McpServerConfig {
   } as unknown as McpServerConfig;
 }
 
-// 第三方 MCP server：暴露同名 local_file_read，但不是 Shell Native Host。
+// Third-party MCP server: exposes a local_file_read with the same name but is not the Shell Native Host.
 function makeThirdPartyServer(): McpServerConfig {
   return makeServer({
     id: 'third-party',
@@ -56,7 +56,7 @@ function windowResult(content: string, nextStart: number, totalChars: number, tr
   };
 }
 
-// 按调用方实际申请的 max_chars 供给内容的宿主模拟，用于校验总量预算语义。
+// Host simulation that supplies content according to the max_chars actually requested by the caller, used to verify total-budget semantics.
 function makeBudgetAwareTransport(totalCharsInFile: number): {
   transport: McpProtocolTransport;
   requestedMaxChars: number[];
@@ -89,8 +89,9 @@ function autoReadData(result: { output?: unknown }): {
   return (result.output as { data: never }).data;
 }
 
-describe('readTextFileWindow (宿主防 OOM)', () => {
-  it('中文混排无乱码且窗口连续拼接等于原文', () => {
+describe('readTextFileWindow (host OOM protection)', () => {
+  it('mixed CJK text has no garbling and contiguous windows concatenate to the original', () => {
+    // Chinese characters are intentional multi-byte (UTF-8) test input.
     const mixed = 'Hello 世界 🌍 中文测试 abc 混合内容 12345 emoji😀 结尾';
     const totalChars = Array.from(mixed).length;
     const path = makeTempFile(mixed);
@@ -102,17 +103,17 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
       guard++;
       const { content, totalChars: tc, charsRead } = readTextFileWindow(path, start, window);
       expect(tc).toBe(totalChars);
-      // 回归保护：charsRead 必须与返回内容的 Unicode 码点数一致（emoji 代理对场景下 UTF-16 length 会偏高）
+      // Regression guard: charsRead must equal the Unicode code point count of the returned content (UTF-16 length is too high with emoji surrogate pairs)
       expect(charsRead).toBe(Array.from(content).length);
       acc += content;
-      // 按 Unicode 码点单位推进（与宿主 nextStart = start + charsRead 同单位）
+      // Advance in Unicode code point units (same unit as the host nextStart = start + charsRead)
       start += charsRead;
       if (charsRead < window) break;
     }
     expect(acc).toBe(mixed);
   });
 
-  it('首窗从 0 读取返回正确字符数', () => {
+  it('first window read from 0 returns the correct character count', () => {
     const s = 'abcdefghij';
     const path = makeTempFile(s);
     const { content, totalChars } = readTextFileWindow(path, 0, 3);
@@ -120,7 +121,7 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(totalChars).toBe(10);
   });
 
-  it('start 超出文件字符数返回空且 totalChars 正确', () => {
+  it('start beyond the file character count returns empty with the correct totalChars', () => {
     const s = 'abc';
     const path = makeTempFile(s);
     const { content, totalChars } = readTextFileWindow(path, 100, 10);
@@ -128,8 +129,8 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(totalChars).toBe(3);
   });
 
-  it('中等大文件（约 5MB）按需读取不整文件入内存，窗口正确', () => {
-    const unit = '中a🌍'; // 4 字符 ≈ 9 字节
+  it('medium-large file (about 5MB) is read on demand without loading the whole file into memory, windows are correct', () => {
+    const unit = '中a🌍'; // 4 characters ≈ 9 bytes (the Chinese char is intentional multi-byte input)
     const repeat = 580_000; // ≈ 5MB
     const big = unit.repeat(repeat);
     const path = makeTempFile(big);
@@ -140,9 +141,9 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(content).toBe(Array.from(big).slice(mid, mid + 100).join(''));
   });
 
-  // T1：LRC#3 精确边界回归。多字节字符的首字节恰好落在 64KiB 物理读取块的最后一个字节，
-  // 修复前 scanUtf8Chars 会把孤立首字节计入 consumed，解码产出 U+FFFD。
-  it('T1 多字节字符首字节位于 64KiB 边界末尾时不产生 U+FFFD', () => {
+  // T1: LRC#3 exact-boundary regression. The first byte of a multi-byte character falls exactly on the last byte of a 64KiB physical read block;
+  // before the fix, scanUtf8Chars counted the orphaned first byte into consumed, and decoding produced U+FFFD.
+  it('T1 no U+FFFD when the first byte of a multi-byte character is at the end of the 64KiB boundary', () => {
     const text = `${'a'.repeat(65535)}🌍b`;
     const path = makeTempFile(text);
     const { content, charsRead } = readTextFileWindow(path, 0, 65536);
@@ -154,9 +155,9 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(content).toBe(`${'a'.repeat(65535)}🌍`);
   });
 
-  // T2：LRC#3 同源第二处。起始偏移定位循环此前用 bytePos += got 而非 consumed，
-  // 会让字节指针停在字符中间，导致后续窗口整体错位。
-  it('T2 start 落在 64KiB 边界之后时窗口拼接仍等于原文', () => {
+  // T2: second spot with the same root cause as LRC#3. The start-offset positioning loop previously used bytePos += got instead of consumed,
+  // which could leave the byte pointer in the middle of a character and shift all subsequent windows.
+  it('T2 windows still concatenate to the original when start falls after the 64KiB boundary', () => {
     const text = `${'a'.repeat(65535)}🌍中文尾部bcdef`;
     const path = makeTempFile(text);
     const all = Array.from(text);
@@ -164,7 +165,7 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(tail.content).not.toContain('\uFFFD');
     expect(tail.content).toBe(all.slice(65535, 65545).join(''));
 
-    // 逐窗续读全文，拼接必须与原文逐字节相同
+    // Read the full text window by window; the concatenation must be byte-identical to the original
     let acc = '';
     let start = 0;
     for (let guard = 0; guard < 200; guard++) {
@@ -177,9 +178,9 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
     expect(acc).not.toContain('\uFFFD');
   });
 
-  // T7：文件尾部是损坏的不完整 UTF-8 序列（孤立首字节）。atEof 分支必须原样保留、
-  // 不因回退而丢字符或陷入死循环。
-  it('T7 文件尾部为不完整 UTF-8 序列时不死循环且能终止', () => {
+  // T7: the file tail is a corrupt, incomplete UTF-8 sequence (orphaned first byte). The atEof branch must keep it as-is,
+  // without dropping characters or falling into an infinite loop on backtracking.
+  it('T7 no infinite loop and terminates when the file tail is an incomplete UTF-8 sequence', () => {
     const broken = Buffer.concat([Buffer.from('abc中文', 'utf8'), Buffer.from([0xf0, 0x9f])]);
     const path = makeTempFile(broken);
     let start = 0;
@@ -193,14 +194,14 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
       start += charsRead;
       if (charsRead < 3) break;
     }
-    expect(guard).toBeLessThan(50); // 未死循环
+    expect(guard).toBeLessThan(50); // no infinite loop
     expect(lastCharsRead).toBeGreaterThanOrEqual(0);
   });
 
-  // T8：Buffer.alloc 为零填充，若把整个 buf 而非 subarray(0, got) 交给扫描器，
-  // 尾部 0x00 会被误计为字符。窗口大小远超文件长度时应只返回真实字符。
-  it('T8 窗口大于文件长度时不返回零填充字符', () => {
-    const s = '短文本abc';
+  // T8: Buffer.alloc is zero-filled; if the whole buf instead of subarray(0, got) were handed to the scanner,
+  // trailing 0x00 bytes would be miscounted as characters. When the window size far exceeds the file length, only real characters should be returned.
+  it('T8 zero-filled characters are not returned when the window is larger than the file', () => {
+    const s = '短文本abc'; // Chinese is intentional multi-byte input
     const path = makeTempFile(s);
     const { content, charsRead, totalChars } = readTextFileWindow(path, 0, 100_000);
     expect(content).toBe(s);
@@ -210,11 +211,11 @@ describe('readTextFileWindow (宿主防 OOM)', () => {
   });
 });
 
-describe('callMcpTool 提供方身份闸门 (LRC#1)', () => {
+describe('callMcpTool provider identity gate (LRC#1)', () => {
   const call = { name: 'local_file_read', payload: { path: '/x' } } as never;
 
-  // T3：第三方 MCP server 暴露同名 local_file_read 时不得被劫持进 Shell 专用续读路径。
-  it('T3 非 Shell server 的同名工具走通用路径，不进入 auto 续读', async () => {
+  // T3: a third-party MCP server exposing a same-named local_file_read must not be hijacked into the Shell-specific continuation read path.
+  it('T3 a same-named tool on a non-Shell server takes the generic path and does not enter auto continuation read', async () => {
     let calls = 0;
     const transport = {
       request: async () => {
@@ -229,32 +230,32 @@ describe('callMcpTool 提供方身份闸门 (LRC#1)', () => {
 
     const result = await callMcpTool(makeThirdPartyServer(), transport, { call } as never);
     expect(result.ok).toBe(true);
-    expect(calls).toBe(1); // 仅一次调用，未进入多窗循环
-    expect(result.summary).not.toContain('auto 续读');
+    expect(calls).toBe(1); // Only one call; the multi-window loop was not entered
+    expect(result.summary).not.toContain('auto-continue');
   });
 
-  // T4：Shell Native Host 的 local_file_read 仍进入续读路径，行为不回退。
-  it('T4 Shell server 的 local_file_read 仍进入 auto 续读', async () => {
+  // T4: the Shell Native Host local_file_read still enters the continuation read path; behavior does not regress.
+  it('T4 local_file_read on the Shell server still enters auto continuation read', async () => {
     const transport = makeTransport([
       windowResult('AAAA', 4, 8, true),
       windowResult('BBBB', 8, 8, false),
     ]);
     const result = await callMcpTool(makeServer(), transport, { call } as never);
     expect(result.ok).toBe(true);
-    expect(result.summary).toBe('local_file_read auto 续读完成');
+    expect(result.summary).toBe('local_file_read auto-continue complete');
     const t4Data = autoReadData(result);
     expect(t4Data.content).toBe('AAAABBBB');
-    // 契约形状硬断言：data.content 必须为单字符串而非逐窗数组，防止误回退为 contents[]。
+    // Hard contract-shape assertion: data.content must be a single string rather than a per-window array, to prevent an accidental regression to contents[].
     expect(typeof t4Data.content).toBe('string');
     expect(Array.isArray(t4Data.content)).toBe(false);
   });
 });
 
-describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
+describe('callLocalFileReadAuto (extension-side auto continuation read)', () => {
   const server = makeServer();
   const call = { name: 'local_file_read', payload: { path: '/x' } } as never;
 
-  it('循环读取直到 truncated=false，聚合内容与窗口数正确', async () => {
+  it('loops until truncated=false, with correct aggregated content and window count', async () => {
     const transport = makeTransport([
       windowResult('AAAA', 4, 12, true),
       windowResult('BBBB', 8, 12, true),
@@ -270,7 +271,7 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(data.truncated).toBe(false);
   });
 
-  it('nextStart 不前进时 fail-closed', async () => {
+  it('fails closed when nextStart does not advance', async () => {
     const transport = makeTransport([
       windowResult('AAAA', 4, 12, true),
       windowResult('BBBB', 4, 12, true),
@@ -280,7 +281,7 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(autoReadData(result).windows).toBe(2);
   });
 
-  it('窗口内容非字符串时 fail-closed', async () => {
+  it('fails closed when window content is not a string', async () => {
     const transport = makeTransport([
       { structuredContent: { data: { truncated: true, nextStart: 4 } } } as McpCallToolResult,
     ]);
@@ -288,7 +289,7 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('单窗调用失败时 fail-closed', async () => {
+  it('fails closed when a single window call fails', async () => {
     const transport = {
       request: async () => {
         throw new Error('boom');
@@ -298,8 +299,8 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(result.ok).toBe(false);
   });
 
-  // T5：max_chars 为「本次最多返回字符数」总量语义，而非每窗上限。
-  it('T5 max_chars 是总量上限，多窗合计不得超出', async () => {
+  // T5: max_chars has "maximum characters returned this time" total semantics, not a per-window limit.
+  it('T5 max_chars is a total cap; the sum across windows must not exceed it', async () => {
     const { transport, requestedMaxChars } = makeBudgetAwareTransport(50_000);
     const budgetedCall = { name: 'local_file_read', payload: { path: '/x', max_chars: 5000 } } as never;
     const result = await callLocalFileReadAuto(server, transport, { call: budgetedCall } as never);
@@ -307,12 +308,12 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     const data = autoReadData(result);
     expect(data.charsReturned).toBe(5000);
     expect(Array.from(data.content).length).toBeLessThanOrEqual(5000);
-    expect(data.truncated).toBe(true); // 文件更长，如实标记未读完
-    // 单窗申请值不得超过总预算，也不得被放大到 12000
+    expect(data.truncated).toBe(true); // The file is longer; honestly marked as not fully read
+    // A single-window request must not exceed the total budget, nor be inflated to 12000
     expect(Math.max(...requestedMaxChars)).toBeLessThanOrEqual(5000);
   });
 
-  it('T5b 未传 max_chars 时按契约缺省 16000 总量', async () => {
+  it('T5b without max_chars, the contract default total of 16000 applies', async () => {
     const { transport } = makeBudgetAwareTransport(50_000);
     const result = await callLocalFileReadAuto(server, transport, { call } as never);
     expect(result.ok).toBe(true);
@@ -321,7 +322,7 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(data.truncated).toBe(true);
   });
 
-  it('T5c max_chars 超过契约硬上限时收敛到 100000', async () => {
+  it('T5c max_chars above the contract hard cap is clamped to 100000', async () => {
     const { transport } = makeBudgetAwareTransport(500_000);
     const hugeCall = { name: 'local_file_read', payload: { path: '/x', max_chars: 999_999 } } as never;
     const result = await callLocalFileReadAuto(server, transport, { call: hugeCall } as never);
@@ -329,8 +330,8 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(autoReadData(result).charsReturned).toBe(100_000);
   });
 
-  // T6：聚合结果仍须经统一 normalization 施加 maxResultBytes 字节上限。
-  it('T6 聚合后 detail 受 maxResultBytes 约束并标记 truncated', async () => {
+  // T6: the aggregated result must still go through the unified normalization that applies the maxResultBytes byte cap.
+  it('T6 aggregated detail is bounded by maxResultBytes and marked truncated', async () => {
     const tinyLimitServer = makeServer({ limits: { maxResultBytes: 500, maxToolCount: 100 } } as Partial<McpServerConfig>);
     const { transport } = makeBudgetAwareTransport(50_000);
     const result = await callLocalFileReadAuto(tinyLimitServer, transport, { call } as never);
@@ -338,9 +339,9 @@ describe('callLocalFileReadAuto (扩展侧 auto 续读)', () => {
     expect(result.truncated).toBe(true);
   });
 
-  it('窗口数达上限时 fail-closed（不静默谎报成功）', async () => {
-    // 模拟宿主每窗仅回 1 字符但持续 truncated=true：预算充足而窗口数先耗尽，
-    // 验证 M1 修复——此时必须 ok:false 且 truncated:true，而非谎报成功（fail-open）。
+  it('fails closed when the window count hits the limit (does not silently misreport success)', async () => {
+    // Simulates a host returning only 1 character per window while truncated stays true: the budget is ample but the window count runs out first.
+    // Verifies the M1 fix: ok:false and truncated:true are required here, not a false success (fail-open).
     let i = 0;
     const transport = {
       request: async () => {

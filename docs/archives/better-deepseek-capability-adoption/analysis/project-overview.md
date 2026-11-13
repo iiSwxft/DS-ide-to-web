@@ -2,9 +2,9 @@
 
 ## Preliminary Direction
 
-把 EdgeTypE/better-deepseek 中 DeepSeek++ 当前缺失且高价值的能力纳入本项目，优先覆盖 Android WebView 平台、项目/文件上下文、生成物交付、沙箱代码执行、语音和会话组织；实现时保留 DeepSeek++ 现有 WXT + React + TypeScript + ToolDescriptor/MCP 架构，不照搬 Better DeepSeek 的独立 BDS 标签体系。
+Bring the high-value capabilities of EdgeTypE/better-deepseek that DeepSeek++ currently lacks into this project, prioritizing the Android WebView platform, project/file context, artifact delivery, sandboxed code execution, voice, and conversation organization; during implementation, keep DeepSeek++'s existing WXT + React + TypeScript + ToolDescriptor/MCP architecture and do not copy Better DeepSeek's standalone BDS tag system.
 
-参照仓库快照：`EdgeTypE/better-deepseek` `450168e`，2026-06-09，`visualizer-kit css rework`。
+Reference repository snapshot: `EdgeTypE/better-deepseek` `450168e`, 2026-06-09, `visualizer-kit css rework`.
 
 ## Current Architecture
 
@@ -28,7 +28,7 @@ graph TD
     ShellHost["packages/shell-host"] --> MCP["core/mcp/transports/native.ts"]
 ```
 
-DeepSeek++ 目前是浏览器扩展优先的架构：MAIN world 负责拦截 DeepSeek 请求和响应，content world 负责状态、DOM 渲染和工具执行，sidepanel 负责管理 UI，core 目录承载可测试的业务模块。现有能力已经覆盖 Chrome/Edge/Firefox、MCP、Shell Native Host、OfficeCLI skill、记忆、Skill、GitHub Skill import、WebDAV 同步、联网搜索/网页获取、对话导出、自动化任务、内联 agent 续跑、悬浮宠物和中英文运行时。
+DeepSeek++ is currently a browser-extension-first architecture: the MAIN world intercepts DeepSeek requests and responses, the content world handles state, DOM rendering, and tool execution, the sidepanel handles management UI, and the core directory hosts testable business modules. Existing capabilities already cover Chrome/Edge/Firefox, MCP, Shell Native Host, the OfficeCLI skill, memory, Skills, GitHub Skill import, WebDAV sync, web search/page fetch, conversation export, automation tasks, inline agent continuation, the floating pet, and Chinese/English runtimes.
 
 ## Technology Stack
 

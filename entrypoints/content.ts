@@ -272,6 +272,7 @@ const ASSISTANT_RESPONSE_CONTENT_SELECTOR =
 const REASONING_HOST_META_RE =
   /\b(?:reason|reasoning|think|thinking|thought)\b/i;
 const REASONING_HOST_TEXT_RE =
+  // Chinese alternatives match the DeepSeek site's own "Thought for..." labels; kept intentionally.
   /^(?:已(?:深度)?思考|深度思考|思考过程|思考中|正在思考|thinking|reasoning|thought)(?:[\s（(:：]|$)/i;
 const REASONING_HOST_ANCESTOR_SCAN_DEPTH = 4;
 const INLINE_AGENT_LIVE_TARGET_WAIT_MS = 1_500;

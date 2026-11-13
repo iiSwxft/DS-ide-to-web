@@ -2,8 +2,8 @@
 
 | # | Milestone | Target | Criteria | Status |
 |:--|:----------|:-------|:---------|:-------|
-| 1 | **M-B3 · pi skills 生态导入完成** | After P3-B3 合入 | ① SKILL.md 解析/桥接契约测试绿 ② pi 模板零进 wire（grep + prompt:freeze 零 diff） ③ golden 10/10 ④ 护栏全绿（pi-importer probe 无 pi harness 泄漏） ⑤ 无新持久化键（pi-storage-boundary 保持） ⑥ 社区技能导入走现有增强管线 | Pending |
+| 1 | **M-B3 · pi skills ecosystem import complete** | After P3-B3 merged | ① SKILL.md parsing/bridging contract tests green ② pi templates zero into wire (grep + prompt:freeze zero diff) ③ golden 10/10 ④ guardrails all green (pi-importer probe with no pi harness leak) ⑤ no new persistence keys (pi-storage-boundary maintained) ⑥ community skill import goes through the existing augmentation pipeline | Pending |
 
-## Step B 完成定义
+## Definition of Step B Completion
 
-B1（provider 注册）+ B2（官方 API 双后端）+ B3（skills 生态导入）全部合入 = Step B 路线图完成。交接文档定义的三个子项各自独立 run/批次、独立 Issue 授权；完成后更新 `docs/archives/pi-agent-core-integration/plan/milestones.md` 的 Step B 表状态（若需要）。
+B1 (provider registration) + B2 (official API dual backend) + B3 (skills ecosystem import) all merged = the Step B roadmap is complete. The three sub-items defined in the handoff document are each an independent run/batch with independent Issue authorization; after completion, update the Step B table status in `docs/archives/pi-agent-core-integration/plan/milestones.md` (if needed).

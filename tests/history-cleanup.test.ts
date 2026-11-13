@@ -53,22 +53,23 @@ describe('history cleanup', () => {
             {
               message_id: 1,
               message_role: 'user',
-              content: '看一下深圳的房价',
+              content: 'Check Shenzhen housing prices',
             },
             {
               message_id: 2,
               message_role: 'assistant',
               parent_message_id: 1,
-              content: '我帮你查一下深圳最近的房价情况。',
+              content: 'Let me look up recent housing prices in Shenzhen.',
             },
             {
               message_id: 3,
               message_role: 'user',
               content: [
+                // Chinese continuation intro is intentional test INPUT: core/inline-agent/prompt.ts still detects history via '工具续跑任务'.
                 '以下是工具续跑任务刚刚执行的工具结果。请像真正的 Agent 一样继续推进。',
                 '',
                 '<original_task>',
-                '看一下深圳的房价',
+                'Check Shenzhen housing prices',
                 '</original_task>',
                 '',
                 '<tool_results>',
@@ -80,7 +81,7 @@ describe('history cleanup', () => {
               message_id: 4,
               message_role: 'assistant',
               parent_message_id: 3,
-              content: '根据最新市场数据，深圳房价如下。',
+              content: 'Based on the latest market data, Shenzhen housing prices are as follows.',
             },
           ],
         },
@@ -149,23 +150,24 @@ describe('history cleanup', () => {
             {
               message_id: 21,
               message_role: 'user',
-              content: '查一下港股行情',
+              content: 'Check Hong Kong stock quotes',
             },
             {
               message_id: 22,
               message_role: 'assistant',
               parent_message_id: 21,
-              content: '我帮你搜索一下港股最新行情。',
+              content: 'Let me search for the latest Hong Kong stock quotes.',
             },
             {
               message_id: 23,
               message_role: 'user',
               parent_message_id: 22,
               content: [
+                // Chinese continuation intro is intentional test INPUT: core/inline-agent/prompt.ts still detects history via '工具续跑任务'.
                 '以下是工具续跑任务刚刚执行的工具结果。请像真正的 Agent 一样继续推进。',
                 '',
                 '<original_task>',
-                '查一下港股行情',
+                'Check Hong Kong stock quotes',
                 '</original_task>',
                 '',
                 '<tool_results>',
@@ -178,7 +180,7 @@ describe('history cleanup', () => {
               message_role: 'assistant',
               parent_message_id: 23,
               content: [
-                '，需要重新获取页面。',
+                ', need to re-fetch the page.',
                 '<web_fetch>',
                 '{"url":"https://example.com/hk"}',
                 '</web_fetch>',
@@ -196,7 +198,7 @@ describe('history cleanup', () => {
 
     expect(records).toHaveLength(0);
     expect(json.data.biz_data.chat_messages[2].content).toBe(INLINE_AGENT_CONTINUATION_PLACEHOLDER);
-    expect(json.data.biz_data.chat_messages[3].content).toBe('，需要重新获取页面。');
+    expect(json.data.biz_data.chat_messages[3].content).toBe(', need to re-fetch the page.');
   });
 
   it('replaces inline-agent task_complete markers with their summary in restored history', () => {
@@ -208,10 +210,11 @@ describe('history cleanup', () => {
               message_id: 39,
               message_role: 'user',
               content: [
+                // Chinese continuation intro is intentional test INPUT: core/inline-agent/prompt.ts still detects history via '工具续跑任务'.
                 '以下是工具续跑任务刚刚执行的工具结果。请像真正的 Agent 一样继续推进。',
                 '',
                 '<original_task>',
-                '整理回答',
+                'Organize the answer',
                 '</original_task>',
                 '',
                 '<tool_results>',
@@ -223,7 +226,7 @@ describe('history cleanup', () => {
               message_id: 40,
               message_role: 'assistant',
               parent_message_id: 39,
-              content: '<task_complete>{"summary":"回答已经整理完成。","artifacts":[]}</task_complete>',
+              content: '<task_complete>{"summary":"The answer has been organized.","artifacts":[]}</task_complete>',
             },
           ],
         },
@@ -236,7 +239,7 @@ describe('history cleanup', () => {
     });
 
     expect(json.data.biz_data.chat_messages[0].content).toBe(INLINE_AGENT_CONTINUATION_PLACEHOLDER);
-    expect(json.data.biz_data.chat_messages[1].content).toBe('回答已经整理完成。');
+    expect(json.data.biz_data.chat_messages[1].content).toBe('The answer has been organized.');
   });
 
   it('restores inline-agent xychart shorthand through the native Mermaid path', () => {
@@ -258,8 +261,9 @@ describe('history cleanup', () => {
               message_id: 50,
               message_role: 'user',
               content: [
+                // Chinese continuation intro is intentional test INPUT: core/inline-agent/prompt.ts still detects history via '工具续跑任务'.
                 '以下是工具续跑任务刚刚执行的工具结果。请像真正的 Agent 一样继续推进。',
-                '<original_task>生成图表</original_task>',
+                '<original_task>Generate a chart</original_task>',
                 '<tool_results>[]</tool_results>',
               ].join('\n'),
             },
@@ -307,7 +311,7 @@ describe('history cleanup', () => {
   });
 
   it('preserves THINK and RESPONSE fragment roles while normalizing an inline-agent chart', () => {
-    const reasoning = '先核验数据，再输出图表。';
+    const reasoning = 'Verify the data first, then output the chart.';
     const response = [
       '```xychart-beta',
       'xychart-beta',
@@ -327,8 +331,9 @@ describe('history cleanup', () => {
               message_id: 60,
               message_role: 'user',
               content: [
+                // Chinese continuation intro is intentional test INPUT: core/inline-agent/prompt.ts still detects history via '工具续跑任务'.
                 '以下是工具续跑任务刚刚执行的工具结果。请像真正的 Agent 一样继续推进。',
-                '<original_task>生成图表</original_task>',
+                '<original_task>Generate a chart</original_task>',
                 '<tool_results>[]</tool_results>',
               ].join('\n'),
             },
@@ -373,7 +378,7 @@ describe('history cleanup', () => {
   });
 
   it('preserves user-authored task_complete examples in restored history', () => {
-    const content = '<task_complete>{"summary":"保留原始示例。","artifacts":[]}</task_complete>';
+    const content = '<task_complete>{"summary":"Keep the original example.","artifacts":[]}</task_complete>';
     const json = {
       data: {
         biz_data: {
@@ -397,7 +402,7 @@ describe('history cleanup', () => {
   });
 
   it('preserves non-inline-agent assistant task_complete examples in restored history', () => {
-    const content = 'Example: <task_complete>{"summary":"保留原始示例。","artifacts":[]}</task_complete>';
+    const content = 'Example: <task_complete>{"summary":"Keep the original example.","artifacts":[]}</task_complete>';
     const json = {
       data: {
         biz_data: {
@@ -473,7 +478,7 @@ describe('history cleanup', () => {
               message_id: 21,
               message_role: 'assistant',
               content: [
-                '正在生成演示文稿。',
+                'Generating the presentation.',
                 '<artifact_create>',
                 '{"filename":"demo.pptx","content":"',
                 'A'.repeat(250_000),
@@ -492,7 +497,7 @@ describe('history cleanup', () => {
       onToolCallsRestored: (next) => records.push(...next),
     });
 
-    expect(json.data.biz_data.chat_messages[0].content).toBe('正在生成演示文稿。');
+    expect(json.data.biz_data.chat_messages[0].content).toBe('Generating the presentation.');
     expect(records).toEqual([]);
   });
 
@@ -506,7 +511,7 @@ describe('history cleanup', () => {
               message_id: 22,
               message_role: 'assistant',
               fragments: [
-                { content: '正在生成演示文稿。\n< artifact' },
+                { content: 'Generating the presentation.\n< artifact' },
                 { content: '_create >{"filename":"demo.pptx","content":"' },
                 { content: 'A'.repeat(250_000) },
               ],
@@ -525,7 +530,7 @@ describe('history cleanup', () => {
     });
 
     const fragments = json.data.biz_data.chat_messages[0].fragments;
-    expect(fragments.map((fragment: { content: string }) => fragment.content).join('')).toBe('正在生成演示文稿。');
+    expect(fragments.map((fragment: { content: string }) => fragment.content).join('')).toBe('Generating the presentation.');
     expect(records).toEqual([]);
   });
 

@@ -11,38 +11,38 @@ Edit CLAUDE.md or Claude project memory instead.
 
 ### MEMORY.md
 
-- [DeepSeek++ 项目概述](project_overview.md) — Chrome 插件，为 DeepSeek 网页版注入 agentic 记忆 + Skill 系统
-- [协作风格](feedback_collab.md) — 少问多做，核心对齐后直接推进
-- [README 风格](feedback_readme_style.md) — 只写功能特性，不暴露 API 端点和实现细节
+- [DeepSeek++ project overview](project_overview.md) — Chrome extension that injects an agentic memory + Skill system into the DeepSeek web app
+- [Collaboration style](feedback_collab.md) — Ask less, do more; once the core is aligned, proceed directly
+- [README style](feedback_readme_style.md) — Only describe features; do not expose API endpoints or implementation details
 
 ### feedback_collab.md
 
-核心约束明确后直接做技术判断并推进，不要把每个小决策都抛回来选。
+Once the core constraints are clear, make technical judgments and move forward directly; do not throw every small decision back for the user to choose.
 
-**Why:** 用户在多个项目中一致表现此偏好（stock-ld、deepseek-pp），对已明确方向的细节讨论视为冗余。
+**Why:** The user has consistently shown this preference across multiple projects (stock-ld, deepseek-pp), and treats discussion of details in an already-settled direction as redundant.
 
-**How to apply:** Phase 1/2 对齐核心需求后，技术选型直接拍板并说明理由，不展开对比表格征求意见。遇到真正新岔路时再问。
+**How to apply:** After Phase 1/2 aligns the core requirements, decide on technology choices directly and explain the reasoning, without laying out comparison tables to ask for opinions. Ask only when a genuinely new fork appears.
 
 ### feedback_readme_style.md
 
-README 只保留用户可感知的功能特性介绍，移除所有技术实现细节。
+The README keeps only user-perceivable feature descriptions; remove all technical implementation details.
 
-**Why:** 用户不希望公开文档暴露内部接口路径（如 `/api/v0/...`）、协议细节（XML/SSE）、架构分层等信息。
+**Why:** The user does not want public docs to expose internal interface paths (such as `/api/v0/...`), protocol details (XML/SSE), architecture layering, and similar information.
 
-**How to apply:** 编辑 README 或面向用户的文档时，只描述"能做什么"，不描述"怎么做到的"。技术栈、项目结构、工作原理等内容不放在 README 中。
+**How to apply:** When editing the README or user-facing docs, describe only "what it can do", not "how it does it". Tech stack, project structure, how it works, and similar content do not go in the README.
 
 ### project_overview.md
 
-DeepSeek++ 是一个 Chrome 浏览器插件（MV3），以侧边栏形式运行于 chat.deepseek.com。
+DeepSeek++ is a Chrome browser extension (MV3) that runs as a side panel on chat.deepseek.com.
 
-**核心机制：**
-- 拦截 fetch 请求到 `https://chat.deepseek.com/api/v0/chat/completion`
-- 在 prompt 前注入记忆上下文 + 工具定义指令（伪 tool-use 协议）
-- AI 回复中输出 `<tool_call name="memory_save">` 块，插件解析后存入 IndexedDB
-- `/skill-name` 前缀触发 Skill 系统，替换 prompt 为模板
+**Core mechanism:**
+- Intercepts fetch requests to `https://chat.deepseek.com/api/v0/chat/completion`
+- Injects memory context + tool-definition instructions (a pseudo tool-use protocol) before the prompt
+- The AI reply outputs a `<tool_call name="memory_save">` block, which the extension parses and stores in IndexedDB
+- The `/skill-name` prefix triggers the Skill system, replacing the prompt with a template
 
-**技术栈：** WXT + React + TypeScript + Tailwind CSS + Dexie.js（IndexedDB）
+**Tech stack:** WXT + React + TypeScript + Tailwind CSS + Dexie.js (IndexedDB)
 
-**Why:** 用户希望 DeepSeek 拥有类似 Claude Code 的跨会话记忆和可扩展 Skill 能力。
+**Why:** The user wants DeepSeek to have Claude Code-like cross-session memory and extensible Skill capabilities.
 
-**How to apply:** 所有架构决策围绕"fetch 拦截 + prompt 注入"这个核心模式展开。
+**How to apply:** All architecture decisions revolve around the core pattern "fetch interception + prompt injection".

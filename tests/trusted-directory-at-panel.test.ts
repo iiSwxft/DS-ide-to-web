@@ -9,8 +9,8 @@ function entry(relativePath: string, name: string, kind: 'image' | 'text' = 'tex
 describe('parseAtTrigger', () => {
   it('opens the panel when the last token starts with @', () => {
     expect(parseAtTrigger('@')).toEqual({ active: true, query: '' });
-    expect(parseAtTrigger('查看 @src')).toEqual({ active: true, query: 'src' });
-    expect(parseAtTrigger('查看 @src ')).toEqual({ active: true, query: 'src' });
+    expect(parseAtTrigger('view @src')).toEqual({ active: true, query: 'src' });
+    expect(parseAtTrigger('view @src ')).toEqual({ active: true, query: 'src' });
   });
 
   it('stays closed without an @ token or when @ is mid-token', () => {
@@ -20,7 +20,7 @@ describe('parseAtTrigger', () => {
   });
 
   it('closes when the user keeps typing past the @ token', () => {
-    expect(parseAtTrigger('查看 @src 然后')).toEqual({ active: false, query: '' });
+    expect(parseAtTrigger('view @src then')).toEqual({ active: false, query: '' });
   });
 });
 

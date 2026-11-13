@@ -195,21 +195,21 @@ describe('inline agent renderer', () => {
     const step = createAgentStepElement(0);
 
     updateStepStreamText(step, [
-      '现在我已经获取了足够的搜索结果。让我从这些结果中提炼出最重要的科技新闻。',
+      'I have now gathered enough search results. Let me distill the most important tech news from them.',
       '',
-      '从搜索结果中，我可以看到当天有几个重大科技新闻：',
+      'From the search results, I can see several major tech stories that day:',
       '',
-      '1. 远景科技集团的乌兰察布星河基地投产。',
+      "1. Envision Group's Ulanqab Galaxy base has gone into production.",
       '',
-      '2. 谷歌AI部门发生重大调整。',
+      "2. Google's AI division undergoes a major reorganization.",
       '',
-      '3. 新华网报道了中国的一些科技进展。',
+      '3. Xinhua reported on some tech progress in China.',
     ].join('\n'));
 
     const body = step.querySelector<HTMLElement>('.dpp-agent-step-body');
     expect(body?.innerHTML).not.toContain('<br>');
-    expect(body?.innerHTML).toContain('</p><p>从搜索结果中，我可以看到当天有几个重大科技新闻：</p>');
-    expect(body?.innerHTML).toContain('<ol><li>远景科技集团的乌兰察布星河基地投产。</li><li>谷歌AI部门发生重大调整。</li><li>新华网报道了中国的一些科技进展。</li></ol>');
+    expect(body?.innerHTML).toContain('</p><p>From the search results, I can see several major tech stories that day:</p>');
+    expect(body?.innerHTML).toContain("<ol><li>Envision Group's Ulanqab Galaxy base has gone into production.</li><li>Google's AI division undergoes a major reorganization.</li><li>Xinhua reported on some tech progress in China.</li></ol>");
   });
 
   it('removes a narration segment when its text is cleared', () => {
@@ -329,13 +329,13 @@ describe('inline agent renderer', () => {
     expect(stream).not.toBeNull();
 
     if (stream) {
-      addAgentToolEntry(stream, 0, { name: 'web_search', payload: { query: '天气' } }, streamLabels);
+      addAgentToolEntry(stream, 0, { name: 'web_search', payload: { query: 'weather' } }, streamLabels);
     }
 
     const item = stream?.querySelector('.dpp-agent-tool-item');
     expect(item?.getAttribute('data-tool-status')).toBe('pending');
     expect(item?.querySelector('.dpp-agent-tool-name')?.textContent).toBe('web_search');
-    expect(item?.querySelector('.dpp-agent-tool-param')?.textContent).toBe('· 天气');
+    expect(item?.querySelector('.dpp-agent-tool-param')?.textContent).toBe('· weather');
     expect(item?.querySelector('.dpp-agent-tool-state')?.textContent).toBe('');
     const detail = item?.querySelector<HTMLElement>('.dpp-agent-tool-summary');
     expect(detail?.hidden).toBe(true);
@@ -511,14 +511,14 @@ describe('inline agent renderer', () => {
     const step = createAgentStepElement(0);
     expect(stream).not.toBeNull();
     if (!stream) return;
-    mountAgentNarration(step, stream, streamLabels, '我先分析数据再下结论。');
+    mountAgentNarration(step, stream, streamLabels, 'I will analyze the data first, then conclude.');
 
     const note = getAgentReasoningNote(step);
     expect(note).not.toBeNull();
     const title = note?.querySelector('.dpp-agent-reasoning-note-title');
     expect(title?.textContent).toBe('Thought · step 1');
     const body = note?.querySelector<HTMLElement>('.dpp-agent-reasoning-note-body');
-    expect(body?.textContent).toBe('我先分析数据再下结论。');
+    expect(body?.textContent).toBe('I will analyze the data first, then conclude.');
     // The note is folded by default.
     expect(body?.hidden).toBe(true);
     // Expanding reveals the real content, not the placeholder.
@@ -541,10 +541,10 @@ describe('inline agent renderer', () => {
     let body = note?.querySelector<HTMLElement>('.dpp-agent-reasoning-note-body');
     expect(body?.textContent).toContain('not retained');
 
-    if (note) updateAgentReasoningNoteElement(note, '先');
-    if (note) updateAgentReasoningNoteElement(note, '先分析');
+    if (note) updateAgentReasoningNoteElement(note, 'Analyze');
+    if (note) updateAgentReasoningNoteElement(note, 'Analyze first');
     body = note?.querySelector<HTMLElement>('.dpp-agent-reasoning-note-body');
-    expect(body?.textContent).toBe('先分析');
+    expect(body?.textContent).toBe('Analyze first');
     expect(body?.textContent).not.toContain('not retained');
   });
 
@@ -609,25 +609,25 @@ describe('inline agent renderer', () => {
 
   it('omits native deliverable fences from the agent console', () => {
     const html = renderAgentStreamText([
-      '我生成了文件。',
+      'I generated the file.',
       '',
       '````HTML',
       '<h1>Hi</h1>',
       '````',
       '',
-      '图表如下。',
+      'The chart is below.',
       '',
       '```xychart-beta',
       'title Revenue',
       'line [1, 2, 3]',
       '```',
       '',
-      '交付完成。',
+      'Delivery complete.',
     ].join('\n'));
 
-    expect(html).toContain('<p>我生成了文件。</p>');
-    expect(html).toContain('<p>图表如下。</p>');
-    expect(html).toContain('<p>交付完成。</p>');
+    expect(html).toContain('<p>I generated the file.</p>');
+    expect(html).toContain('<p>The chart is below.</p>');
+    expect(html).toContain('<p>Delivery complete.</p>');
     expect(html).not.toContain('<pre');
     expect(html).not.toContain('&lt;h1&gt;Hi&lt;/h1&gt;');
     expect(html).not.toContain('xychart-beta');
@@ -637,20 +637,20 @@ describe('inline agent renderer', () => {
 
   it('hides an unterminated native fence throughout streaming without losing raw text', () => {
     const step = createAgentStepElement(0);
-    const streamed = '交付物生成中。\n\n```html\n<!DOCTYPE html>\n<html>';
+    const streamed = 'Deliverable being generated.\n\n```html\n<!DOCTYPE html>\n<html>';
 
     updateStepStreamText(step, streamed);
 
     const body = step.querySelector<HTMLElement>('.dpp-agent-step-body');
     expect(body?.getAttribute('data-dpp-raw-text')).toBe(streamed);
-    expect(body?.textContent).toContain('交付物生成中。');
+    expect(body?.textContent).toContain('Deliverable being generated.');
     expect(body?.querySelector('pre')).toBeNull();
     expect(body?.textContent).not.toContain('<!DOCTYPE html>');
   });
 
   it('leaves non-artifact narration as plain markdown', () => {
-    const html = renderAgentStreamText('普通正文 **加粗**。\n\n```js\nx\n```');
-    expect(html).toContain('<strong>加粗</strong>');
+    const html = renderAgentStreamText('Plain body **bold**.\n\n```js\nx\n```');
+    expect(html).toContain('<strong>bold</strong>');
     expect(html).toContain('<pre data-dpp-lang="js"><code>x\n</code></pre>');
     expect(html).not.toContain('dpp-agent-artifact-preview');
   });
@@ -661,9 +661,9 @@ describe('inline agent renderer', () => {
     const stream = getAgentConsoleBody(container);
     expect(stream).not.toBeNull();
     if (stream) {
-      stream.innerHTML = renderAgentStreamText('说明。\n\n````html\n<h1>Hi</h1>\n````');
+      stream.innerHTML = renderAgentStreamText('Note.\n\n````html\n<h1>Hi</h1>\n````');
     }
-    expect(stream?.textContent).toContain('说明。');
+    expect(stream?.textContent).toContain('Note.');
     expect(stream?.querySelector('pre')).toBeNull();
     expect(stream?.querySelector('iframe')).toBeNull();
     expect(stream?.querySelector('.dpp-agent-artifact-preview')).toBeNull();
@@ -698,6 +698,7 @@ describe('inline agent renderer', () => {
   it('auto-collapses a native reasoning host once its thinking completes', () => {
     const host = document.createElement('div');
     const title = document.createElement('div');
+    // Chinese host title is intentional input: the detector matches the Chinese native reasoning-host label ("thought for 2 seconds").
     title.textContent = '已思考（用时 2 秒）';
     const body = document.createElement('div');
     body.textContent = 'thinking content';
@@ -717,6 +718,7 @@ describe('inline agent renderer', () => {
   it('does not fold a reasoning host that is still thinking', () => {
     const host = document.createElement('div');
     const title = document.createElement('div');
+    // Chinese host title is intentional input: the detector matches the Chinese "thinking..." label.
     title.textContent = '思考中…';
     const onClick = vi.fn();
     title.addEventListener('click', onClick);

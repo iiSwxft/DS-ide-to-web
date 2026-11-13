@@ -226,10 +226,10 @@ describe('createDeepSeekWebProvider registration', () => {
 
   it('streams reasoning as pi thinking content blocks', async () => {
     adapterMocks.submitPromptStreaming.mockImplementationOnce(async (_input, handlers) => {
-      handlers.onReasoningChunk?.('我', '我');
-      handlers.onReasoningChunk?.('先思考', '我先思考');
-      handlers.onTextChunk('答案', '答案');
-      return { assistantText: '答案', responseMessageId: 22, requestMessageId: 21, finished: true };
+      handlers.onReasoningChunk?.('I', 'I');
+      handlers.onReasoningChunk?.(' think first', 'I think first');
+      handlers.onTextChunk('Answer', 'Answer');
+      return { assistantText: 'Answer', responseMessageId: 22, requestMessageId: 21, finished: true };
     });
 
     const provider = createDeepSeekWebProvider(createProviderDeps());
@@ -246,11 +246,11 @@ describe('createDeepSeekWebProvider registration', () => {
     }
     const result = await stream.result();
 
-    expect(thinkingEvents).toEqual(['我', '先思考']);
+    expect(thinkingEvents).toEqual(['I', ' think first']);
     const thinking = result.content.find((block) => block.type === 'thinking');
-    expect(thinking).toMatchObject({ type: 'thinking', thinking: '我先思考' });
+    expect(thinking).toMatchObject({ type: 'thinking', thinking: 'I think first' });
     const text = result.content.find((block) => block.type === 'text');
-    expect(text).toMatchObject({ type: 'text', text: '答案' });
+    expect(text).toMatchObject({ type: 'text', text: 'Answer' });
   });
 
   it('exposes a static catalog factory with the custom api', () => {

@@ -204,6 +204,7 @@ await testMethod('tools/call shell_exec (echo)', 'tools/call', {
 
 await testMethod('tools/call shell_exec (unicode stdout)', 'tools/call', {
   name: 'shell_exec',
+  // The Chinese string ("Chinese path") is an intentional non-ASCII stdout fixture; do not translate.
   arguments: { command: platform() === 'win32' ? 'Write-Output "中文路径-123"' : 'printf "中文路径-123\\n"' },
 }, (res) => {
   assert(res.result, 'expected result');

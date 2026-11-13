@@ -2,38 +2,38 @@
 
 ## Preliminary Direction
 
-在保留现有用户数据、功能表面和跨版本契约的前提下，对 DeepSeek++ 做结构性重构，系统提升浏览器插件的性能、稳定性、兼容性、可维护性与向后兼容性。具体范围和优先级将在 Phase 2 基于本分析确认。
+While preserving existing user data, feature surface, and cross-version contracts, perform a structural refactor of DeepSeek++ to systematically improve the browser extension's performance, stability, compatibility, maintainability, and backward compatibility. The specific scope and priorities will be confirmed in Phase 2 based on this analysis.
 
 ## Confirmed Task Definition
 
-用户于 2026-07-13 确认本轮任务名为 **DeepSeek++ Reliability and Compatibility Refactor**，并确定以下执行边界：
+On 2026-07-13 the user confirmed this round's task name as **DeepSeek++ Reliability and Compatibility Refactor** and set the following execution boundaries:
 
-1. **Scope**：主范围包含 PC 端 Chrome/Edge/Firefox 扩展、Shell Native Host、同步、持久化和自动化；Android、移动 WebView 和移动安装包不再属于产品范围。
-2. **Strategy**：采用 compatibility-contract-first 的渐进式重构。先固定历史数据和行为合同，再修安全/数据/取消语义，之后建立有真实消费者的 ports、拆分大型入口，最后依据测量结果优化性能。
-3. **Compatibility**：保留全部现有用户功能、prompt 输出、storage keys、IndexedDB、sync/MCP/runtime message/Native Host 契约和 Chrome/Edge/Firefox 支持；任何 schema 变化必须有显式 migration，不允许静默丢弃旧数据。
-4. **Testing policy**：不把建设完整 E2E、coverage 或 performance 基础设施作为独立项目目标；但任何行为、数据、安全、schema、routing、permission、persistence 或 caching 变更都必须增加或更新相应自动化测试，并通过现有相关质量门。
-5. **Tracking**：使用 `GITHUB_STANDARD` 的 Issues + Milestones + PR；不创建 Project board。2026-07-14 起，Issues 作为验收清单，剩余重构通过隔离 owner lanes 汇入一个 batch branch 和一个最终 PR。安全敏感 Issue 只描述可公开目标与验收结果。
-6. **Governance**：`AGENTS.md` 是唯一 agent instruction truth source。根 `CLAUDE.md` 不再使用；若存在则先把仍有效内容合并进 `AGENTS.md` 后删除。当前根 `CLAUDE.md` 已不存在；`videos/deepseek-pp-promo/CLAUDE.md` 与同目录 `AGENTS.md` 完全相同，已保留后者并删除重复文件。
-7. **Deferred**：任意全局 coverage 数字、独立的大型测试平台建设，以及没有现有消费者的预留 abstraction。
+1. **Scope**: The main scope covers the PC Chrome/Edge/Firefox extensions, the Shell Native Host, sync, persistence, and automation; Android, mobile WebView, and mobile installation packages are no longer part of the product scope.
+2. **Strategy**: Adopt a compatibility-contract-first incremental refactor. First pin historical data and behavior contracts, then fix security/data/cancellation semantics, then establish ports with real consumers and split the large entry points, and finally optimize performance based on measurements.
+3. **Compatibility**: Preserve all existing user features, prompt output, storage keys, IndexedDB, sync/MCP/runtime message/Native Host contracts, and Chrome/Edge/Firefox support; any schema change must have an explicit migration, and silently dropping old data is not allowed.
+4. **Testing policy**: Building a full E2E, coverage, or performance infrastructure is not an independent project goal; however, any change to behavior, data, security, schema, routing, permission, persistence, or caching must add or update the corresponding automated tests and pass the existing relevant quality gates.
+5. **Tracking**: Use `GITHUB_STANDARD` Issues + Milestones + PRs; do not create a Project board. Starting 2026-07-14, Issues serve as the acceptance checklist, and the remaining refactor flows into one batch branch and one final PR through isolated owner lanes. Security-sensitive Issues describe only publicly disclosable goals and acceptance results.
+6. **Governance**: `AGENTS.md` is the sole agent instruction truth source. The root `CLAUDE.md` is no longer used; if it exists, still-valid content is first merged into `AGENTS.md` and then it is deleted. The root `CLAUDE.md` no longer exists; `videos/deepseek-pp-promo/CLAUDE.md` was identical to the `AGENTS.md` in the same directory, so the latter was kept and the duplicate file deleted.
+7. **Deferred**: Any global coverage number, building a standalone large test platform, and reserved abstractions with no existing consumers.
 
-2026-07-13 范围修订：Issue [#345](https://github.com/zhu1090093659/deepseek-pp/issues/345) 取代此前的 Android 最小兼容计划，删除 Android 模板、桥接、构建、CI 和测试支持面。T1.5/T2.3 的 Android 记录仅保留为历史执行证据。
+Scope revision on 2026-07-13: Issue [#345](https://github.com/zhu1090093659/deepseek-pp/issues/345) supersedes the earlier minimal Android compatibility plan, removing the Android template, bridge, build, CI, and test support surfaces. The Android records of T1.5/T2.3 are kept only as historical execution evidence.
 
 ## Analysis Snapshot
 
-- 集成分支：`codex/362-background-deepseek-chat-handlers`
-- 基线 HEAD：`8fa92228`（R4.2 / #361 merge）；当前单批次集成分支包含 R4.3–R6.5、最终审计修复和门禁迁移检查
-- 日期：2026-07-14
-- 当前实现位于隔离 batch worktree；原仓库中的用户改动未被覆盖或带入本分支。
-- 当前规模（排除 `node_modules/`、`dist/`、归档和生成资产）：
-  - `core/`：243 个 TypeScript/TSX 文件，约 42,714 行
-  - `entrypoints/`：108 个 TypeScript/TSX 文件，约 30,095 行
-  - `packages/shell-host/native` + `lib`：约 2,878 行（另含 README/package metadata）
-  - `tests/`：182 个 TypeScript 测试/fixture 源文件，其中 161 个 test files，约 34,292 行
-  - `scripts/`：21 个脚本，约 3,871 行
+- Integration branch: `codex/362-background-deepseek-chat-handlers`
+- Baseline HEAD: `8fa92228` (R4.2 / #361 merge); the current single-batch integration branch contains R4.3–R6.5, final audit fixes, and gate migration checks
+- Date: 2026-07-14
+- The current implementation lives in an isolated batch worktree; user changes in the original repository were not overwritten or brought into this branch.
+- Current size (excluding `node_modules/`, `dist/`, archives, and generated assets):
+  - `core/`: 243 TypeScript/TSX files, about 42,714 lines
+  - `entrypoints/`: 108 TypeScript/TSX files, about 30,095 lines
+  - `packages/shell-host/native` + `lib`: about 2,878 lines (plus README/package metadata)
+  - `tests/`: 182 TypeScript test/fixture source files, of which 161 are test files, about 34,292 lines
+  - `scripts/`: 21 scripts, about 3,871 lines
 
 ## Current Architecture
 
-DeepSeek++ 是一个面向 PC 浏览器的多运行时 WebExtension 系统，而不是单一 React 页面。它包含 MV3 service worker、DeepSeek 页面隔离世界与 MAIN world 脚本、React Side Panel/Sidebar、全网页悬浮聊天入口、浏览器沙箱和 Native Messaging Host。
+DeepSeek++ is a multi-runtime WebExtension system for PC browsers, not a single React page. It includes the MV3 service worker, the DeepSeek page isolated world and MAIN world scripts, the React Side Panel/Sidebar, a site-wide floating chat entry, a browser sandbox, and a Native Messaging Host.
 
 ```mermaid
 flowchart LR
@@ -54,69 +54,69 @@ flowchart LR
 
 ### Runtime Flow
 
-1. `entrypoints/main-world.content.ts` 和 `entrypoints/content.ts` 在 `document_start` 启动，通过 `window.postMessage` 交换 `MessagePort`。
-2. MAIN world 的 `core/interceptor/fetch-hook.ts` patch `fetch`、XHR 和部分 IndexedDB 读取，拦截 DeepSeek 请求/响应。
-3. 请求增强经隔离世界读取 memory、Skill、preset、project context 和 tool descriptors，再返回修改后的请求体。
-4. 流式响应中的 tool XML 在 MAIN world 解析，经过 content runtime 转发到 background，再由 `core/tool/runtime.ts` 分派到内置工具、MCP 或 browser control。
-5. Side Panel 通过 runtime messages 访问 background；background 还负责自动化、同步、会话导出、官方 API、权限、沙箱和生命周期恢复。
-6. 沙箱采用 `background -> offscreen document -> sandbox iframe -> Worker`，Python 运行时由 Pyodide 提供。
+1. `entrypoints/main-world.content.ts` and `entrypoints/content.ts` start at `document_start` and exchange a `MessagePort` through `window.postMessage`.
+2. The MAIN world's `core/interceptor/fetch-hook.ts` patches `fetch`, XHR, and some IndexedDB reads to intercept DeepSeek requests/responses.
+3. Request augmentation reads memory, Skills, presets, project context, and tool descriptors through the isolated world, then returns the modified request body.
+4. Tool XML in streaming responses is parsed in the MAIN world, forwarded through the content runtime to the background, and then dispatched by `core/tool/runtime.ts` to built-in tools, MCP, or browser control.
+5. The Side Panel accesses the background through runtime messages; the background is also responsible for automation, sync, conversation export, the official API, permissions, the sandbox, and lifecycle recovery.
+6. The sandbox uses `background -> offscreen document -> sandbox iframe -> Worker`, with the Python runtime provided by Pyodide.
 
 ## Technology Stack
 
 | Layer | Current | Transformation Position |
 |:--|:--|:--|
-| Language | TypeScript 5.9 / ESM | 保留；是否调整 target 由兼容性合同决定 |
-| Extension framework | WXT 0.20，MV3 | 保留，强化平台适配边界 |
-| UI | React 19、Tailwind CSS 4、React Markdown | 保留，按 feature/controller 拆分 |
-| Local persistence | Chrome storage、Dexie/IndexedDB | 保留 key/DB identity，补迁移和事务合同 |
-| Tool/runtime | XML tool calls、MCP、browser control、sandbox | 保留用户功能，收敛消息与执行策略 |
-| Sandbox | Worker、Sucrase、Pyodide | 保留能力，建立体积和按需加载目标 |
-| Test | Vitest 4 + jsdom | 保留并增加真实浏览器、迁移和 fault-path 验证 |
-| Build/release | npm workspaces、WXT、GitHub Actions | 保留三浏览器与 release gate |
-| Native integration | Node Native Messaging Host | 保留协议，拆分单体实现 |
+| Language | TypeScript 5.9 / ESM | Keep; whether to adjust the target is decided by the compatibility contract |
+| Extension framework | WXT 0.20, MV3 | Keep, strengthen the platform adaptation boundary |
+| UI | React 19, Tailwind CSS 4, React Markdown | Keep, split by feature/controller |
+| Local persistence | Chrome storage, Dexie/IndexedDB | Keep key/DB identity, add migration and transaction contracts |
+| Tool/runtime | XML tool calls, MCP, browser control, sandbox | Keep user features, converge messaging and execution policy |
+| Sandbox | Worker, Sucrase, Pyodide | Keep capabilities, establish size and on-demand loading goals |
+| Test | Vitest 4 + jsdom | Keep and add real-browser, migration, and fault-path verification |
+| Build/release | npm workspaces, WXT, GitHub Actions | Keep three browsers and the release gate |
+| Native integration | Node Native Messaging Host | Keep the protocol, split the monolithic implementation |
 
 ## Entry Points
 
 | Entry Point | Responsibility | Current Structural Signal |
 |:--|:--|:--|
-| `entrypoints/background.ts` + `entrypoints/background/*-handlers.ts` | Service worker bootstrap、单一 121-command registry、sync/automation/tool composition 与 lifecycle | 根文件 1,411 行；全部 121 live commands 为 typed handlers，80 个 payload-bearing commands 在接收边界解码，旧 switch/router/type 已删除；auth refresh 只忽略明确的缺失 receiver，其他 tab delivery error 可见 |
-| `entrypoints/content.ts` + `entrypoints/content/` | DeepSeek DOM capability composition、工具卡、inline agent、导出、多模态、主题、宠物、token speed、恢复状态 | 根文件仍是 7,417 行热点，但一个 epoch/resource kernel 已拥有 bridge、navigation、listener/observer/timer/root/port 生命周期；tool/trace storage 进入 strict codec/store |
-| `entrypoints/main-world.content.ts` + controllers | MAIN world bridge、navigation 和网络拦截器装配 | 根文件 89 行；patch/reinjection/BFCache teardown 幂等，payload 在接收边界解码；任一 world 单独重启都会显式断开旧 Port 并重新握手 |
-| `entrypoints/floating-chat.content.ts` + launcher lifecycle | `<all_urls>` 悬浮聊天启动 | 四态 permission/runtime 模型和幂等 start/stop 统一 disabled、missing-permission、ready、invalidated |
-| `entrypoints/sidepanel/` | React Side Panel/Firefox Sidebar、typed runtime client、domain controllers | 所有 route/subpage 按需加载；页面不直接发送 runtime request，MCP/Tools/Chat/Settings/Library policy 已移入 controllers |
-| `entrypoints/sandbox-offscreen/` | Offscreen 到 sandbox iframe 中继 | Chromium API 依赖，需要明确降级合同 |
-| `entrypoints/sandbox-runner/` | JS/TS/Python/HTML 运行 | 多层重复校验，合同尚未单一化 |
-| `packages/shell-host/` | Native Host 安装和 MCP 工具 | Native root 54 行、installer root 214 行；framing/router/session/process/file/Skill/picker/OS/logger 分模块拥有 |
+| `entrypoints/background.ts` + `entrypoints/background/*-handlers.ts` | Service worker bootstrap, single 121-command registry, sync/automation/tool composition, and lifecycle | Root file 1,411 lines; all 121 live commands are typed handlers, 80 payload-bearing commands are decoded at the receiving boundary, and the old switch/router/types have been deleted; auth refresh ignores only an explicitly missing receiver, while other tab delivery errors are visible |
+| `entrypoints/content.ts` + `entrypoints/content/` | DeepSeek DOM capability composition, tool cards, inline agent, export, multimodal, theme, pet, token speed, recovery state | The root file is still a 7,417-line hotspot, but an epoch/resource kernel now owns the bridge, navigation, and listener/observer/timer/root/port lifecycle; tool/trace storage moved into strict codecs/stores |
+| `entrypoints/main-world.content.ts` + controllers | MAIN world bridge, navigation, and network interceptor assembly | Root file 89 lines; patch/reinjection/BFCache teardown is idempotent, payloads are decoded at the receiving boundary; restarting either world alone explicitly disconnects the old Port and re-handshakes |
+| `entrypoints/floating-chat.content.ts` + launcher lifecycle | `<all_urls>` floating chat launcher | A four-state permission/runtime model and idempotent start/stop unify disabled, missing-permission, ready, and invalidated |
+| `entrypoints/sidepanel/` | React Side Panel/Firefox Sidebar, typed runtime client, domain controllers | All routes/subpages load on demand; pages no longer send runtime requests directly, and MCP/Tools/Chat/Settings/Library policy has moved into controllers |
+| `entrypoints/sandbox-offscreen/` | Offscreen to sandbox iframe relay | Chromium API dependency, needs an explicit degradation contract |
+| `entrypoints/sandbox-runner/` | JS/TS/Python/HTML execution | Multi-layer duplicated validation, contract not yet unified |
+| `packages/shell-host/` | Native Host installation and MCP tools | Native root 54 lines, installer root 214 lines; framing/router/session/process/file/Skill/picker/OS/logger are owned by separate modules |
 
 ## Persistence and Backward-Compatibility Surface
 
 | Surface | Current Contract |
 |:--|:--|
-| IndexedDB `DeepSeekPP` | Memory store，Dexie v1 -> v2 -> v3 migration |
-| IndexedDB `DeepSeekPPArtifacts` | Artifact store v1，兼容 legacy `storage.local` |
-| IndexedDB `DeepSeekPPSyncRecovery` | Sync local-apply undo journal v1；journal 删除是本地 commit point |
-| `chrome.storage.local` | Skills、presets、MCP、project、saved items、sync、automation、usage、settings、tool history 等 |
+| IndexedDB `DeepSeekPP` | Memory store, Dexie v1 -> v2 -> v3 migration |
+| IndexedDB `DeepSeekPPArtifacts` | Artifact store v1, compatible with legacy `storage.local` |
+| IndexedDB `DeepSeekPPSyncRecovery` | Sync local-apply undo journal v1; deleting the journal is the local commit point |
+| `chrome.storage.local` | Skills, presets, MCP, project, saved items, sync, automation, usage, settings, tool history, etc. |
 | `chrome.storage.session` | Side Panel active chat loop recovery marker |
-| DeepSeek page `localStorage` | Web 登录 token 的读取入口 |
-| Sync JSON | Memories、skills、skill sources、presets、project、saved items |
-| Runtime contracts | Side Panel/background messages、MAIN/content bridge、tool call/result、stream events |
-| Prompt/output contracts | Prompt freeze、tool XML、inline-agent prompt、历史恢复文本 |
+| DeepSeek page `localStorage` | Read entry point for the Web login token |
+| Sync JSON | Memories, skills, skill sources, presets, project, saved items |
+| Runtime contracts | Side Panel/background messages, MAIN/content bridge, tool call/result, stream events |
+| Prompt/output contracts | Prompt freeze, tool XML, inline-agent prompt, history restoration text |
 
-重构期间不得无迁移地重命名 `deepseek_pp_*` keys、IndexedDB 名称/表、schema version、message type、MCP transport 配置或 tool XML。当前兼容机制并不统一：部分 store 有版本化 migration，部分只做读取时 normalize，`project` 对旧 schema 会直接清空，artifact 又同时维护 IndexedDB 与 legacy storage fallback。
+During the refactor, `deepseek_pp_*` keys, IndexedDB names/tables, schema versions, message types, MCP transport configuration, or tool XML must not be renamed without a migration. The current compatibility mechanisms are not uniform: some stores have versioned migrations, some only normalize on read, `project` simply clears old schemas, and artifact maintains both IndexedDB and a legacy storage fallback.
 
-完整、带稳定 ID 的兼容性清单见 [`docs/compatibility/README.md`](../../../compatibility/README.md)。T1.1 只登记当前合同和缺口；T1.2-T1.5 负责把这些清单转成可执行 fixtures。
+The complete compatibility inventory with stable IDs is in [`docs/compatibility/README.md`](../../../compatibility/README.md). T1.1 only registers the current contracts and gaps; T1.2-T1.5 turn these inventories into executable fixtures.
 
 ## Performance Baseline
 
-- 当前 Chrome 产物约 18.5 MB；其中 exact-once `pyodide/` 五文件合计 13,545,395 bytes。旧构建每个 browser 处理 25 个重复条目，现已消除 54,181,580 bytes 的重复处理量。
-- Chrome 产物中：
-  - `background.js` 约 749 KB；bundled Skill 文档不再进入启动 JS
-  - `content.js` 约 578 KB
-  - `main-world.js` 约 353 KB
-  - Side Panel initial shell 360,027 raw / 108,673 gzip；first Chat screen 498,013 / 150,087，均受 CI ceiling 约束
-- Content 长期能力由一个 mutation hub 和 capability scopes 管理。固定 21-batch trace 从旧 6 observers / 126 deliveries 降到 21 hub deliveries / 1 relevant subscriber callback；两个永久 500ms route watcher 已删除，10 秒 idle 回调从 40 降到 0。
-- `entrypoints/floating-chat.content.ts` 匹配 `<all_urls>`；即使功能关闭，脚本仍需启动后读取状态。
-- Released whole-array storage shape 保留；Usage/Tool History 的 100 次相邻 mutation 从 100 次物理写降为 1 次，read/clear/failure 是 barrier，Sync 不 coalesce。
+- The current Chrome artifact is about 18.5 MB; the exact-once `pyodide/` five files total 13,545,395 bytes. The old build processed 25 duplicate entries per browser, and 54,181,580 bytes of duplicate processing has now been eliminated.
+- In the Chrome artifact:
+  - `background.js` about 749 KB; bundled Skill docs no longer enter startup JS
+  - `content.js` about 578 KB
+  - `main-world.js` about 353 KB
+  - Side Panel initial shell 360,027 raw / 108,673 gzip; first Chat screen 498,013 / 150,087, both bounded by the CI ceiling
+- Long-lived Content capabilities are managed by one mutation hub and capability scopes. The fixed 21-batch trace dropped from the old 6 observers / 126 deliveries to 21 hub deliveries / 1 relevant subscriber callback; the two permanent 500ms route watchers were deleted, and 10-second idle callbacks dropped from 40 to 0.
+- `entrypoints/floating-chat.content.ts` matches `<all_urls>`; even when the feature is off, the script still has to start and then read its state.
+- The released whole-array storage shape is preserved; 100 adjacent Usage/Tool History mutations dropped from 100 physical writes to 1, read/clear/failure are barriers, and Sync does not coalesce.
 
 ## Build & Run
 
@@ -134,39 +134,39 @@ flowchart LR
 
 ## Testing Baseline
 
-初始分析基线曾验证：
+The initial analysis baseline had verified:
 
 | Check | Result |
 |:--|:--|
-| `npm test -- --reporter=dot` | 63 files / 359 tests passed，约 7.2s |
-| `npm run compile` | passed，约 6.7s |
+| `npm test -- --reporter=dot` | 63 files / 359 tests passed, about 7.2s |
+| `npm run compile` | passed, about 6.7s |
 | `npm run prompt:freeze` | 10 cases passed |
-| `npm run build:all` | Chrome、Edge、Firefox MV3 均构建通过 |
+| `npm run build:all` | Chrome, Edge, and Firefox MV3 all built successfully |
 | `npm run verify:manifest-policy` | passed |
 | `npm run verify:extension-utf8` | 78 files passed |
 | `npm run audit:prod` | 0 production vulnerabilities at configured severity |
 
-相对初始基线的当前状态（完整 `ci:quality` 已通过）：
+Current state relative to the initial baseline (full `ci:quality` has passed):
 
-- Vitest 仍以 jsdom/fake browser boundaries 为主；Chrome 150 没有加载命令行指定的 unpacked build，因此 Content 真实浏览器 smoke 未执行，不能宣称通过。
-- 没有全局 coverage gate 或 background cold-start profiler；但已有 exact package/bundle ceiling、Content fixed trace/resource ledger 和 persistence burst-write budgets。
-- Fake IndexedDB 已执行生产 Memory migrations/reopen、Artifact one-way migration、future/corrupt guards、atomic import，以及 sync raw-preimage rollback/restart；Artifact 只有 IndexedDB runtime truth。
-- Sync generation、local journal、config CAS、confirmed target、action FIFO 和 fault/restart evidence 保持不变；R6.5 仅 coalesce Usage/Tool History，相邻 100 mutations 降至 1 次 physical write，Sync 不 coalesce。
-- 本地 `ci:quality` 已覆盖 Chrome/Edge/Firefox 的 build/zip/package contract；托管 CI 仍只在 Ubuntu/Node 22 执行，未形成真实浏览器运行时矩阵。
+- Vitest still mainly uses jsdom/fake browser boundaries; Chrome 150 did not load the unpacked build specified on the command line, so the Content real-browser smoke was not run and cannot be claimed as passed.
+- There is no global coverage gate or background cold-start profiler; but there are exact package/bundle ceilings, the Content fixed trace/resource ledger, and persistence burst-write budgets.
+- Fake IndexedDB has executed production Memory migrations/reopen, Artifact one-way migration, future/corrupt guards, atomic import, and sync raw-preimage rollback/restart; Artifact has IndexedDB as its only runtime truth.
+- Sync generation, local journal, config CAS, confirmed target, action FIFO, and fault/restart evidence are unchanged; R6.5 only coalesces Usage/Tool History, with 100 adjacent mutations reduced to 1 physical write, and Sync does not coalesce.
+- Local `ci:quality` already covers the build/zip/package contract for Chrome/Edge/Firefox; hosted CI still runs only on Ubuntu/Node 22 and has not formed a real-browser runtime matrix.
 
 ## Project Governance Baseline and Resolution
 
 | Surface | Current Status |
 |:--|:--|
-| `AGENTS.md` | 唯一项目级 instruction truth source，可直接维护 |
-| Root `CLAUDE.md` | 不存在 |
-| Claude project memory | 不作为项目规则或 fallback 使用 |
-| `.claude/settings.local.json` | 仅包含本机命令权限，不是工程规则真相源 |
-| Cursor/Windsurf/Cline/Codex repo rules | 未发现现有等价规则文件 |
-| Repo-local memory fallback | 不允许创建 |
-| Active `docs/progress/MASTER.md` | 分析时存在；run 完成后已归档为 `../progress/MASTER.md` |
+| `AGENTS.md` | Sole project-level instruction truth source, directly maintainable |
+| Root `CLAUDE.md` | Does not exist |
+| Claude project memory | Not used as project rules or a fallback |
+| `.claude/settings.local.json` | Contains only local machine command permissions, not an engineering-rules source of truth |
+| Cursor/Windsurf/Cline/Codex repo rules | No equivalent rule files found |
+| Repo-local memory fallback | Not allowed to be created |
+| Active `docs/progress/MASTER.md` | Existed at analysis time; after the run completed it was archived as `../progress/MASTER.md` |
 
-分析开始时，共享规则的 canonical source 已断裂：`AGENTS.md` 声称来自一个不存在的上游。用户在 Phase 2 确认停止这条生成关系，并指定 `AGENTS.md` 为唯一项目级 agent instruction truth source。Phase 4 已将它改为可直接维护的 Codex-first 规则面；根 `CLAUDE.md` 继续保持不存在，且不创建 repo-local memory fallback。完整决议见 [`governance/instruction-surfaces.md`](../governance/instruction-surfaces.md)。
+At the start of the analysis, the canonical source of the shared rules was broken: `AGENTS.md` claimed to come from a non-existent upstream. In Phase 2 the user confirmed stopping this generation relationship and designated `AGENTS.md` as the sole project-level agent instruction truth source. Phase 4 changed it into a directly maintainable Codex-first rules surface; the root `CLAUDE.md` continues not to exist, and no repo-local memory fallback is created. See [`governance/instruction-surfaces.md`](../governance/instruction-surfaces.md) for the full resolution.
 
 ## External Integrations
 
@@ -186,10 +186,10 @@ flowchart LR
 
 ## Architectural Starting Point
 
-仓库中已有三个可复用的正向范式：
+The repository already has three reusable positive patterns:
 
-- `core/export/`：transport port、schema、normalize、render 分层清楚。
-- `core/tool-loop/engine.ts`：通过 callback 注入边界，可独立测试。
-- `core/mcp/transports/` 与 `core/shell/`：协议/策略相对独立于具体调用者。
+- `core/export/`: clean layering of transport port, schema, normalize, and render.
+- `core/tool-loop/engine.ts`: injects its boundary through callbacks and can be tested independently.
+- `core/mcp/transports/` and `core/shell/`: protocol/policy is relatively independent of concrete callers.
 
-后续重构应沿这些模式建立单一合同与 composition root，而不是在旧入口旁再造第二套 dispatcher、storage abstraction 或 validation path。
+Subsequent refactors should follow these patterns to establish a single contract and composition root, rather than building a second dispatcher, storage abstraction, or validation path next to the old entry points.

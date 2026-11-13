@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * web_search / web_fetch 全链路模拟测试
+ * web_search / web_fetch end-to-end simulation test
  *
- * 模拟从 AI 回复中提取 <web_search> 标签到执行搜索再到结果回传的完整流程。
+ * Simulates the full flow from extracting a <web_search> tag in an AI reply, to running the search, to returning the results.
  *
- * 用法: node scripts/web-search-smoke.mjs
+ * Usage: node scripts/web-search-smoke.mjs
  */
 
 // =========================================================================
-// 第一步：模拟工具描述符（和 core/tool/web-search.ts 中的定义一致）
+// Step 1: Mock tool descriptors (matching the definitions in core/tool/web-search.ts)
 // =========================================================================
 
 const WEB_SEARCH_TOOL_DESCRIPTORS = [
@@ -17,13 +17,13 @@ const WEB_SEARCH_TOOL_DESCRIPTORS = [
     provider: { kind: 'local', id: 'web', displayName: 'DeepSeek++ Web Search', transport: 'in_process' },
     name: 'web_search',
     invocationName: 'web_search',
-    title: '搜索互联网',
-    description: '搜索互联网，返回与查询相关的网页标题、URL 和摘要',
+    title: 'Search the web',
+    description: 'Search the web and return page titles, URLs, and snippets relevant to the query',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: '搜索查询关键词' },
-        topK: { type: 'integer', description: '返回结果数量，默认 5' },
+        query: { type: 'string', description: 'Search query keywords' },
+        topK: { type: 'integer', description: 'Number of results to return, default 5' },
       },
       required: ['query'],
     },
@@ -34,11 +34,11 @@ const WEB_SEARCH_TOOL_DESCRIPTORS = [
     provider: { kind: 'local', id: 'web', displayName: 'DeepSeek++ Web Search', transport: 'in_process' },
     name: 'web_fetch',
     invocationName: 'web_fetch',
-    title: '获取网页',
-    description: '下载指定 URL 并提取可视文本',
+    title: 'Fetch web page',
+    description: 'Download the given URL and extract visible text',
     inputSchema: {
       type: 'object',
-      properties: { url: { type: 'string', description: '完整 URL' } },
+      properties: { url: { type: 'string', description: 'Full URL' } },
       required: ['url'],
     },
     execution: { mode: 'manual', enabled: true, risk: 'medium' },
@@ -49,17 +49,17 @@ const MEMORY_TOOL_DESCRIPTORS = [
   {
     id: 'local:memory:memory_save',
     provider: { kind: 'local', id: 'memory', displayName: 'DeepSeek++ Memory', transport: 'in_process' },
-    name: 'memory_save', invocationName: 'memory_save', title: '保存记忆', description: '保存长期记忆',
+    name: 'memory_save', invocationName: 'memory_save', title: 'Save memory', description: 'Save long-term memory',
     inputSchema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] },
     execution: { mode: 'auto', enabled: true, risk: 'low' },
   },
 ];
 
-// 所有工具描述符（模拟 DEFAULT_TOOL_DESCRIPTORS）
+// All tool descriptors (mock of DEFAULT_TOOL_DESCRIPTORS)
 const ALL_DESCRIPTORS = [...MEMORY_TOOL_DESCRIPTORS, ...WEB_SEARCH_TOOL_DESCRIPTORS];
 
 // =========================================================================
-// 第二步：模拟 extractToolCalls（和 core/tool/invocation.ts 中的逻辑一致）
+// Step 2: Mock extractToolCalls (matching the logic in core/tool/invocation.ts)
 // =========================================================================
 
 function createInvocationCatalog(descriptors) {
@@ -112,7 +112,7 @@ function extractToolCalls(text, descriptors) {
 }
 
 // =========================================================================
-// 第三步：模拟 performWebSearch（和 core/tool/web-search.ts 中的逻辑一致）
+// Step 3: Mock performWebSearch (matching the logic in core/tool/web-search.ts)
 // =========================================================================
 
 function createSearchResult(title, url, snippet) {
@@ -163,16 +163,16 @@ async function performWebSearch(query, topK) {
       if (html.length < 200) throw new Error(`${domain} returned empty response`);
       const results = parseBingResults(html, topK);
       if (results.length === 0) throw new Error(`${domain} returned no parseable search results`);
-      return { ok: true, summary: `搜索完成，找到 ${results.length} 条结果`, results, domain, status: response.status };
+      return { ok: true, summary: `Search complete, found ${results.length} results`, results, domain, status: response.status };
     } catch (e) {
       lastError = e.message;
     }
   }
-  return { ok: false, summary: '搜索失败', error: lastError };
+  return { ok: false, summary: 'Search failed', error: lastError };
 }
 
 // =========================================================================
-// 第四步：模拟 buildContinuationPrompt（和 core/inline-agent/prompt.ts 中的逻辑一致）
+// Step 4: Mock buildContinuationPrompt (matching the logic in core/inline-agent/prompt.ts)
 // =========================================================================
 
 function buildContinuationPrompt(originalTask, executions) {
@@ -185,7 +185,7 @@ function buildContinuationPrompt(originalTask, executions) {
     output: e.result.output ? JSON.stringify(e.result.output).slice(0, 8000) : undefined,
   }));
   return [
-    '以下是工具续跑任务刚刚执行的工具结果。请基于原始任务和这些工具结果继续推进。',
+    'These are the tool results just executed by the tool continuation task. Continue based on the original task and these tool results.',
     '',
     '<original_task>',
     originalTask.slice(0, 8000),
@@ -198,7 +198,7 @@ function buildContinuationPrompt(originalTask, executions) {
 }
 
 // =========================================================================
-// 主测试流程
+// Main test flow
 // =========================================================================
 
 let passed = 0;
@@ -211,80 +211,80 @@ function check(ok, msg) {
 
 async function main() {
   console.log('========================================');
-  console.log('  web_search 全链路模拟测试');
+  console.log('  web_search end-to-end simulation test');
   console.log('========================================\n');
 
-  // ── 测试 1：从模拟 AI 回复中提取工具调用 ──
-  console.log('=== 测试 1: 工具调用提取 ===');
+  // ── Test 1: Extract tool calls from a mock AI reply ──
+  console.log('=== Test 1: Tool call extraction ===');
 
-  const mockAiResponse = `当然，我来帮你搜索一下这位 up 主的信息。
+  const mockAiResponse = `Sure, let me search for information about this YouTuber.
 
 <web_search>
-{"query": "橘鸦 up主"}
+{"query": "Orange Crow YouTuber"}
 </web_search>
 
-请稍等，搜索完成后我会为你整理结果。`;
+Please wait; once the search completes I will organize the results for you.`;
 
   const calls = extractToolCalls(mockAiResponse, ALL_DESCRIPTORS);
-  check(calls.length === 1, `从 AI 回复中提取到 ${calls.length} 个工具调用（预期 1）`);
+  check(calls.length === 1, `Extracted ${calls.length} tool call(s) from the AI reply (expected 1)`);
   if (calls.length > 0) {
     const call = calls[0];
-    check(call.name === 'web_search', `工具名称: ${call.name}`);
-    check(call.payload.query === '橘鸦 up主', `查询参数: ${call.payload.query}`);
+    check(call.name === 'web_search', `Tool name: ${call.name}`);
+    check(call.payload.query === 'Orange Crow YouTuber', `Query parameter: ${call.payload.query}`);
     check(call.provider?.id === 'web', `provider.id = ${call.provider?.id}`);
     check(call.provider?.kind === 'local', `provider.kind = ${call.provider?.kind}`);
   }
 
-  // ── 测试 2：同时存在多个工具调用 ──
-  console.log('\n=== 测试 2: 混合工具调用 ===');
-  const mixedResponse = `我记住了。
+  // ── Test 2: Multiple tool calls at once ──
+  console.log('\n=== Test 2: Mixed tool calls ===');
+  const mixedResponse = `Got it, I will remember that.
 
 <memory_save>
-{"name": "用户偏好", "content": "喜欢科技视频"}
+{"name": "User preference", "content": "Likes tech videos"}
 </memory_save>
 
-让我搜索一下更多信息。
+Let me search for more information.
 
 <web_search>
-{"query": "橘鸦 科技 up主"}
+{"query": "Orange Crow tech YouTuber"}
 </web_search>` ;
 
   const mixedCalls = extractToolCalls(mixedResponse, ALL_DESCRIPTORS);
-  check(mixedCalls.length === 2, `提取到 ${mixedCalls.length} 个工具调用（预期 2）`);
-  check(mixedCalls[0].name === 'memory_save', `第一个工具: ${mixedCalls[0].name}`);
-  check(mixedCalls[1].name === 'web_search', `第二个工具: ${mixedCalls[1].name}`);
+  check(mixedCalls.length === 2, `Extracted ${mixedCalls.length} tool call(s) (expected 2)`);
+  check(mixedCalls[0].name === 'memory_save', `First tool: ${mixedCalls[0].name}`);
+  check(mixedCalls[1].name === 'web_search', `Second tool: ${mixedCalls[1].name}`);
   check(mixedCalls[1].provider?.id === 'web', `web_search provider.id = ${mixedCalls[1].provider?.id}`);
 
-  // ── 测试 3：模拟 stripToolCalls（从文本中移除 XML 标签） ──
-  console.log('\n=== 测试 3: 工具调用标签剥离 ===');
+  // ── Test 3: Mock stripToolCalls (remove XML tags from text) ──
+  console.log('\n=== Test 3: Tool call tag stripping ===');
   const catalog = createInvocationCatalog(ALL_DESCRIPTORS);
   const regex = createXmlToolCallRegex(catalog);
   const stripped = mockAiResponse.replace(regex, '').replace(/\n{3,}/g, '\n\n').trim();
-  const expected = '当然，我来帮你搜索一下这位 up 主的信息。\n\n请稍等，搜索完成后我会为你整理结果。';
-  check(stripped === expected, `剥离后文本正确\n  期望: ${expected.slice(0, 40)}...\n  实际: ${stripped.slice(0, 40)}...`);
+  const expected = 'Sure, let me search for information about this YouTuber.\n\nPlease wait; once the search completes I will organize the results for you.';
+  check(stripped === expected, `Stripped text is correct\n  Expected: ${expected.slice(0, 40)}...\n  Actual: ${stripped.slice(0, 40)}...`);
 
-  // ── 测试 4（联网）：实际执行搜索 ──
-  console.log('\n=== 测试 4: 实际执行搜索 ===');
+  // ── Test 4 (online): Run an actual search ──
+  console.log('\n=== Test 4: Actual search execution ===');
   try {
-    const result = await performWebSearch('橘鸦 up主', 5);
+    const result = await performWebSearch('Orange Crow YouTuber', 5);
     if (result.ok) {
-      check(true, `搜索成功: ${result.summary} (${result.domain}, HTTP ${result.status})`);
+      check(true, `Search succeeded: ${result.summary} (${result.domain}, HTTP ${result.status})`);
       result.results.forEach((r, i) => {
         console.log(`     ${i+1}. ${r.title.slice(0, 50)}`);
       });
     } else {
-      check(false, `搜索失败: ${result.error}`);
+      check(false, `Search failed: ${result.error}`);
     }
   } catch (e) {
-    check(false, `搜索异常: ${e.message}`);
+    check(false, `Search error: ${e.message}`);
   }
 
-  // ── 测试 5（联网）：验证搜索结果的 ToolResult 格式 ──
-  console.log('\n=== 测试 5: ToolResult 格式验证 ===');
+  // ── Test 5 (online): Validate the ToolResult format of search results ──
+  console.log('\n=== Test 5: ToolResult format validation ===');
   try {
-    const result = await performWebSearch('橘鸦 up主', 3);
+    const result = await performWebSearch('Orange Crow YouTuber', 3);
     if (result.ok) {
-      // 模拟返回的 ToolResult（和 executeWebSearchToolCall 中的一致）
+      // Mock returned ToolResult (matching executeWebSearchToolCall)
       const toolResult = {
         ok: true,
         name: 'web_search',
@@ -294,47 +294,47 @@ async function main() {
       };
       check(toolResult.ok === true, `ok = ${toolResult.ok}`);
       check(toolResult.name === 'web_search', `name = ${toolResult.name}`);
-      check(Array.isArray(toolResult.output), `output 是数组: ${Array.isArray(toolResult.output)}`);
-      check(toolResult.output.length <= 3, `output 长度 ${toolResult.output.length} ≤ 3`);
-      check(typeof toolResult.detail === 'string', `detail 是字符串`);
-      check(toolResult.detail.length > 0, `detail 非空`);
+      check(Array.isArray(toolResult.output), `output is an array: ${Array.isArray(toolResult.output)}`);
+      check(toolResult.output.length <= 3, `output length ${toolResult.output.length} <= 3`);
+      check(typeof toolResult.detail === 'string', `detail is a string`);
+      check(toolResult.detail.length > 0, `detail is non-empty`);
     } else {
-      check(false, `搜索失败，跳过 ToolResult 验证: ${result.error}`);
+      check(false, `Search failed, skipping ToolResult validation: ${result.error}`);
     }
   } catch (e) {
-    check(false, `ToolResult 验证异常: ${e.message}`);
+    check(false, `ToolResult validation error: ${e.message}`);
   }
 
-  // ── 测试 6：模拟 Continuation Prompt 生成 ──
-  console.log('\n=== 测试 6: Continuation Prompt 生成 ===');
+  // ── Test 6: Mock Continuation Prompt generation ──
+  console.log('\n=== Test 6: Continuation Prompt generation ===');
   const mockExecutions = [{
     name: 'web_search',
     provider: { kind: 'local', id: 'web', displayName: 'DeepSeek++ Web Search' },
     result: {
       ok: true,
-      summary: '搜索完成，找到 5 条结果',
-      detail: '1. [结果一](https://example.com)\n   摘要内容',
-      output: [{ title: '结果一', url: 'https://example.com', snippet: '摘要内容' }],
+      summary: 'Search complete, found 5 results',
+      detail: '1. [Result one](https://example.com)\n   Summary content',
+      output: [{ title: 'Result one', url: 'https://example.com', snippet: 'Summary content' }],
     },
   }];
-  const continuationPrompt = buildContinuationPrompt('帮我搜索橘鸦 up主', mockExecutions);
-  check(continuationPrompt.includes('<original_task>'), '包含 original_task');
-  check(continuationPrompt.includes('<tool_results>'), '包含 tool_results');
-  check(continuationPrompt.includes('橘鸦 up主'), '包含原始查询');
-  check(continuationPrompt.includes('结果一'), '包含搜索结果');
-  check(continuationPrompt.includes('</tool_results>'), '正确闭合');
+  const continuationPrompt = buildContinuationPrompt('Help me search for Orange Crow YouTuber', mockExecutions);
+  check(continuationPrompt.includes('<original_task>'), 'Contains original_task');
+  check(continuationPrompt.includes('<tool_results>'), 'Contains tool_results');
+  check(continuationPrompt.includes('Orange Crow YouTuber'), 'Contains the original query');
+  check(continuationPrompt.includes('Result one'), 'Contains the search results');
+  check(continuationPrompt.includes('</tool_results>'), 'Closes correctly');
 
-  // ── 汇总 ──
+  // ── Summary ──
   const total = passed + failed;
   console.log(`\n========================================`);
-  console.log(`  结果: ${passed}/${total} 通过`);
+  console.log(`  Result: ${passed}/${total} passed`);
   if (failed > 0) {
-    console.log(`  ${failed} 个失败`);
+    console.log(`  ${failed} failed`);
     process.exit(1);
   }
 }
 
 main().catch((e) => {
-  console.error('\n未捕获错误:', e);
+  console.error('\nUncaught error:', e);
   process.exit(1);
 });

@@ -75,24 +75,24 @@ describe('Phase 5 product surface helpers', () => {
     `;
 
     const history = startDeepSeekHistoryOrganizer(() => ({
-      enhancedSearchTitle: 'DeepSeek++ 搜索增强',
-      tagFilterLabel: '按标签筛选结果',
-      tagPlaceholder: '输入标签名',
-      currentTagsLabel: '给当前对话加标签',
-      currentTagsPlaceholder: '逗号分隔，例如：港股, 写作',
-      emptySearchStatus: 'DeepSeek++：等待官方搜索结果',
-      visibleStatus: (visibleCount, totalCount) => `DeepSeek++：已显示 ${visibleCount}/${totalCount}`,
-      storageError: (_action, message) => `DeepSeek++：历史标签错误：${message}`,
+      enhancedSearchTitle: 'DeepSeek++ Search Enhancement',
+      tagFilterLabel: 'Filter results by tag',
+      tagPlaceholder: 'Enter tag name',
+      currentTagsLabel: 'Tag this conversation',
+      currentTagsPlaceholder: 'Comma-separated, e.g. stocks, writing',
+      emptySearchStatus: 'DeepSeek++: waiting for official search results',
+      visibleStatus: (visibleCount, totalCount) => `DeepSeek++: showing ${visibleCount}/${totalCount}`,
+      storageError: (_action, message) => `DeepSeek++: history tag error: ${message}`,
     }));
     try {
       expect(document.querySelector('#dpp-history-search-enhancer')).not.toBeNull();
-      expect(document.querySelector('[data-dpp-history-title]')?.textContent).toBe('DeepSeek++ 搜索增强');
+      expect(document.querySelector('[data-dpp-history-title]')?.textContent).toBe('DeepSeek++ Search Enhancement');
       expect(document.querySelector('[data-dpp-history-search]')).toBeNull();
-      expect(document.querySelector('[data-dpp-history-tag-label]')?.textContent).toBe('按标签筛选结果');
-      expect(document.querySelector<HTMLInputElement>('[data-dpp-history-tag]')?.placeholder).toBe('输入标签名');
-      expect(document.querySelector('[data-dpp-current-tags-label]')?.textContent).toBe('给当前对话加标签');
-      expect(document.querySelector<HTMLInputElement>('[data-dpp-current-tags]')?.placeholder).toBe('逗号分隔，例如：港股, 写作');
-      expect(document.querySelector('[data-dpp-history-status]')?.textContent).toBe('DeepSeek++：已显示 1/1');
+      expect(document.querySelector('[data-dpp-history-tag-label]')?.textContent).toBe('Filter results by tag');
+      expect(document.querySelector<HTMLInputElement>('[data-dpp-history-tag]')?.placeholder).toBe('Enter tag name');
+      expect(document.querySelector('[data-dpp-current-tags-label]')?.textContent).toBe('Tag this conversation');
+      expect(document.querySelector<HTMLInputElement>('[data-dpp-current-tags]')?.placeholder).toBe('Comma-separated, e.g. stocks, writing');
+      expect(document.querySelector('[data-dpp-history-status]')?.textContent).toBe('DeepSeek++: showing 1/1');
     } finally {
       history.stop();
     }
@@ -168,14 +168,14 @@ describe('Phase 5 product surface helpers', () => {
     `;
 
     const history = startDeepSeekHistoryOrganizer(() => ({
-      enhancedSearchTitle: 'DeepSeek++ 搜索增强',
-      tagFilterLabel: '按标签筛选结果',
-      tagPlaceholder: '输入标签名',
-      currentTagsLabel: '给当前对话加标签',
-      currentTagsPlaceholder: '逗号分隔，例如：港股, 写作',
-      emptySearchStatus: 'DeepSeek++：等待官方搜索结果',
-      visibleStatus: (visibleCount, totalCount) => `DeepSeek++：已显示 ${visibleCount}/${totalCount}`,
-      storageError: (_action, message) => `DeepSeek++：历史标签错误：${message}`,
+      enhancedSearchTitle: 'DeepSeek++ Search Enhancement',
+      tagFilterLabel: 'Filter results by tag',
+      tagPlaceholder: 'Enter tag name',
+      currentTagsLabel: 'Tag this conversation',
+      currentTagsPlaceholder: 'Comma-separated, e.g. stocks, writing',
+      emptySearchStatus: 'DeepSeek++: waiting for official search results',
+      visibleStatus: (visibleCount, totalCount) => `DeepSeek++: showing ${visibleCount}/${totalCount}`,
+      storageError: (_action, message) => `DeepSeek++: history tag error: ${message}`,
     }));
 
     try {
@@ -186,7 +186,7 @@ describe('Phase 5 product surface helpers', () => {
       await vi.waitFor(() => {
         expect(document.querySelector<HTMLElement>('[data-testid="release-result"]')?.hidden).toBe(false);
         expect(document.querySelector<HTMLElement>('[data-testid="android-result"]')?.hidden).toBe(true);
-        expect(document.querySelector('[data-dpp-history-status]')?.textContent).toBe('DeepSeek++：已显示 1/2');
+        expect(document.querySelector('[data-dpp-history-status]')?.textContent).toBe('DeepSeek++: showing 1/2');
       });
     } finally {
       history.stop();

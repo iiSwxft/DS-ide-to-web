@@ -1,31 +1,31 @@
-// cwd hydration 双分支回归（响应评审 #1 / 第二次评审行内 #1）：
-// 验证 resolveToolCallPayload 在「普通 XML / legacy DSML」与「externalized」两条路径
-// 都从 grant 派生 cwd（不重新信任 call 字段），且未绑定 Skill 授权时不注入。
+// cwd hydration two-branch regression (responds to review #1 / second-review inline #1):
+// verifies that resolveToolCallPayload derives cwd from the grant on both the "plain XML / legacy DSML" and the
+// "externalized" paths (never re-trusting the call's own field), and injects nothing when no Skill grant is bound.
 //
-// 关键约束：cwd 仅从 getGrantLocalSkillDir(grant.id) 派生；普通分支经授权层统一输出的
-// externalPayloadNamespace（= grant.id）取得，无 Skill 授权时为 undefined → 不注入。
+// Key constraint: cwd is derived only from getGrantLocalSkillDir(grant.id); the plain branch obtains it via the
+// externalPayloadNamespace (= grant.id) emitted uniformly by the authorization layer, which is undefined without a Skill grant → no injection.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const TEST_SKILL_DIR = '/skills/demo';
 
-// 在导入 runtime 之前拦截 authorization 的 getGrantLocalSkillDir，避免触碰真实 state。
+// Intercept authorization's getGrantLocalSkillDir before importing runtime so real state is never touched.
 vi.mock('../core/tool/authorization', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../core/tool/authorization')>();
   return {
     ...actual,
-    // P1-A ② 端到端：getGrantLocalSkillDir 仍按 grant-1 → skillDir 派生 cwd。
+    // P1-A (2) end-to-end: getGrantLocalSkillDir still derives cwd as grant-1 → skillDir.
     getGrantLocalSkillDir: vi.fn(async (grantId: string): Promise<string | undefined> => {
       return grantId === 'grant-1' ? TEST_SKILL_DIR : undefined;
     }),
-    // 端到端直接返回带 externalPayloadNamespace='grant-1' 的授权结果，绕开真实 grant 状态机；
-    // 真实 parser 产出的 call（可能携带错误 cwd）原样透传给 resolveToolCallPayload 覆盖。
+    // End-to-end, return an authorization result carrying externalPayloadNamespace='grant-1' directly, bypassing the real grant state machine;
+    // calls produced by the real parser (which may carry a wrong cwd) are passed through unchanged to resolveToolCallPayload to override.
     authorizeToolExecution: vi.fn(),
     completeToolExecutionAuthorization: vi.fn(async () => undefined),
   };
 });
 
-// P1-A ② 端到端：provider 执行后的历史落盘与本模块无关，mock 避免触碰真实 storage。
+// P1-A (2) end-to-end: history persistence after provider execution is unrelated to this module; mock it to avoid touching real storage.
 vi.mock('../core/tool/history', () => ({
   appendToolCallHistory: vi.fn(async () => undefined),
 }));
@@ -54,26 +54,26 @@ function normalCall(invocationName: string, cwd?: string): ToolCall {
 }
 
 describe('resolveToolCallPayload cwd hydration — normal (inline XML) branch', () => {
-  it('经 Skill 授权的普通 shell_exec 调用 → cwd 被注入为 grant 的 skillDir', async () => {
+  it('plain shell_exec call authorized via Skill → cwd is injected as the grant skillDir', async () => {
     const call = normalCall('shell_exec');
     const out = await resolveToolCallPayload(call, 'grant-1');
     expect((out.payload as { cwd?: string }).cwd).toBe(TEST_SKILL_DIR);
   });
 
-  it('普通 shell_exec 给了错误 cwd（≠ skillDir）→ 被 grant 的 skillDir 覆盖（P1-A 修复）', async () => {
+  it('plain shell_exec with a wrong cwd (≠ skillDir) → overridden by the grant skillDir (P1-A fix)', async () => {
     const call = normalCall('shell_exec', '/somewhere/else');
     const out = await resolveToolCallPayload(call, 'grant-1');
-    // 错误 cwd 不再保留调用方原值：归一化为 grant 派生的 skillDir，防止在 Skill 目录外执行
+    // A wrong cwd no longer keeps the caller's value: it is normalized to the grant-derived skillDir to prevent execution outside the Skill directory
     expect((out.payload as { cwd?: string }).cwd).toBe(TEST_SKILL_DIR);
   });
 
-  it('普通 shell_exec 已给正确 cwd（=== skillDir）→ 幂等保留调用方原值', async () => {
+  it('plain shell_exec with the correct cwd (=== skillDir) → idempotently keeps the caller value', async () => {
     const call = normalCall('shell_exec', TEST_SKILL_DIR);
     const out = await resolveToolCallPayload(call, 'grant-1');
     expect((out.payload as { cwd?: string }).cwd).toBe(TEST_SKILL_DIR);
   });
 
-  it('非命令型工具（local_file_read）→ cwd 不注入', async () => {
+  it('non-command tool (local_file_read) → cwd is not injected', async () => {
     const call: ToolCall = {
       id: 'call-2',
       descriptorId: 'local:test:file_read',
@@ -86,13 +86,13 @@ describe('resolveToolCallPayload cwd hydration — normal (inline XML) branch', 
     expect((out.payload as { cwd?: string }).cwd).toBeUndefined();
   });
 
-  it('未绑定 Skill 授权（externalPayloadNamespace 为 undefined）→ cwd 不注入', async () => {
+  it('no Skill grant bound (externalPayloadNamespace is undefined) → cwd is not injected', async () => {
     const call = normalCall('shell_exec');
     const out = await resolveToolCallPayload(call, undefined);
     expect((out.payload as { cwd?: string }).cwd).toBeUndefined();
   });
 
-  it('未绑定 Skill 授权（grant 无 localSkillDir）→ cwd 不注入', async () => {
+  it('no Skill grant bound (grant has no localSkillDir) → cwd is not injected', async () => {
     const call = normalCall('shell_exec');
     const out = await resolveToolCallPayload(call, 'no-skill-grant');
     expect((out.payload as { cwd?: string }).cwd).toBeUndefined();
@@ -100,12 +100,12 @@ describe('resolveToolCallPayload cwd hydration — normal (inline XML) branch', 
 });
 
 describe('resolveToolCallPayload cwd hydration — externalized branch (regression)', () => {
-  it('externalized payload 仍从 grant 派生 cwd（不回归，派生函数被调用）', async () => {
+  it('externalized payload still derives cwd from the grant (no regression; the derivation function is called)', async () => {
     const { getGrantLocalSkillDir } = await import('../core/tool/authorization');
     const spy = vi.mocked(getGrantLocalSkillDir);
 
-    // externalized payload 需要真实的 ref 解析；此处仅确认 externalized 分支仍调用派生函数
-    // （完整 externalized 解析由 tool-runtime-externalized-payload.test.ts 覆盖）。
+    // The externalized payload needs real ref resolution; here we only confirm the externalized branch still calls the derivation function
+    // (full externalized resolution is covered by tool-runtime-externalized-payload.test.ts).
     const call: ToolCall = {
       id: 'call-3',
       descriptorId: 'local:test:sample_tool',
@@ -118,15 +118,15 @@ describe('resolveToolCallPayload cwd hydration — externalized branch (regressi
       raw: '<tool_call/>',
     };
     await resolveToolCallPayload(call, 'grant-1');
-    // externalized 分支必须调用 getGrantLocalSkillDir（派生 cwd），证明未退化为"不注入"
+    // The externalized branch must call getGrantLocalSkillDir (derive cwd), proving it has not regressed to "no injection"
     expect(spy).toHaveBeenCalledWith('grant-1');
   });
 });
 
-describe('resolveToolCallPayload cwd hydration — end-to-end parser→runtime→provider (P1-A ②)', () => {
-  // 真实 parser 解析含错误 cwd（/somewhere/else）的两种模型输出格式，验证整条链路
-  // parser → executeToolCall（authorizeToolExecution → resolveToolCallPayload）→ providerRegistry.execute
-  // 最终 provider 收到的是 grant 派生的 skillDir，而非 parser 输出的未信任 cwd。
+describe('resolveToolCallPayload cwd hydration — end-to-end parser→runtime→provider (P1-A 2)', () => {
+  // The real parser parses both model output formats containing a wrong cwd (/somewhere/else), verifying that the whole chain
+  // parser → executeToolCall (authorizeToolExecution → resolveToolCallPayload) → providerRegistry.execute
+  // ends with the provider receiving the grant-derived skillDir rather than the untrusted cwd output by the parser.
 
   const shellDescriptor: ToolDescriptor = {
     id: 'local:test:shell_exec',
@@ -145,13 +145,13 @@ describe('resolveToolCallPayload cwd hydration — end-to-end parser→runtime�
   };
 
   const xmlText = '<shell_exec>{"command":"ls","cwd":"/somewhere/else"}</shell_exec>';
-  // 从 tool-parser 导出的真实常量反推 DSML 标签字面，确保与解析正则字符完全一致。
+  // Derive the DSML tag literals back from the real constants exported by tool-parser, ensuring they match the parsing regex characters exactly.
   const dsmlPrefix = LEGACY_TOOL_CALLS_OPEN_TAG.slice(0, -'tool_calls>'.length);
   const invokeOpen = `${dsmlPrefix}invoke name="shell_exec">`;
-  // 开放标签用 `${dsmlPrefix}X`（dsmlPrefix = '<｜DSML｜'）；闭合标签用 `</${dsmlPrefix.slice(1)}X>`
-  // （slice(1) 去掉首字符 '<'，得到 '｜DSML｜'，前面补 '</'）。二者对称，才能被
-  // LEGACY_INVOKE_REGEX / LEGACY_PARAMETER_REGEX 正确命中。原 param 闭合误用 `</${dsmlPrefix}parameter>`
-  // 多带一个 '<'，变成 </<｜DSML｜parameter>，导致 parameter 子匹配失败、payload 为空——属测试构造 bug（非实现 bug）。
+  // Open tags use `${dsmlPrefix}X` (dsmlPrefix = '<｜DSML｜'); closing tags use `</${dsmlPrefix.slice(1)}X>`
+  // (slice(1) drops the leading '<', giving '｜DSML｜', then '</' is prepended). The two must be symmetric to be
+  // matched correctly by LEGACY_INVOKE_REGEX / LEGACY_PARAMETER_REGEX. The original param closing wrongly used `</${dsmlPrefix}parameter>`,
+  // which carries an extra '<' and becomes </<｜DSML｜parameter>, making the parameter sub-match fail and the payload empty — a test construction bug (not an implementation bug).
   const param = (name: string, value: string) =>
     `${dsmlPrefix}parameter name="${name}" string="true">${value}</${dsmlPrefix.slice(1)}parameter>`;
   const dsmlText =
@@ -186,11 +186,11 @@ describe('resolveToolCallPayload cwd hydration — end-to-end parser→runtime�
 
     const parsed = extractToolCalls(text, { descriptors: [shellDescriptor] });
     expect(parsed).toHaveLength(1);
-    // parser 确实输出了调用方给的错误 cwd（证明覆盖前未被信任）
+    // The parser really did output the wrong cwd supplied by the caller (proving it was untrusted before the override)
     expect((parsed[0].payload as { cwd?: string }).cwd).toBe('/somewhere/else');
 
-    // executeToolCall 的第二参数是授权触发场景（RuntimeToolAuthorizationContext），
-    // grant 信息由 mock 的 authorizeToolExecution 经 reservation.grantId 回填，故此处传 'manual_chat'。
+    // The second argument of executeToolCall is the authorization trigger context (RuntimeToolAuthorizationContext);
+    // grant info is backfilled by the mocked authorizeToolExecution via reservation.grantId, so 'manual_chat' is passed here.
     await runtime.executeToolCall(parsed[0], 'manual_chat');
 
     expect(provider.execute).toHaveBeenCalledTimes(1);
@@ -198,12 +198,12 @@ describe('resolveToolCallPayload cwd hydration — end-to-end parser→runtime�
     return providerCalls[0];
   }
 
-  it('端到端：真实 parser 解析正常 XML（含错误 cwd）→ provider 收到 cwd===skillDir', async () => {
+  it('end-to-end: real parser parses plain XML (with a wrong cwd) → provider receives cwd===skillDir', async () => {
     const received = await runEndToEnd(xmlText);
     expect((received.payload as { cwd?: string }).cwd).toBe(TEST_SKILL_DIR);
   });
 
-  it('端到端：真实 parser 解析 legacy DSML（含错误 cwd）→ provider 收到 cwd===skillDir', async () => {
+  it('end-to-end: real parser parses legacy DSML (with a wrong cwd) → provider receives cwd===skillDir', async () => {
     const received = await runEndToEnd(dsmlText);
     expect((received.payload as { cwd?: string }).cwd).toBe(TEST_SKILL_DIR);
   });

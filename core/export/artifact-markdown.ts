@@ -110,7 +110,7 @@ function renderAttachment(attachment: ExportedAttachment): string {
 }
 
 function escapeMarkdownHeading(text: string): string {
-  return text.replace(/\s+/g, ' ').trim().replace(/^#+\s*/, '') || '未命名对话';
+  return text.replace(/\s+/g, ' ').trim().replace(/^#+\s*/, '') || 'Untitled conversation';
 }
 
 function formatBytes(bytes: number): string {

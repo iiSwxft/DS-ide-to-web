@@ -11,6 +11,7 @@ const PROMPT_COPY = {
     enough: 'If the results are enough, give the final answer directly. Only continue calling available MCP tools when more information, verification, or file changes are truly needed.',
     noPseudo: 'Do not output pseudo tool-call JSON. When a tool call is needed, output only executable XML tool tags.',
   },
+  // Intentional zh-CN fixture: verifies the Chinese continuation prompt locale (do not translate).
   'zh-CN': {
     runner: '你现在是 DeepSeek++ 托管自动化续跑器，正在接管网页对话区的后续执行。',
     task: '请持续围绕同一个原始用户任务推进，直到任务完成、达到可交付状态，或遇到不可恢复阻塞。',

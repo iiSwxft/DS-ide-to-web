@@ -336,7 +336,7 @@ describe('createDeepSeekStreamFn', () => {
     // forking a response the server may have already committed.
     vi.useFakeTimers();
     adapterMocks.submitPromptStreaming.mockImplementation((_input, handlers, signal) => {
-      handlers.onReasoningChunk?.('我先分析', '我先分析');
+      handlers.onReasoningChunk?.('Let me analyze first', 'Let me analyze first');
       return new Promise((_resolve, reject) => {
         signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
       });

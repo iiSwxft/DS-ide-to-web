@@ -1,8 +1,8 @@
-# pi-agent-core 集成 — Progress Tracker
+# pi-agent-core Integration — Progress Tracker
 
-> **Task**: 内置 `@earendil-works/pi-agent-core@0.83.0` 为 inline agent 的 loop 引擎，用自定义 StreamFn 封装 DeepSeek 网页接口为模型后端，替换现有自研 inline-agent loop（保留执行策略/授权/渲染）；Step A 落地，Step B 记路线图。
+> **Task**: Embed `@earendil-works/pi-agent-core@0.83.0` as the loop engine of the inline agent, wrapping the DeepSeek web interface as the model backend with a custom StreamFn, replacing the existing self-built inline-agent loop (keeping execution policy/authorization/rendering); Step A lands now, Step B is recorded as a roadmap.
 > **Started**: 2026-07-31
-> **Mode**: GITHUB_STANDARD（Labels + Milestones + Issues + PRs，无 Project board）
+> **Mode**: GITHUB_STANDARD (Labels + Milestones + Issues + PRs, no Project board)
 > **Repository**: `zhu1090093659/deepseek-pp`
 > **Branch / Worktree**: `spec/pi-agent-core-integration` @ `/Users/zcl/code/deepseek-pp-worktrees/pi-agent-core-integration`
 
@@ -14,36 +14,36 @@
 - [Task Breakdown](../plan/task-breakdown.md)
 - [Dependency Graph](../plan/dependency-graph.md)
 - [Milestones](../plan/milestones.md)
-- 基线参照：`docs/archives/deepseek-pp-reliability-compatibility-refactor/`（已完成重构记录）、`docs/archives/mcp-capability-plane/`（本次 run 之前刚归档）
+- Baseline references: `docs/archives/deepseek-pp-reliability-compatibility-refactor/` (completed refactor record), `docs/archives/mcp-capability-plane/` (archived just before this run)
 
 ## Milestones
 
 | # | Milestone | Target | Criteria | Status |
 |:--|:----------|:-------|:---------|:-------|
-| 51 | M1 契约与地基就绪 | After Phase 1 | golden 全绿且生产零改动；pi 锁 0.83.0；bundle 红线内；护栏脚本生效 | Pending |
-| 52 | M2 Step A 完成（pi loop 替换上线） | After Phase 5 | ci:quality 全绿；旧 loop 删除；prompt:freeze 零 diff；golden 逐字节一致；注册表/AGENTS.md 同步 | Pending |
+| 51 | M1 Contracts and foundation ready | After Phase 1 | golden all green with zero production changes; pi pinned at 0.83.0; bundle within red line; guardrail script effective | Pending |
+| 52 | M2 Step A complete (pi loop replacement live) | After Phase 5 | ci:quality all green; old loop deleted; prompt:freeze zero diff; golden byte-for-byte identical; registry/AGENTS.md synced | Pending |
 
-## Issue Mapping（Task → Issue → Batch → PR → Status）
+## Issue Mapping (Task → Issue → Batch → PR → Status)
 
 | Task | Issue | Delivery Batch | PR | Status |
 |:-----|:------|:---------------|:---|:-------|
-| A0（A0-T1 + A0-T2） | [#511](https://github.com/zhu1090093659/deepseek-pp/issues/511) | P1-B1 | [#516](https://github.com/zhu1090093659/deepseek-pp/pull/516) | **Merged（#511 closed）** |
-| A1（A1-T1..3） | [#512](https://github.com/zhu1090093659/deepseek-pp/issues/512) | P2-B1 | [#517](https://github.com/zhu1090093659/deepseek-pp/pull/517) | **Merged（#512 closed）** |
-| A2（A2-T1..3） | [#513](https://github.com/zhu1090093659/deepseek-pp/issues/513) | P3-B1 | [#518](https://github.com/zhu1090093659/deepseek-pp/pull/518) | **Merged（#513 closed）** |
-| A3（A3-T1..3） | [#514](https://github.com/zhu1090093659/deepseek-pp/issues/514) | P4-B1 | [#519](https://github.com/zhu1090093659/deepseek-pp/pull/519) | **Merged（#514 closed）** |
-| A2（A2-T1..3） | [#513](https://github.com/zhu1090093659/deepseek-pp/issues/513) | P3-B1 | — | Open |
+| A0 (A0-T1 + A0-T2) | [#511](https://github.com/zhu1090093659/deepseek-pp/issues/511) | P1-B1 | [#516](https://github.com/zhu1090093659/deepseek-pp/pull/516) | **Merged (#511 closed)** |
+| A1 (A1-T1..3) | [#512](https://github.com/zhu1090093659/deepseek-pp/issues/512) | P2-B1 | [#517](https://github.com/zhu1090093659/deepseek-pp/pull/517) | **Merged (#512 closed)** |
+| A2 (A2-T1..3) | [#513](https://github.com/zhu1090093659/deepseek-pp/issues/513) | P3-B1 | [#518](https://github.com/zhu1090093659/deepseek-pp/pull/518) | **Merged (#513 closed)** |
+| A3 (A3-T1..3) | [#514](https://github.com/zhu1090093659/deepseek-pp/issues/514) | P4-B1 | [#519](https://github.com/zhu1090093659/deepseek-pp/pull/519) | **Merged (#514 closed)** |
+| A2 (A2-T1..3) | [#513](https://github.com/zhu1090093659/deepseek-pp/issues/513) | P3-B1 | — | Open |
 
-| A4（A4-T1..2） | [#515](https://github.com/zhu1090093659/deepseek-pp/issues/515) | P5-B1 | — | 验证中 |
+| A4 (A4-T1..2) | [#515](https://github.com/zhu1090093659/deepseek-pp/issues/515) | P5-B1 | — | Verifying |
 
 ## Delivery Batches
 
 | Batch | Issue | Integration Branch | Validation | Depends On | Status |
 |:------|:------|:--------------------|:-----------|:-----------|:-------|
 | P1-B1 | #511 | `batch/p1-b1-contract-foundation` | golden + compile + build:chrome + pi-bundle-budget | — | **PR #516 in review** |
-| P2-B1 | #512 | `batch/p2-b1-deepseek-stream-fn` | 定向测试 + compile + build:chrome + shake 断言 | P1-B1 | **PR #517 merged** |
-| P3-B1 | #513 | `batch/p3-b1-tool-bridge-auth` | 定向测试 + compile + prompt:freeze + build | P1-B1 | **PR #518 merged** |
-| P4-B1 | #514 | `batch/p4-b1-loop-swap` | 完整验证链（prompt:freeze 零 diff → build:all → verify → 窄冒烟）+ L3 评审 | P2-B1, P3-B1 | **PR #519 merged** |
-| P5-B1 | #515 | `batch/p5-b1-validation-closure` | ci:quality 全链 + fixtures diff + 注册表/AGENTS.md 校验 | P4-B1 | **验证中** |
+| P2-B1 | #512 | `batch/p2-b1-deepseek-stream-fn` | Targeted tests + compile + build:chrome + shake assertions | P1-B1 | **PR #517 merged** |
+| P3-B1 | #513 | `batch/p3-b1-tool-bridge-auth` | Targeted tests + compile + prompt:freeze + build | P1-B1 | **PR #518 merged** |
+| P4-B1 | #514 | `batch/p4-b1-loop-swap` | Full verification chain (prompt:freeze zero diff → build:all → verify → narrow smoke) + L3 review | P2-B1, P3-B1 | **PR #519 merged** |
+| P5-B1 | #515 | `batch/p5-b1-validation-closure` | Full ci:quality chain + fixtures diff + registry/AGENTS.md check | P4-B1 | **Verifying** |
 
 ## Quick Status Commands
 
@@ -56,32 +56,32 @@ gh api repos/zhu1090093659/deepseek-pp/milestones --jq '.[] | select(.number==51
 
 ## Current Status
 
-**Active Phase**: Phase 5（P5-B1）验证中
-**Active Task**: A4-T2 治理已提交（AGENTS.md 规则 + PR-006 注册表行 + 存储边界测试）；A4-T1 ci:quality 全链运行中
-**Blockers**: 无
+**Active Phase**: Phase 5 (P5-B1) verifying
+**Active Task**: A4-T2 governance committed (AGENTS.md rules + PR-006 registry row + storage boundary test); A4-T1 full ci:quality chain running
+**Blockers**: None
 
 ## Governance Status
 
-**Shared instruction surface**: `AGENTS.md`（唯一项目级真源；root `CLAUDE.md` 禁止）
-**Other platform rule surfaces**: 无相关项目规则面
+**Shared instruction surface**: `AGENTS.md` (sole project-level source of truth; root `CLAUDE.md` forbidden)
+**Other platform rule surfaces**: No relevant project rule surfaces
 **Memory surface**: Codex native memory
-**Memory fallback path**: 无（AGENTS.md 禁止 repo 内 memory 文件）
-**主工作区纪律**: 主工作区（`/Users/zcl/code/deepseek-pp`）有其他 Agent 的未提交改动（CP-B1 批次，等其完成后授权提交）；本 run 所有 git 操作/文件改动只在 worktree 内进行，主工作区只读参照。
+**Memory fallback path**: None (AGENTS.md forbids in-repo memory files)
+**Main workspace discipline**: The main workspace (`/Users/zcl/code/deepseek-pp`) has uncommitted changes from another Agent (the CP-B1 batch; commit authorization to follow once it finishes); all git operations/file changes in this run happen only inside the worktree, and the main workspace is a read-only reference.
 
 ## Execution Telemetry
 
-- 遥测与 drift 状态按 `references/adaptive-control.md` 存储：**Milestone 描述 YAML 块**（M1=#51、M2=#52，已初始化 thresholds annotate/replan/rescope）。
-- 每个任务完成后：收集实际 effort / S.U.P.E.R / 非计划依赖 → 写 Issue 评论 → 更新对应 Milestone YAML 的 drift_score → 阈值触发即自动响应（annotate 20% / replan 40% / rescope 60%）。
+- Telemetry and drift state are stored per `references/adaptive-control.md`: **Milestone description YAML block** (M1=#51, M2=#52, thresholds annotate/replan/rescope initialized).
+- After each task completes: collect actual effort / S.U.P.E.R / unplanned dependencies → write an Issue comment → update the corresponding Milestone YAML drift_score → respond automatically when a threshold is triggered (annotate 20% / replan 40% / rescope 60%).
 
 ## Next Steps
 
-1. 等用户确认（Phase 5a）后开始执行。
-2. 执行顺序：P1-B1（A0-T1 ∥ A0-T2 双 lane Tier 2）→ P2-B1 → P3-B1 → P4-B1（L3 评审：A3-T2、A2-T3）→ P5-B1。
-3. 每批一个 PR（一行 `Closes #N`）；P4-B1 是唯一行为替换 PR（回滚边界），其前置 = A0-T1 golden 已绿。
-4. 全部完成后 Phase 6 归档（`docs/archives/pi-agent-core-integration/`）+ 关闭 Milestones。
+1. Start execution after the user confirms (Phase 5a).
+2. Execution order: P1-B1 (A0-T1 ∥ A0-T2 dual-lane Tier 2) → P2-B1 → P3-B1 → P4-B1 (L3 review: A3-T2, A2-T3) → P5-B1.
+3. One PR per batch (one `Closes #N` line); P4-B1 is the only behavior-replacing PR (rollback boundary), and its prerequisite = A0-T1 golden already green.
+4. After everything completes, Phase 6 archives (`docs/archives/pi-agent-core-integration/`) + closes Milestones.
 
 ## Session Log
 
 | Date | Session | Summary |
 |:--|:--|:--|
-| 2026-07-31 | Planning | 归档 MCP capability plane（docs-only 提交 e809010，代码批次留给其主 Agent）；创建 worktree `spec/pi-agent-core-integration`；Phase 1 分析（3 子代理 + npm 事实核查）；Phase 2 决策（直接替换 / B 只记路线图 / 消费现有 prompt 产物）；Phase 3 分解（5 Phases / 13 Tasks / 5 Issues / 5 Batches）+ GitHub 资源（Labels、M1=#51、M2=#52、Issues #511-#515）。 |
+| 2026-07-31 | Planning | Archived the MCP capability plane (docs-only commit e809010; code batches left to its main Agent); created worktree `spec/pi-agent-core-integration`; Phase 1 analysis (3 subagents + npm fact-check); Phase 2 decisions (direct replacement / B recorded as roadmap only / consume existing prompt output); Phase 3 decomposition (5 Phases / 13 Tasks / 5 Issues / 5 Batches) + GitHub resources (Labels, M1=#51, M2=#52, Issues #511-#515). |

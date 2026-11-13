@@ -139,6 +139,7 @@ describe('fetch hook request lifecycle', () => {
     expect(onRequestTerminal).toHaveBeenCalledOnce();
   });
 
+  // '你好🙂' is intentional multi-byte UTF-8 test input (the stream is split mid-character).
   it('preserves response metadata and split UTF-8 visible stream bytes', async () => {
     const wire = [
       'event: ready\r\ndata: {"response_message_id":17,"model_type":"vision"}',

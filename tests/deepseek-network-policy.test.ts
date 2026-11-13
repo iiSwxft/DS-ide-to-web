@@ -16,7 +16,7 @@ describe('DeepSeek network policy', () => {
     const onDispatch = vi.fn();
     await expect(fetchWithNetworkPolicy('https://chat.deepseek.com/test', {
       method: 'POST',
-      body: '界',
+      body: '界', // 3-byte UTF-8 CJK character on purpose: budgets are measured in bytes
     }, {
       operation: 'request-budget',
       maxRequestBytes: 2,
@@ -29,7 +29,7 @@ describe('DeepSeek network policy', () => {
 
     const exactRequest = await fetchWithNetworkPolicy('https://chat.deepseek.com/test', {
       method: 'POST',
-      body: '界',
+      body: '界', // 3-byte UTF-8 CJK character on purpose: budgets are measured in bytes
     }, {
       operation: 'request-budget-exact',
       maxRequestBytes: 3,

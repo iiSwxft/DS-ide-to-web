@@ -1104,7 +1104,8 @@ export function followAgentStreamBottom(stream: HTMLElement): void {
 // title toggle. Idempotent per host, so a later manual expand is never
 // re-folded, and the page's React state stays authoritative.
 // ---------------------------------------------------------------------------
-const REASONING_HOST_TEXT_RE = /^(?:已(?:深度)?思考|深度思考|思考过程|思考中|正在思考|thinking|reasoning|thought)(?:[\s（(:：]|$)/i;
+// Chinese alternatives match the DeepSeek site's own reasoning-label text; kept intentionally.
+const REASONING_HOST_TEXT_RE =/^(?:已(?:深度)?思考|深度思考|思考过程|思考中|正在思考|thinking|reasoning|thought)(?:[\s（(:：]|$)/i;
 const REASONING_COMPLETED_TEXT_RE = /^(?:已(?:深度)?思考|深度思考|思考过程|thought)(?:[\s（(:：]|$)/i;
 
 function findReasoningHostTitle(host: HTMLElement): HTMLElement | null {

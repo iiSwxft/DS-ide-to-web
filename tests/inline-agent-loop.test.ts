@@ -99,6 +99,7 @@ describe('runInlineAgentLoop', () => {
   });
 
   it('does not replay the same step when planning text is followed by a complete answer', async () => {
+    // NOTE: the Chinese answer text below is intentional test input for the Chinese-language planning/continuation detector.
     const answer = [
       '要求查看贵金属走势，之前的搜索已经提供了一些结果。我需要基于这些结果给出一个全面的回答。',
       '为了更全面地获取信息，我将同时打开这些相关的链接。',
@@ -310,6 +311,7 @@ describe('runInlineAgentLoop', () => {
   });
 
   it('nudges a turn whose visible tail promises a deliverable after retired artifact XML', async () => {
+    // NOTE: the Chinese text in this test is intentional input for the Chinese empty-promise detector.
     // Issue (artifact deliverable silently swallowed): the model emits
     // `<artifact_create>` XML (retired internal protocol, not in the loop
     // catalog), the display layer strips it, and the user is left with an
@@ -353,6 +355,7 @@ describe('runInlineAgentLoop', () => {
   });
 
   it('completes without nudging when a renderable deliverable follows the promise', async () => {
+    // NOTE: Chinese text here is intentional input for the Chinese empty-promise detector.
     // A promise followed by an actual fenced deliverable is a complete turn:
     // the tail is a renderable body, not an empty promise.
     adapterMocks.submitPromptStreaming.mockImplementationOnce(async (_input, handlers) => {
@@ -455,6 +458,7 @@ describe('runInlineAgentLoop', () => {
   });
 
   it('nudges a "让我再抓取" continuation sentence instead of stopping the run', async () => {
+    // NOTE: the Chinese sentences below are intentional input for the Chinese continuation-phrase detector.
     // Reproducible mid-output stop: a turn that ends with a common Chinese
     // first-person continuation sentence ("让我再抓取…获取更完整的月度数据。")
     // promised further tool work but was previously treated as a completed
@@ -507,6 +511,7 @@ describe('runInlineAgentLoop', () => {
   });
 
   it('fails visibly when the response stream ends without FINISHED', async () => {
+    // NOTE: the Chinese sentence is intentional input for the Chinese continuation-phrase detector.
     // A server-side cut (connection dropped, response interrupted) ends the
     // SSE stream without the terminal FINISHED patches. The partial text must
     // never be presented as a finished turn: the loop reports AGENT_LOOP_ERROR
@@ -543,7 +548,7 @@ describe('runInlineAgentLoop', () => {
     // the continuation policy filtered local:memory out. Once the loop runs, the
     // pi engine naturally produces the final answer after the memory result.
     adapterMocks.submitPromptStreaming.mockImplementationOnce(async (_input, handlers) => {
-      handlers.onTextChunk('已为你记下这条偏好，后续会沿用。');
+      handlers.onTextChunk('I have noted this preference and will keep applying it.');
       return {
         assistantText: '',
         responseMessageId: 102,
@@ -566,7 +571,7 @@ describe('runInlineAgentLoop', () => {
 
     expect(adapterMocks.submitPromptStreaming).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith('AGENT_LOOP_COMPLETE', expect.objectContaining({
-      finalText: '已为你记下这条偏好，后续会沿用。',
+      finalText: 'I have noted this preference and will keep applying it.',
       totalTools: 1,
     }));
   });
@@ -616,7 +621,7 @@ const MEMORY_SAVE_EXECUTION: ToolExecutionRecord = {
   },
   result: {
     ok: true,
-    summary: '已保存',
+    summary: 'Saved',
     output: { id: 1 },
   },
 };

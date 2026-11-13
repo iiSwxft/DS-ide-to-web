@@ -11,20 +11,20 @@
     "assetRawBytes": 588408
   },
   "skillSha256": {
-    "officecli": "d6b7171a01d5082deebbbf29d7c343f2a3ada627798daadcf56df847f30f4582",
-    "officecli-docx": "da5755ee23c25feee8760780029acdc4ab1ab559a32bcb53494abfc34a53a9e1",
-    "officecli-xlsx": "b090bff9087dd856bbca30bbbddeaf9ae6a273835b34daf3536a57c3e673f4a7",
-    "officecli-pptx": "a3c6c65ce13d3370fd8c16d5ef047d51fd401bfd5bafa35ac9b0a4533f672b93",
-    "officecli-academic-paper": "e5c92d4a9bb22e7dd63c40490eb39f72ff23c2dfef4c69bea250cb8ecfd177c0",
-    "officecli-word-form": "58cbc256be96d76482e1d13afc6dec362c0fa0e5368e8bf769d62bcd58b816a9",
-    "officecli-data-dashboard": "b0851997ed6904ee2bfaf61b5701dc80bec9c92c598b62174ed868d870eb3e0a",
-    "officecli-financial-model": "a42d37a60f305f9c2ff820b0045a28e17a234c5ae4f9b49ecada3fbee0187e36",
-    "officecli-pitch-deck": "5270ab10660195ede961e5a24d9141d150903606d936493b4b83c8b79a93c5c8",
-    "morph-ppt": "964e0bbc4beca71f5c519531e7f3e9040f64b45d9ceb8db92eca614bdc0d365a",
-    "morph-ppt-3d": "703f14e257359d09a5f60a52cd8cdfcbbc6f4668086f3e882af41903993e9aa4",
-    "officecli-styles": "370554440f304650984d72267d97606d8998f6b2767ed06f05f461c1903dbb89",
-    "spec-driven-develop": "fe1cd593eb9622ba1a5ea1a0b1c0cc3125bd44996846631bef6c3bf2a854607c",
-    "deep-discuss": "e8a546efd19bd7c8de4d508bce42670fa59a0e964311bcb3ff6cd940b591cdc5",
-    "review-spd": "710251b4fe4441be37c64a4360766c9b1338bceaf23375cf6332289e82ca37ab"
+    "officecli": "ed8ec4ea7dfafde1c17940828696de79a32b0d69860ce6ad469fa11520ccd249",
+    "officecli-docx": "424bd4d2f37d2db0683b4dbfbcc6c99f9e7ef04c53faa02c792828a9832d27d7",
+    "officecli-xlsx": "44c176e5050a6cb02ede0d2ac75514bb10da037bea5b4f591fb31837802a14ab",
+    "officecli-pptx": "40e12659eb48a3b94a1e582e33aafa00feab9a11419d574ff6ae91751dbdc029",
+    "officecli-academic-paper": "78b763004dd6d228bb416d07144ac4988a98817d238994ee1ce7b585f7a546b9",
+    "officecli-word-form": "cef3e36fbfc095847a1b6f09ee87962f3b9486631257e1d41f8b5497c263a026",
+    "officecli-data-dashboard": "6db83d52d138b24e2ee9fb174529278b1c1263b780503ef85cd3ad25444a76b7",
+    "officecli-financial-model": "91d8686ccd0d6bf12e0642e94a359cb4b87dc754072e6503cb51473007adea85",
+    "officecli-pitch-deck": "6dabbfe21b10d551a64548c0c2baaf046f2363f18037857fa7a98458755fa2d4",
+    "morph-ppt": "6aff8b29673eb73154739665ac66c6a3a40d354b72cd7635e045cabed931025e",
+    "morph-ppt-3d": "cf3c610cce742135bf2cfa9d94d616119325467b5a0d73a79a3a39cef35ed11d",
+    "officecli-styles": "0efbad28be280798d669b8d28c6aef269f81c6288395cc26eb96bfc3fe7ca032",
+    "spec-driven-develop": "3e99f44ea8c807aa4ac615ab0416dde48019a873eee6bca3e9968369f2b2d5e3",
+    "deep-discuss": "8ce27dc6727ef9f3c1acbf213cfb55f85744c92fba202e4530f1c112732a07ed",
+    "review-spd": "e25c517a44b372603b460225d3dfee0fce344826777d2726bc29832e11512cb9"
   }
 }

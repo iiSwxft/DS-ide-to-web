@@ -411,13 +411,13 @@ describe('AGENT_* event protocol golden', () => {
     vi.useFakeTimers();
     adapterMocks.submitPromptStreaming
       .mockImplementationOnce(async (_input, handlers) => {
-        handlers.onReasoningChunk?.('我', '我');
-        handlers.onReasoningChunk?.('先分析', '我先分析');
+        handlers.onReasoningChunk?.('I', 'I');
+        handlers.onReasoningChunk?.(' will analyze first', 'I will analyze first');
         handlers.onTextChunk(TOOL_CALL_TEXT);
         return { assistantText: '', responseMessageId: 102, requestMessageId: 101, finished: true };
       })
       .mockImplementationOnce(async (_input, handlers) => {
-        handlers.onReasoningChunk?.('最后检查', '最后检查');
+        handlers.onReasoningChunk?.('Final check', 'Final check');
         handlers.onTextChunk('All done.');
         return { assistantText: '', responseMessageId: 103, requestMessageId: 102, finished: true };
       });
@@ -434,8 +434,8 @@ describe('AGENT_* event protocol golden', () => {
 
     expect(events).toEqual([
       { type: 'AGENT_STEP_STARTED', loopId: 'loop-1', stepIndex: 0 },
-      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 0, fullText: '我' },
-      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 0, fullText: '我先分析' },
+      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 0, fullText: 'I' },
+      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 0, fullText: 'I will analyze first' },
       { type: 'AGENT_TOOL_DETECTED', loopId: 'loop-1', stepIndex: 0, call: {
         name: 'artifact_create',
         invocationName: 'artifact_create',
@@ -447,7 +447,7 @@ describe('AGENT_* event protocol golden', () => {
         summary: 'Artifact created',
       }] },
       { type: 'AGENT_STEP_STARTED', loopId: 'loop-1', stepIndex: 1 },
-      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 1, fullText: '最后检查' },
+      { type: 'AGENT_REASONING_CHUNK', loopId: 'loop-1', stepIndex: 1, fullText: 'Final check' },
       { type: 'AGENT_STREAM_CHUNK', loopId: 'loop-1', stepIndex: 1, text: '', fullText: 'All done.' },
       { type: 'AGENT_STEP_COMPLETE', loopId: 'loop-1', stepIndex: 1, responseMessageId: 103, toolExecutions: [] },
       { type: 'AGENT_LOOP_COMPLETE', loopId: 'loop-1', totalSteps: 2, totalTools: 2, finalText: 'All done.' },

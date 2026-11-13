@@ -58,10 +58,10 @@ describe('ProjectsPage', () => {
 
     await renderProjectsPage(sendMessage);
     await enterProjectName('Alpha');
-    await clickButton('创建项目');
+    await clickButton('Create project');
 
     expect(container.textContent).toContain('Alpha');
-    expect(container.textContent).toContain('0 个对话，0 条项目记忆');
+    expect(container.textContent).toContain('0 conversations, 0 project memories');
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'CREATE_PROJECT_CONTEXT',
       payload: { name: 'Alpha', instructions: '' },
@@ -79,11 +79,11 @@ describe('ProjectsPage', () => {
 
     await renderProjectsPage(sendMessage);
     await enterProjectName('Alpha');
-    await clickButton('创建项目');
+    await clickButton('Create project');
 
     expect(projectNameInput().value).toBe('Alpha');
-    expect(container.textContent).toContain('项目后端不可用');
-    expect(container.textContent).not.toContain('0 个对话，0 条项目记忆');
+    expect(container.textContent).toContain('Project backend is unavailable');
+    expect(container.textContent).not.toContain('0 conversations, 0 project memories');
   });
 
   it('surfaces corrupt project repository values instead of accepting shallow shapes', async () => {
@@ -104,7 +104,7 @@ describe('ProjectsPage', () => {
     await renderProjectsPage(sendMessage);
 
     expect(container.textContent)
-      .toContain('项目操作失败：projectContextResponse.projects[0].name must be a non-empty string');
+      .toContain('Project action failed: projectContextResponse.projects[0].name must be a non-empty string');
   });
 
   it('surfaces an initial corrupt Memory snapshot without committing Project or empty state', async () => {
@@ -122,10 +122,10 @@ describe('ProjectsPage', () => {
     await renderProjectsPage(sendMessage);
 
     expect(container.textContent).toContain(
-      '项目操作失败：memoryResponse[0].id must be a positive safe integer',
+      'Project action failed: memoryResponse[0].id must be a positive safe integer',
     );
     expect(container.textContent).not.toContain('Must not commit');
-    expect(container.textContent).not.toContain('暂无项目');
+    expect(container.textContent).not.toContain('No projects');
     expect(container.querySelector('.ds-skeleton')).toBeNull();
   });
 
@@ -156,13 +156,13 @@ describe('ProjectsPage', () => {
     expect(container.textContent).toContain('Alpha');
     expect(container.textContent).toContain('Alpha memory');
 
-    await clickButton('保存更改');
+    await clickButton('Save changes');
 
     expect(container.textContent).toContain('Alpha');
     expect(container.textContent).toContain('Alpha memory');
     expect(container.textContent).not.toContain('Beta must not commit');
     expect(container.textContent).toContain(
-      '项目操作失败：memoryResponse[0].id must be a positive safe integer',
+      'Project action failed: memoryResponse[0].id must be a positive safe integer',
     );
   });
 
@@ -192,7 +192,7 @@ describe('ProjectsPage', () => {
     });
 
     await renderProjectsPage(sendMessage);
-    await clickButton('加入当前对话');
+    await clickButton('Add current conversation');
 
     expect(sendMessage).toHaveBeenCalledWith({
       type: 'ADD_CONVERSATION_TO_PROJECT',
@@ -219,7 +219,7 @@ describe('ProjectsPage', () => {
     });
 
     await renderProjectsPage(sendMessage);
-    await clickButton('保存更改');
+    await clickButton('Save changes');
 
     expect(container.textContent).toContain('update failed');
   });
@@ -272,7 +272,7 @@ describe('ProjectsPage', () => {
     });
     await settle();
 
-    expect(container.textContent).toContain('扩展后台正在启动');
+    expect(container.textContent).toContain('The extension background is still starting');
     expect(container.textContent).not.toContain('Receiving end does not exist');
     // each initial load request retried through the transient transport failure
     expect(sendMessage.mock.calls.length).toBeGreaterThan(3);
@@ -302,7 +302,7 @@ async function renderProjectsPage(sendMessage: ReturnType<typeof vi.fn>) {
 }
 
 async function enterProjectName(value: string) {
-  await enterInput('项目名称', value);
+  await enterInput('Project name', value);
 }
 
 async function enterInput(placeholder: string, value: string) {
@@ -323,7 +323,7 @@ async function clickButton(label: string) {
 }
 
 function projectNameInput(): HTMLInputElement {
-  return inputByPlaceholder('项目名称');
+  return inputByPlaceholder('Project name');
 }
 
 function inputByPlaceholder(placeholder: string): HTMLInputElement {

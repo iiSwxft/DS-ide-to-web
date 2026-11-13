@@ -138,8 +138,8 @@ export function readTextFile(filePath) {
   return readFileSync(filePath, 'utf8');
 }
 
-// 按需字节读取字符窗口，避免整文件读入内存（根除 OOM）。
-// 返回 { content: 窗口字符串(≤maxChars 字符), totalChars: 整文件字符数 }。
+// Read a character window by on-demand byte reads, avoiding loading the whole file into memory (eliminates OOM).
+// Returns { content: window string (<= maxChars characters), totalChars: total characters in the file }.
 export function readTextFileWindow(filePath, startChar, maxChars) {
   const stat = safeStat(filePath);
   if (!stat || !stat.isFile()) throw new Error(`Local file is not readable: ${filePath}`);
@@ -150,7 +150,7 @@ export function readTextFileWindow(filePath, startChar, maxChars) {
   try {
     const chunkSize = 64 * 1024;
 
-    // 定位起始字节偏移（UTF-8 变长；带顺序续读缓存避免 O(N^2)）
+    // Locate the starting byte offset (UTF-8 is variable-width; a sequential-continuation cache avoids O(N^2))
     let bytePos = 0;
     let charPos = 0;
     const cached = readWindowPosCache.get(filePath);
@@ -164,25 +164,25 @@ export function readTextFileWindow(filePath, startChar, maxChars) {
       const got = readSync(fd, buf, 0, want, bytePos);
       if (got === 0) break;
       const atEof = bytePos + got >= totalBytes;
-      // 只扫实际读到的 got 字节：Buffer.alloc 为零填充，短读时尾部 0x00 会被误计为字符。
+      // Scan only the got bytes actually read: Buffer.alloc is zero-filled, so on a short read the trailing 0x00 bytes would be miscounted as characters.
       const { bytes: consumed, chars: added } = scanUtf8Chars(buf.subarray(0, got), startChar - charPos, atEof);
-      if (consumed === 0) break; // 纵深防御：字节指针不前进即终止，杜绝死循环
+      if (consumed === 0) break; // Defense in depth: stop if the byte pointer does not advance, preventing an infinite loop
       charPos += added;
-      // 统一用 consumed 前进：用 got 会跳过被回退的尾部不完整序列，令后续窗口全部错位。
+      // Always advance by consumed: using got would skip the rolled-back trailing incomplete sequence and misalign all later windows.
       bytePos += consumed;
       if (charPos >= startChar) break;
     }
     if (charPos < startChar) {
       return { content: '', totalChars: getTotalCharCount(fd, totalBytes, filePath, stat), charsRead: 0 };
     }
-    // 达上限时仅淘汰最旧条目（FIFO），避免一次性清空所有热缓存导致频繁全扫。
+    // At the cap, evict only the oldest entry (FIFO), avoiding clearing all hot caches at once and causing frequent full scans.
     if (readWindowPosCache.size >= MAX_WINDOW_POS_CACHE) {
       const oldest = readWindowPosCache.keys().next().value;
       if (oldest !== undefined) readWindowPosCache.delete(oldest);
     }
     readWindowPosCache.set(filePath, { bytePos, charPos, mtimeMs: stat.mtimeMs, size: stat.size });
 
-    // 读取窗口 [startChar, startChar + maxChars)
+    // Read window [startChar, startChar + maxChars)
     let remaining = maxChars;
     let charsRead = 0;
     const parts = [];
@@ -192,9 +192,9 @@ export function readTextFileWindow(filePath, startChar, maxChars) {
       const got = readSync(fd, buf, 0, want, bytePos);
       if (got === 0) break;
       const atEof = bytePos + got >= totalBytes;
-      // 同上：仅扫描实际读到的 got 字节，并在非 EOF 时回退尾部不完整多字节序列。
+      // Same as above: scan only the got bytes actually read, and when not at EOF roll back a trailing incomplete multi-byte sequence.
       const { bytes: consumed, chars: added } = scanUtf8Chars(buf.subarray(0, got), remaining, atEof);
-      if (consumed === 0) break; // 纵深防御：字节指针不前进即终止，杜绝死循环
+      if (consumed === 0) break; // Defense in depth: stop if the byte pointer does not advance, preventing an infinite loop
       parts.push(buf.subarray(0, consumed));
       remaining -= added;
       charsRead += added;
@@ -210,14 +210,14 @@ export function readTextFileWindow(filePath, startChar, maxChars) {
   }
 }
 
-// 扫描 buffer，返回"前 maxChars 个字符所占字节数"与"实际字符数"(可能因 buffer 不足 < maxChars)。
-// 跨 buffer 的字符连续性由 UTF-8 字节前缀规则保证：续字节(0x80-0xBF)不计入字符数。
+// Scan the buffer and return "the number of bytes taken by the first maxChars characters" and "the actual character count" (may be < maxChars if the buffer is too short).
+// Character continuity across buffers is guaranteed by the UTF-8 byte prefix rules: continuation bytes (0x80-0xBF) are not counted as characters.
 //
-// atEof=true 表示本 buffer 末尾即文件末尾：尾部不完整序列属损坏数据，原样保留不静默丢弃。
-// atEof=false 时必须回退尾部不完整的多字节序列。否则当某个字符的首字节恰好落在 buffer
-// 最后一个字节时，内层 while 的 i < bytes.length 立即为假、续字节未被纳入，返回的 bytes
-// 含一个孤立首字节，Buffer.concat().toString('utf8') 会将其解码为 U+FFFD；同时 bytePos
-// 停在字符中间，导致后续所有窗口的起始位置错位。
+// atEof=true means the end of this buffer is the end of the file: a trailing incomplete sequence is corrupt data and is kept as-is rather than silently dropped.
+// When atEof=false, a trailing incomplete multi-byte sequence must be rolled back. Otherwise, when a character's lead byte falls exactly on the last byte of the buffer,
+// the inner while loop's i < bytes.length is immediately false and the continuation bytes are not included, so the returned bytes
+// contain a lone lead byte that Buffer.concat().toString('utf8') decodes as U+FFFD; at the same time bytePos
+// stops in the middle of a character, misaligning the start position of all later windows.
 function scanUtf8Chars(bytes, maxChars, atEof = false) {
   let i = 0;
   let chars = 0;
@@ -237,8 +237,8 @@ function scanUtf8Chars(bytes, maxChars, atEof = false) {
   return rollback > 0 ? { bytes: i - rollback, chars: chars - 1 } : { bytes: i, chars };
 }
 
-// 返回 bytes[0, end) 末尾"不完整多字节序列"所占字节数；序列完整时返回 0。
-// UTF-8 单字符最长 4 字节，故最多回看 3 个续字节。
+// Return the number of bytes taken by the "incomplete multi-byte sequence" at the end of bytes[0, end); returns 0 when the sequence is complete.
+// A single UTF-8 character is at most 4 bytes, so look back at most 3 continuation bytes.
 function incompleteTailBytes(bytes, end) {
   let k = end - 1;
   let continuation = 0;
@@ -252,11 +252,11 @@ function incompleteTailBytes(bytes, end) {
   return continuation + 1 < need ? continuation + 1 : 0;
 }
 
-// 顺序续读定位缓存：记录 (path -> 已扫描到的字节/字符偏移)，使 auto 续读每窗只扫新增量。
-// 上限保护（L1）：长驻宿主进程读取大量不同文件时避免 Map 无限增长导致内存泄漏。
+// Sequential-continuation locator cache: records (path -> scanned byte/character offset) so auto-continue scans only the new increment per window.
+// Cap protection (L1): prevents the Map from growing without bound and leaking memory when the long-lived host process reads many different files.
 const MAX_WINDOW_POS_CACHE = 1024;
 const readWindowPosCache = new Map();
-// 整文件字符数缓存（按 mtime+size 失效），避免每次调用全文件重扫。上限保护同 L1。
+// Whole-file character count cache (invalidated by mtime+size), avoiding a full-file rescan on every call. Cap protection same as L1.
 const MAX_FILE_CHAR_CACHE = 1024;
 const fileCharCountCache = new Map();
 
@@ -274,7 +274,7 @@ function getTotalCharCount(fd, totalBytes, path, stat) {
     for (let j = 0; j < got; j++) if ((buf[j] & 0xC0) !== 0x80) count++;
     bytePos += got;
   }
-  // 达上限时仅淘汰最旧条目（FIFO），避免一次性清空所有热缓存导致频繁全扫。
+  // At the cap, evict only the oldest entry (FIFO), avoiding clearing all hot caches at once and causing frequent full scans.
   if (fileCharCountCache.size >= MAX_FILE_CHAR_CACHE) {
     const oldest = fileCharCountCache.keys().next().value;
     if (oldest !== undefined) fileCharCountCache.delete(oldest);

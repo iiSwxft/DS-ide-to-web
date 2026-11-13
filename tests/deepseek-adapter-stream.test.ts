@@ -133,10 +133,10 @@ describe('DeepSeek web adapter streaming', () => {
 
   it('emits reasoning chunks for THINK fragments separately from text', async () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => createSseResponse([
-      'data: {"v":{"response":{"message_id":6,"thinking_enabled":true,"fragments":[{"id":2,"type":"THINK","content":"我"}]}}}',
-      'data: {"v":"们"}',
-      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":3,"type":"RESPONSE","content":"答"}]}',
-      'data: {"v":"案"}',
+      'data: {"v":{"response":{"message_id":6,"thinking_enabled":true,"fragments":[{"id":2,"type":"THINK","content":"We"}]}}}',
+      'data: {"v":" plan"}',
+      'data: {"p":"response/fragments","o":"APPEND","v":[{"id":3,"type":"RESPONSE","content":"An"}]}',
+      'data: {"v":"swer"}',
       'data: {"p":"response/status","v":"FINISHED"}',
     ].join('\n\n'))));
 
@@ -156,9 +156,9 @@ describe('DeepSeek web adapter streaming', () => {
       },
     });
 
-    expect(chunks.join('')).toBe('答案');
-    expect(reasoningChunks.join('')).toBe('我们');
-    expect(reasoningFulls.at(-1)).toBe('我们');
+    expect(chunks.join('')).toBe('Answer');
+    expect(reasoningChunks.join('')).toBe('We plan');
+    expect(reasoningFulls.at(-1)).toBe('We plan');
     expect(turn.assistantText).toBe('');
   });
 
